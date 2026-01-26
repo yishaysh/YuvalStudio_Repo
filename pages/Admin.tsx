@@ -564,9 +564,9 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                          
                          return (
                              <div key={i} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-transparent opacity-60'}`}>
-                                 <div className="flex items-center gap-6">
+                                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                                      {/* Day Name & Toggle */}
-                                     <div className="w-32 flex items-center justify-between shrink-0">
+                                     <div className="w-full sm:w-32 flex items-center justify-between shrink-0">
                                          <span className="text-white font-medium">{dayName}</span>
                                          <button 
                                             onClick={() => toggleDayOpen(dayKey)}
@@ -622,7 +622,7 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                                                  </button>
                                              </>
                                          ) : (
-                                             <span className="text-sm text-slate-500 italic px-2">סגור</span>
+                                             <span className="text-sm text-slate-500 italic px-2 hidden sm:inline">סגור</span>
                                          )}
                                      </div>
                                  </div>
