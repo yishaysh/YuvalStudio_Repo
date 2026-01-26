@@ -1,5 +1,5 @@
 
-import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, MOCK_APPOINTMENTS } from '../constants';
+import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings } from '../types';
 import { supabase } from './supabaseClient';
 
@@ -8,17 +8,18 @@ export const api = {
   getSettings: async (): Promise<StudioSettings> => {
       const defaultSettings: StudioSettings = { 
         working_hours: DEFAULT_WORKING_HOURS,
-        studio_details: DEFAULT_STUDIO_DETAILS
+        studio_details: DEFAULT_STUDIO_DETAILS,
+        monthly_goals: DEFAULT_MONTHLY_GOALS
       };
       
       if (!supabase) return defaultSettings;
 
       try {
-          // Fetch both working_hours and studio_details
+          // Fetch settings keys
           const { data, error } = await supabase
             .from('settings')
             .select('*')
-            .in('key', ['working_hours', 'studio_details']);
+            .in('key', ['working_hours', 'studio_details', 'monthly_goals']);
 
           if (error || !data) return defaultSettings;
 
@@ -34,6 +35,8 @@ export const api = {
                }
             } else if (row.key === 'studio_details') {
                newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
+            } else if (row.key === 'monthly_goals') {
+               newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
             }
           });
           
@@ -49,7 +52,8 @@ export const api = {
       
       const updates = [
         { key: 'working_hours', value: settings.working_hours },
-        { key: 'studio_details', value: settings.studio_details }
+        { key: 'studio_details', value: settings.studio_details },
+        { key: 'monthly_goals', value: settings.monthly_goals }
       ];
 
       const { error } = await supabase

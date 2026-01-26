@@ -45,12 +45,18 @@ export interface StudioDetails {
   email: string;
 }
 
+export interface MonthlyGoals {
+  revenue: number;
+  appointments: number;
+}
+
 export interface StudioSettings {
   // Key is "0" for Sunday, "1" for Monday, etc.
   working_hours: {
     [key: string]: DaySchedule; 
   };
   studio_details: StudioDetails;
+  monthly_goals: MonthlyGoals;
 }
 
 export enum BookingStep {

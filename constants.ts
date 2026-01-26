@@ -1,5 +1,5 @@
 
-import { Service, Appointment, StudioSettings, StudioDetails } from './types';
+import { Service, Appointment, StudioSettings, StudioDetails, MonthlyGoals } from './types';
 
 export const SERVICES: Service[] = [
   {
@@ -74,6 +74,11 @@ export const DEFAULT_STUDIO_DETAILS: StudioDetails = {
   phone: '050-1234567',
   address: 'דיזנגוף 100, תל אביב',
   email: 'info@yuvalstudio.com'
+};
+
+export const DEFAULT_MONTHLY_GOALS: MonthlyGoals = {
+  revenue: 20000,
+  appointments: 100
 };
 
 export const MOCK_APPOINTMENTS: Appointment[] = [

@@ -1,3 +1,4 @@
+
 -- 1. Enable UUID extension
 create extension if not exists "uuid-ossp";
 
@@ -155,4 +156,9 @@ VALUES ('working_hours', '{
   "5": {"isOpen": true, "ranges": [{"start": 10, "end": 15}]},
   "6": {"isOpen": false, "ranges": []}
 }')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+
+-- Initial Monthly Goals
+INSERT INTO public.settings (key, value)
+VALUES ('monthly_goals', '{"revenue": 20000, "appointments": 100}')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
