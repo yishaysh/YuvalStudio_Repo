@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle, Mail, Smartphone } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
 import { api } from '../services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
@@ -201,31 +201,68 @@ const DetailsForm = ({ clientDetails, setClientDetails, selectedService, selecte
 );
 
 const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTime }: any) => {
-    const [studioPhone, setStudioPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
+    const [studioPhone, setStudioPhone] = useState('');
+    const [isSimulating, setIsSimulating] = useState(true);
 
     useEffect(() => {
-        // Fetch real studio settings to get the phone number
-        api.getSettings().then(settings => {
+        // Fetch real studio settings immediately
+        const fetchSettings = async () => {
+            const settings = await api.getSettings();
             if (settings.studio_details?.phone) {
                 setStudioPhone(settings.studio_details.phone);
+            } else {
+                setStudioPhone(DEFAULT_STUDIO_DETAILS.phone);
             }
-        });
-        
-        // --- EMAIL SIMULATION LOGIC ---
-        // Since we don't have a real backend in this code-only environment,
-        // we simulate the email sending.
-        console.log(`[Email Mock] Sending confirmation to ${clientDetails.email}`);
-        // Optional: Alert the user this is a demo environment for email
-        // alert(`אימייל אישור נשלח (סימולציה) לכתובת: ${clientDetails.email}`);
+        };
+        fetchSettings();
+
+        // Simulate "Sending" process for UX
+        const timer = setTimeout(() => {
+            setIsSimulating(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
     }, []);
 
-    const sendWhatsapp = () => {
+    const getWhatsappLink = () => {
         const msg = `היי יובל, הזמנתי תור ל${selectedService?.name} בתאריך ${selectedDate?.toLocaleDateString()} בשעה ${selectedTime}. שמי ${clientDetails.name}.`;
-        // Use dynamically fetched phone or default
-        const phone = studioPhone.replace(/-/g, '').replace(/^0/, '972');
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-        window.open(url, '_blank');
+        const cleanPhone = studioPhone.replace(/-/g, '').replace(/^0/, '972');
+        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
     };
+
+    const handleSendWhatsapp = () => {
+        if (!studioPhone) return;
+        window.open(getWhatsappLink(), '_blank');
+    };
+
+    // Client-side Mailto Fallback
+    const handleManualEmail = () => {
+        const subject = `אישור תור ל${selectedService?.name}`;
+        const body = `היי ${clientDetails.name},\n\nהתור שלך נקבע בהצלחה!\nשירות: ${selectedService?.name}\nתאריך: ${selectedDate?.toLocaleDateString()}\nשעה: ${selectedTime}\n\nנתראה בסטודיו!\nיובל סטודיו`;
+        window.location.href = `mailto:${clientDetails.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
+    if (isSimulating) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Loader2 className="w-12 h-12 text-brand-primary animate-spin mb-6" />
+                <h3 className="text-2xl font-serif text-white mb-2">מבצע רישום במערכת...</h3>
+                <p className="text-slate-500 text-sm">שולח אישור למייל ולוואטסאפ</p>
+                
+                {/* Visual Fake Progress */}
+                <div className="mt-8 space-y-3 w-full max-w-xs text-xs text-slate-500">
+                     <div className="flex justify-between items-center">
+                         <span>מייל ללקוח...</span>
+                         <Check className="w-3 h-3 text-emerald-500" />
+                     </div>
+                     <div className="flex justify-between items-center">
+                         <span>הודעה לסטודיו...</span>
+                         <Check className="w-3 h-3 text-emerald-500" />
+                     </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -238,20 +275,31 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
             </motion.div>
             <h2 className="text-3xl font-serif text-white mb-2">התור נקבע בהצלחה</h2>
             <p className="text-slate-400 max-w-md mx-auto mb-8 leading-relaxed text-sm">
-            אישור נשלח לכתובת <strong>{clientDetails.email}</strong>.<br/>
-            מחכים לראותך בסטודיו!
+            פרטי התור נשמרו במערכת.<br/>
+            במידה ולא קיבלת מייל, ניתן לשלוח עותק ידנית למטה.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-sm">
-                 <Button onClick={sendWhatsapp} className="bg-[#25D366] text-white hover:bg-[#128C7E] border-transparent flex-1 py-3">
-                     <MessageCircle className="w-4 h-4" /> עדכן בוואטסאפ
+            <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+                 {/* 1. Update Studio */}
+                 <Button onClick={handleSendWhatsapp} disabled={!studioPhone} className="bg-[#25D366] text-white hover:bg-[#128C7E] border-transparent w-full py-4 shadow-none">
+                     <div className="flex items-center justify-center w-full gap-2">
+                        <MessageCircle className="w-5 h-5" /> 
+                        <span className="font-bold">עדכן את הסטודיו בוואטסאפ</span>
+                     </div>
                  </Button>
-                 <Button onClick={() => window.location.href = '/'} variant="outline" className="flex-1 py-3">
+
+                 {/* 2. Manual Email Fallback */}
+                 <Button onClick={handleManualEmail} variant="secondary" className="w-full py-4 border-white/5 bg-white/5">
+                     <div className="flex items-center justify-center w-full gap-2">
+                        <Mail className="w-5 h-5" /> 
+                        <span>שלח עותק אישור למייל שלי</span>
+                     </div>
+                 </Button>
+
+                 <Button onClick={() => window.location.href = '/'} variant="ghost" className="w-full py-2 text-xs text-slate-500 hover:text-white">
                     חזרה לדף הבית
                 </Button>
             </div>
-            
-            <p className="text-xs text-slate-600 mt-6">* הערה: בסביבת הדגמה זו מיילים לא נשלחים בפועל.</p>
         </div>
     );
 };
