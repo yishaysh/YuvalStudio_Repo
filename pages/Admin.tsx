@@ -530,6 +530,15 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                         }))}
                         placeholder="050-1234567"
                     />
+                    <Input 
+                        label="כתובת אימייל"
+                        value={localSettings.studio_details?.email || ''}
+                        onChange={(e) => setLocalSettings(prev => ({
+                            ...prev,
+                            studio_details: { ...prev.studio_details, email: e.target.value }
+                        }))}
+                        placeholder="info@yuvalstudio.com"
+                    />
                  </div>
             </Card>
 

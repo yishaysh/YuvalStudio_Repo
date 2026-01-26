@@ -72,7 +72,8 @@ export const DEFAULT_WORKING_HOURS: StudioSettings['working_hours'] = {
 export const DEFAULT_STUDIO_DETAILS: StudioDetails = {
   name: 'Yuval Studio',
   phone: '050-1234567',
-  address: 'דיזנגוף 100, תל אביב'
+  address: 'דיזנגוף 100, תל אביב',
+  email: 'info@yuvalstudio.com'
 };
 
 export const MOCK_APPOINTMENTS: Appointment[] = [

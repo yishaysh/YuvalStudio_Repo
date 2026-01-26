@@ -105,12 +105,14 @@ const ScrollToTop = () => {
 const App: React.FC = () => {
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
   const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
+  const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
 
   useEffect(() => {
     api.getSettings().then(settings => {
       if (settings.studio_details) {
          setAddress(settings.studio_details.address);
          setPhone(settings.studio_details.phone);
+         setEmail(settings.studio_details.email);
       }
     });
   }, []);
@@ -149,7 +151,7 @@ const App: React.FC = () => {
                   {address}
                 </li>
                 <li>{phone}</li>
-                <li>info@yuvalstudio.com</li>
+                <li>{email}</li>
               </ul>
             </div>
 

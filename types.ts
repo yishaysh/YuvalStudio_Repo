@@ -42,6 +42,7 @@ export interface StudioDetails {
   name: string;
   phone: string;
   address: string;
+  email: string;
 }
 
 export interface StudioSettings {
