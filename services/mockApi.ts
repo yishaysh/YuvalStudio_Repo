@@ -1,0 +1,272 @@
+
+import { SERVICES, DEFAULT_WORKING_HOURS, MOCK_APPOINTMENTS } from '../constants';
+import { Appointment, Service, StudioSettings } from '../types';
+import { supabase } from './supabaseClient';
+
+export const api = {
+  // --- Settings ---
+  getSettings: async (): Promise<StudioSettings> => {
+      const defaultSettings: StudioSettings = { working_hours: DEFAULT_WORKING_HOURS };
+      if (!supabase) return defaultSettings;
+
+      try {
+          const { data, error } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+          if (error || !data) return defaultSettings;
+          
+          // Legacy check: if data has 'start' instead of 'ranges', use default to avoid crash
+          if (data.value['0'] && data.value['0'].start !== undefined) {
+             return defaultSettings;
+          }
+          
+          return { working_hours: data.value };
+      } catch (e) {
+          console.error(e);
+          return defaultSettings;
+      }
+  },
+
+  updateSettings: async (settings: StudioSettings): Promise<boolean> => {
+      if (!supabase) return false;
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'working_hours', value: settings.working_hours }, { onConflict: 'key' });
+      return !error;
+  },
+
+  // --- Services ---
+  getServices: async (): Promise<Service[]> => {
+    if (!supabase) return SERVICES;
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('is_active', true)
+        .order('price', { ascending: true });
+      if (error) throw error;
+      return data || SERVICES;
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      return SERVICES;
+    }
+  },
+
+  addService: async (service:  Omit<Service, 'id'>): Promise<Service | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('services').insert([service]).select().single();
+    if (error) { console.error(error); return null; }
+    return data;
+  },
+
+  updateService: async (id: string, updates: Partial<Service>): Promise<Service | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('services').update(updates).eq('id', id).select().single();
+    if (error) { console.error(error); return null; }
+    return data;
+  },
+
+  deleteService: async (id: string): Promise<boolean> => {
+    if (!supabase) return false;
+    const { error } = await supabase.from('services').update({ is_active: false }).eq('id', id);
+    return !error;
+  },
+
+  // --- Appointments ---
+  getAvailability: async (date: Date): Promise<string[]> => {
+    // 1. Fetch Settings
+    let workingHours = DEFAULT_WORKING_HOURS;
+    if (supabase) {
+        const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+        if (data?.value && data.value['0'] && data.value['0'].ranges) { 
+            workingHours = data.value;
+        }
+    }
+
+    // 2. Identify Day Config
+    const dayIndex = date.getDay().toString(); // 0 = Sunday
+    const dayConfig = workingHours[dayIndex];
+
+    // If day is closed or config missing
+    if (!dayConfig || !dayConfig.isOpen || !dayConfig.ranges || dayConfig.ranges.length === 0) {
+        return [];
+    }
+
+    // 3. Generate All Slots for that specific day (Iterate through all ranges)
+    let allSlots: string[] = [];
+    
+    dayConfig.ranges.forEach(range => {
+        for (let hour = range.start; hour < range.end; hour++) {
+            allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+            allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
+        }
+    });
+    
+    // Sort slots just in case ranges were out of order
+    allSlots.sort();
+
+    if (!supabase) return allSlots;
+
+    // 4. Filter against existing appointments
+    try {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data: existingAppointments, error } = await supabase
+        .from('appointments')
+        .select('start_time')
+        .gte('start_time', startOfDay.toISOString())
+        .lte('start_time', endOfDay.toISOString())
+        .neq('status', 'cancelled');
+
+      if (error) throw error;
+
+      const busyTimes = new Set(
+        existingAppointments?.map(app => {
+          const d = new Date(app.start_time);
+          return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false });
+        })
+      );
+
+      return allSlots.filter(slot => !busyTimes.has(slot));
+
+    } catch (err) {
+      console.error('Error fetching availability:', err);
+      return allSlots;
+    }
+  },
+
+  createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
+    if (!supabase) {
+        // Mock fallback
+        return {
+            id: 'mock',
+            ...appt
+        } as Appointment;
+    }
+
+    const payload = {
+      service_id: appt.service_id,
+      start_time: appt.start_time,
+      end_time: new Date(new Date(appt.start_time!).getTime() + 30 * 60000).toISOString(),
+      guest_name: appt.client_name,
+      guest_email: appt.client_email,
+      guest_phone: appt.client_phone,
+      notes: appt.notes,
+      status: 'pending' // Default to pending
+    };
+
+    const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      client_name: data.guest_name,
+      client_email: data.guest_email,
+      client_phone: data.guest_phone,
+      service_id: data.service_id,
+      start_time: data.start_time,
+      status: data.status as Appointment['status'],
+      notes: data.notes
+    };
+  },
+
+  getAppointments: async (): Promise<Appointment[]> => {
+    if (!supabase) return MOCK_APPOINTMENTS as Appointment[];
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+            *,
+            services (name, price)
+        `)
+        .order('start_time', { ascending: false });
+
+      if (error) throw error;
+      
+      return data.map((item: any) => ({
+        id: item.id,
+        client_name: item.guest_name || 'לקוח רשום',
+        client_email: item.guest_email,
+        client_phone: item.guest_phone,
+        service_id: item.service_id,
+        service_name: item.services?.name, 
+        service_price: item.services?.price,
+        start_time: item.start_time,
+        status: item.status,
+        notes: item.notes
+      }));
+    } catch (err) {
+      console.error(err);
+      return MOCK_APPOINTMENTS as Appointment[];
+    }
+  },
+
+  updateAppointmentStatus: async (id: string, status: string): Promise<boolean> => {
+      if (!supabase) return true;
+      const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
+      return !error;
+  },
+
+  // --- Stats ---
+  getMonthlyStats: async () => {
+      if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };
+      
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+
+      const { data } = await supabase
+        .from('appointments')
+        .select(`status, services(price)`)
+        .gte('start_time', startOfMonth)
+        .lte('start_time', endOfMonth)
+        .neq('status', 'cancelled');
+        
+      let revenue = 0;
+      let pending = 0;
+      
+      data?.forEach((app: any) => {
+          if (app.status !== 'cancelled') {
+             revenue += (app.services?.price || 0);
+          }
+          if (app.status === 'pending') pending++;
+      });
+
+      return {
+          revenue,
+          appointments: data?.length || 0,
+          pending
+      };
+  },
+
+  // --- Gallery ---
+  getGallery: async () => {
+    if(!supabase) return [];
+    const { data } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  addToGallery: async (imageUrl: string) => {
+      if(!supabase) return;
+      await supabase.from('gallery').insert([{ image_url: imageUrl }]);
+  },
+
+  // --- Storage ---
+  uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
+      if(!supabase) return null;
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
+      if (uploadError) {
+          console.error(uploadError);
+          return null;
+      }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+      return data.publicUrl;
+  }
+};
