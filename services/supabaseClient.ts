@@ -1,19 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// --- הוראות ---
-// החלף את המחרוזות למטה בפרטים שקיבלת מ-Supabase (Settings -> API)
-const supabaseUrl = 'https://qudcdengyudednjzrdil.supabase.co';
-const supabaseKey = 'sb_publishable_ZjkPc2uLSTxPPfVEEjIXkw_i4U213bE';
+// Access environment variables using standard Vite syntax
+// fallback to empty object if env is undefined (runtime safety)
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
 // בדיקה האם הוגדרה כתובת תקינה כדי למנוע קריסה בטעינה ראשונית
 const isValidUrl = (url: string) => {
   try {
-    return url.startsWith('http');
+    return url && url.startsWith('http');
   } catch {
     return false;
   }
 };
 
-export const supabase = isValidUrl(supabaseUrl) 
+export const supabase = isValidUrl(supabaseUrl) && supabaseKey
   ? createClient(supabaseUrl, supabaseKey) 
   : null;
