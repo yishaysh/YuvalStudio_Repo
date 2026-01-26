@@ -8,7 +8,7 @@ import { Button, Card, Input } from '../components/ui';
 // --- Sub-Components defined outside to prevent re-render focus loss ---
 
 const Stepper = ({ step }: { step: number }) => (
-  <div className="flex items-center justify-center gap-4 mb-12">
+  <div className="flex items-center justify-center gap-4 mb-8">
     {[1, 2, 3].map((s) => (
       <div key={s} className="flex items-center">
          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-500 ${step >= s ? 'bg-brand-primary text-brand-dark' : 'bg-brand-surface text-slate-500 border border-white/10'}`}>
@@ -150,7 +150,7 @@ const DetailsForm = ({ clientDetails, setClientDetails, selectedService, selecte
       <div>
         <Input 
           label="טלפון" 
-          type="tel"
+          type="tel" 
           value={clientDetails.phone} 
           onChange={(e) => setClientDetails({...clientDetails, phone: e.target.value})}
           className={validationErrors.phone ? 'border-red-500/50 focus:border-red-500' : ''}
@@ -207,25 +207,25 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
     };
 
     return (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex flex-col items-center justify-center py-6 text-center">
             <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="w-24 h-24 bg-brand-success/10 rounded-full flex items-center justify-center mb-8 border border-brand-success/20"
+            className="w-20 h-20 bg-brand-success/10 rounded-full flex items-center justify-center mb-6 border border-brand-success/20"
             >
-            <Check className="w-10 h-10 text-brand-success" strokeWidth={2} />
+            <Check className="w-8 h-8 text-brand-success" strokeWidth={2} />
             </motion.div>
-            <h2 className="text-4xl font-serif text-white mb-4">התור נקבע בהצלחה</h2>
-            <p className="text-slate-400 max-w-md mx-auto mb-12 leading-relaxed">
+            <h2 className="text-3xl font-serif text-white mb-2">התור נקבע בהצלחה</h2>
+            <p className="text-slate-400 max-w-md mx-auto mb-8 leading-relaxed text-sm">
             אישור נשלח לכתובת <strong>{clientDetails.email}</strong>.<br/>
             מחכים לראותך בסטודיו!
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md">
-                 <Button onClick={sendWhatsapp} className="bg-[#25D366] text-white hover:bg-[#128C7E] border-transparent flex-1">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-sm">
+                 <Button onClick={sendWhatsapp} className="bg-[#25D366] text-white hover:bg-[#128C7E] border-transparent flex-1 py-3">
                      <MessageCircle className="w-4 h-4" /> עדכן בוואטסאפ
                  </Button>
-                 <Button onClick={() => window.location.href = '/'} variant="outline" className="flex-1">
+                 <Button onClick={() => window.location.href = '/'} variant="outline" className="flex-1 py-3">
                     חזרה לדף הבית
                 </Button>
             </div>
@@ -328,11 +328,11 @@ const Booking: React.FC = () => {
 
   return (
     <div className="min-h-screen pt-32 pb-12 px-4 container mx-auto max-w-5xl relative">
-      <div className="mb-12 text-center">
+      <div className="mb-8 text-center">
         <h1 className="text-4xl md:text-5xl font-serif text-white mb-6">
-           זימון תור
+           {step === BookingStep.CONFIRMATION ? 'אישור הזמנה' : 'זימון תור'}
         </h1>
-        <Stepper step={step} />
+        {step !== BookingStep.CONFIRMATION && <Stepper step={step} />}
       </div>
 
       <AnimatePresence mode="wait">
