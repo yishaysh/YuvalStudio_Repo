@@ -173,11 +173,17 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
 
 // 2. APPOINTMENTS TAB
 const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress }: any) => {
-    
-    // Filter appointments if filterId exists
-    const displayAppointments = filterId 
-        ? appointments.filter((a: Appointment) => a.id === filterId)
-        : appointments;
+    const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
+
+    useEffect(() => {
+        if (filterId && rowRefs.current[filterId]) {
+            // Scroll into view with a slight delay to ensure render is complete
+            // Increased timeout to 500ms to allow the page to scroll to top first
+            setTimeout(() => {
+                rowRefs.current[filterId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+        }
+    }, [filterId]);
 
     const sendWhatsapp = (apt: any, type: 'confirm' | 'reminder') => {
         let msg = '';
@@ -203,24 +209,24 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
     return (
         <Card className="p-0 overflow-hidden bg-brand-surface/30">
             {filterId && (
-                <div className="p-4 bg-brand-primary/10 border-b border-brand-primary/20 flex items-center justify-between">
+                <div className="p-4 bg-brand-primary/10 border-b border-brand-primary/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-2 text-brand-primary">
                         <Filter className="w-4 h-4" />
-                        <span className="text-sm font-medium">מוצג תור ספציפי</span>
+                        <span className="text-sm font-medium">מסומן תור ספציפי</span>
                     </div>
                     <button 
                         onClick={onClearFilter}
                         className="text-xs text-slate-400 hover:text-white flex items-center gap-1"
                     >
-                        <X className="w-3 h-3" /> נקה סינון
+                        <X className="w-3 h-3" /> נקה סימון
                     </button>
                 </div>
             )}
             
-            <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
-                <thead>
-                <tr className="border-b border-white/5 text-slate-500 text-xs bg-brand-dark/50">
+            <div className="overflow-x-auto max-h-[70vh]">
+            <table className="w-full text-right text-sm border-collapse">
+                <thead className="sticky top-0 z-10">
+                <tr className="border-b border-white/5 text-slate-500 text-xs bg-brand-dark shadow-sm">
                     <th className="py-4 px-6 font-medium">לקוח</th>
                     <th className="py-4 px-6 font-medium">תאריך ושעה</th>
                     <th className="py-4 px-6 font-medium">שירות</th>
@@ -229,60 +235,67 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
                 </tr>
                 </thead>
                 <tbody className="text-slate-300 divide-y divide-white/5">
-                {displayAppointments.length > 0 ? displayAppointments.map((apt: any) => (
-                    <tr key={apt.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-4 px-6">
-                        <div className="font-medium text-white">{apt.client_name}</div>
-                        <div className="text-xs text-slate-500">{apt.client_phone}</div>
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">
-                        <div>{new Date(apt.start_time).toLocaleDateString('he-IL')}</div>
-                        <div className="text-xs">{new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</div>
-                    </td>
-                    <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-white/5 border border-white/10">
-                        {apt.service_name || 'שירות כללי'}
-                        </span>
-                        {apt.notes && <div className="text-xs text-brand-primary mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>}
-                    </td>
-                    <td className="py-4 px-6">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        apt.status === 'confirmed' 
-                            ? 'bg-emerald-500/10 text-emerald-400' 
-                            : apt.status === 'cancelled'
-                            ? 'bg-red-500/10 text-red-400'
-                            : 'bg-amber-500/10 text-amber-400'
-                        }`}>
-                        {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
-                        </span>
-                    </td>
-                    <td className="py-4 px-6">
-                        <div className="flex items-center justify-end gap-2">
-                            {/* Whatsapp Actions */}
-                            <div className="flex bg-white/5 rounded-lg mr-2">
-                                <button onClick={() => sendWhatsapp(apt, 'confirm')} className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-r-lg border-l border-white/5 transition-colors" title="שלח אישור הזמנה">
-                                    <Send className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => sendWhatsapp(apt, 'reminder')} className="p-2 text-slate-400 hover:bg-white/10 rounded-l-lg transition-colors" title="שלח תזכורת">
-                                    <Clock className="w-4 h-4" />
-                                </button>
-                            </div>
+                {appointments.length > 0 ? appointments.map((apt: any) => {
+                    const isHighlighted = apt.id === filterId;
+                    return (
+                        <tr 
+                            key={apt.id} 
+                            ref={(el) => { rowRefs.current[apt.id] = el; }}
+                            className={`transition-colors duration-500 ${isHighlighted ? 'bg-brand-primary/20 hover:bg-brand-primary/25 shadow-[inset_3px_0_0_0_#d4b585]' : 'hover:bg-white/[0.02]'}`}
+                        >
+                            <td className="py-4 px-6">
+                                <div className={`font-medium ${isHighlighted ? 'text-brand-primary' : 'text-white'}`}>{apt.client_name}</div>
+                                <div className="text-xs text-slate-500">{apt.client_phone}</div>
+                            </td>
+                            <td className="py-4 px-6 text-slate-400">
+                                <div>{new Date(apt.start_time).toLocaleDateString('he-IL')}</div>
+                                <div className="text-xs">{new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</div>
+                            </td>
+                            <td className="py-4 px-6">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-white/5 border border-white/10">
+                                {apt.service_name || 'שירות כללי'}
+                                </span>
+                                {apt.notes && <div className="text-xs text-brand-primary mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>}
+                            </td>
+                            <td className="py-4 px-6">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                                apt.status === 'confirmed' 
+                                    ? 'bg-emerald-500/10 text-emerald-400' 
+                                    : apt.status === 'cancelled'
+                                    ? 'bg-red-500/10 text-red-400'
+                                    : 'bg-amber-500/10 text-amber-400'
+                                }`}>
+                                {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
+                                </span>
+                            </td>
+                            <td className="py-4 px-6">
+                                <div className="flex items-center justify-end gap-2">
+                                    {/* Whatsapp Actions */}
+                                    <div className="flex bg-white/5 rounded-lg mr-2">
+                                        <button onClick={() => sendWhatsapp(apt, 'confirm')} className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-r-lg border-l border-white/5 transition-colors" title="שלח אישור הזמנה">
+                                            <Send className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={() => sendWhatsapp(apt, 'reminder')} className="p-2 text-slate-400 hover:bg-white/10 rounded-l-lg transition-colors" title="שלח תזכורת">
+                                            <Clock className="w-4 h-4" />
+                                        </button>
+                                    </div>
 
-                            {/* Status Actions */}
-                            {apt.status === 'pending' && (
-                                <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors" title="אשר תור">
-                                    <Check className="w-4 h-4" />
-                                </button>
-                            )}
-                            {apt.status !== 'cancelled' && (
-                                <button onClick={() => onCancelRequest(apt)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
-                    </td>
-                    </tr>
-                )) : (
+                                    {/* Status Actions */}
+                                    {apt.status === 'pending' && (
+                                        <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors" title="אשר תור">
+                                            <Check className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {apt.status !== 'cancelled' && (
+                                        <button onClick={() => onCancelRequest(apt)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    );
+                }) : (
                     <tr>
                         <td colSpan={5} className="py-12 text-center text-slate-500">
                             לא נמצאו תורים
@@ -814,6 +827,8 @@ const Admin: React.FC = () => {
   const handleViewAppointment = (id: string) => {
       setFilteredAppointmentId(id);
       setActiveTab('appointments');
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const handleClearFilter = () => {
