@@ -1,5 +1,5 @@
 
-import { Service, Appointment, StudioSettings } from './types';
+import { Service, Appointment, StudioSettings, StudioDetails } from './types';
 
 export const SERVICES: Service[] = [
   {
@@ -67,6 +67,12 @@ export const DEFAULT_WORKING_HOURS: StudioSettings['working_hours'] = {
   "4": { isOpen: true, ranges: [{ start: 11, end: 20 }] }, // Thursday
   "5": { isOpen: true, ranges: [{ start: 10, end: 15 }] }, // Friday
   "6": { isOpen: false, ranges: [] }, // Saturday
+};
+
+export const DEFAULT_STUDIO_DETAILS: StudioDetails = {
+  name: 'Yuval Studio',
+  phone: '050-1234567',
+  address: 'דיזנגוף 100, תל אביב'
 };
 
 export const MOCK_APPOINTMENTS: Appointment[] = [

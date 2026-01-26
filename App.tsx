@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Home from './pages/Home';
@@ -8,6 +8,8 @@ import ServicesPage from './pages/Services';
 import JewelryPage from './pages/Jewelry';
 import AftercarePage from './pages/Aftercare';
 import { Menu, X, Instagram, Facebook, MapPin, Lock } from 'lucide-react';
+import { api } from './services/mockApi';
+import { DEFAULT_STUDIO_DETAILS } from './constants';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -101,6 +103,18 @@ const ScrollToTop = () => {
 };
 
 const App: React.FC = () => {
+  const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
+  const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
+
+  useEffect(() => {
+    api.getSettings().then(settings => {
+      if (settings.studio_details) {
+         setAddress(settings.studio_details.address);
+         setPhone(settings.studio_details.phone);
+      }
+    });
+  }, []);
+
   return (
     <Router>
       <ScrollToTop />
@@ -132,9 +146,9 @@ const App: React.FC = () => {
               <ul className="space-y-4 text-sm text-slate-400">
                 <li className="flex items-center justify-center md:justify-start gap-3">
                   <MapPin className="w-4 h-4 text-brand-primary" />
-                  דיזנגוף 100, תל אביב
+                  {address}
                 </li>
-                <li>050-1234567</li>
+                <li>{phone}</li>
                 <li>info@yuvalstudio.com</li>
               </ul>
             </div>

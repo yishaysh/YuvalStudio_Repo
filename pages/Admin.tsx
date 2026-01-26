@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal } from '../components/ui';
 import { Appointment, Service, StudioSettings, DaySchedule, TimeRange } from '../types';
-import { DEFAULT_WORKING_HOURS } from '../constants';
+import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
 import { 
   Activity, Calendar, DollarSign, Users, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, MessageCircle, Settings as SettingsIcon, Edit2, Send, Save, Power, AlertCircle, Filter
+  Trash2, Image as ImageIcon, MessageCircle, Settings as SettingsIcon, Edit2, Send, Save, Power, AlertCircle, Filter, MapPin, Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -94,7 +94,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment }: { stats: any, 
 }
 
 // 2. APPOINTMENTS TAB
-const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter }: any) => {
+const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress }: any) => {
     
     // Filter appointments if filterId exists
     const displayAppointments = filterId 
@@ -105,9 +105,12 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
         let msg = '';
         const date = new Date(apt.start_time).toLocaleDateString('he-IL');
         const time = new Date(apt.start_time).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'});
+        // Use dynamic studio address from props
+        const address = studioAddress || DEFAULT_STUDIO_DETAILS.address;
         
+        // Changed to female gender "שמחה"
         if (type === 'confirm') {
-            msg = `היי ${apt.client_name}, שמח לבשר שהתור שלך ל${apt.service_name || 'פירסינג'} בסטודיו של יובל אושר! 🗓️ תאריך: ${date} ⌚ שעה: ${time} 📍 כתובת: דיזנגוף 100, תל אביב. נתראה!`;
+            msg = `היי ${apt.client_name}, שמחה לבשר שהתור שלך ל${apt.service_name || 'פירסינג'} בסטודיו של יובל אושר! 🗓️ תאריך: ${date} ⌚ שעה: ${time} 📍 כתובת: ${address}. נתראה!`;
         } else {
             msg = `היי ${apt.client_name}, תזכורת לתור בסטודיו של יובל מחר ב-${time}. אם יש שינוי אנא עדכן בהקדם.`;
         }
@@ -501,101 +504,131 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
     };
 
     return (
-        <Card className="max-w-4xl">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-brand-primary" /> ניהול שעות פעילות
-                </h3>
-             </div>
-
-             {validationError && (
-                 <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3 text-red-400">
-                     <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                     <p className="text-sm">{validationError}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="h-fit">
+                 <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-brand-primary" /> פרטי סטודיו
+                    </h3>
                  </div>
-             )}
-             
-             <div className="space-y-4">
-                 {days.map((dayName, i) => {
-                     const dayKey = i.toString();
-                     // Use existing settings OR fallback to default
-                     const dayConfig = localSettings.working_hours[dayKey] || DEFAULT_WORKING_HOURS[dayKey];
-                     
-                     return (
-                         <div key={i} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-transparent opacity-60'}`}>
-                             <div className="flex items-center gap-6">
-                                 {/* Day Name & Toggle */}
-                                 <div className="w-32 flex items-center justify-between shrink-0">
-                                     <span className="text-white font-medium">{dayName}</span>
-                                     <button 
-                                        onClick={() => toggleDayOpen(dayKey)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${dayConfig.isOpen ? 'bg-brand-primary' : 'bg-slate-700'}`}
-                                     >
-                                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${dayConfig.isOpen ? 'translate-x-6' : 'translate-x-1'}`} />
-                                     </button>
-                                 </div>
+                 
+                 <div className="space-y-6">
+                    <Input 
+                        label="כתובת העסק"
+                        value={localSettings.studio_details?.address || ''}
+                        onChange={(e) => setLocalSettings(prev => ({
+                            ...prev,
+                            studio_details: { ...prev.studio_details, address: e.target.value }
+                        }))}
+                    />
+                    <Input 
+                        label="טלפון ליצירת קשר"
+                        value={localSettings.studio_details?.phone || ''}
+                        onChange={(e) => setLocalSettings(prev => ({
+                            ...prev,
+                            studio_details: { ...prev.studio_details, phone: e.target.value }
+                        }))}
+                        placeholder="050-1234567"
+                    />
+                 </div>
+            </Card>
 
-                                 {/* Ranges */}
-                                 <div className="flex-1 flex flex-wrap gap-3 items-center">
-                                     {dayConfig.isOpen ? (
-                                         <>
-                                             {(dayConfig.ranges || []).map((range, rangeIdx) => (
-                                                 <div key={rangeIdx} className="flex items-center gap-2 bg-brand-dark/50 p-1.5 rounded-lg border border-brand-border">
-                                                     <select 
-                                                         value={range.start}
-                                                         onChange={(e) => updateRange(dayKey, rangeIdx, 'start', parseInt(e.target.value))}
-                                                         className="bg-transparent text-white text-sm outline-none cursor-pointer"
-                                                     >
-                                                         {Array.from({length: 25}, (_, h) => h).map(h => (
-                                                             <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
-                                                         ))}
-                                                     </select>
-                                                     <span className="text-slate-500">-</span>
-                                                     <select 
-                                                         value={range.end}
-                                                         onChange={(e) => updateRange(dayKey, rangeIdx, 'end', parseInt(e.target.value))}
-                                                         className="bg-transparent text-white text-sm outline-none cursor-pointer"
-                                                     >
-                                                         {Array.from({length: 25}, (_, h) => h).map(h => (
-                                                             <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
-                                                         ))}
-                                                     </select>
-                                                     
-                                                     {/* Allow deleting if more than 1 range, OR even if 1 to allow clearing */}
-                                                     <button 
-                                                        onClick={() => removeRange(dayKey, rangeIdx)}
-                                                        className="ml-1 p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                                                     >
-                                                         <X className="w-3 h-3" />
-                                                     </button>
-                                                 </div>
-                                             ))}
-                                             
-                                             <button 
-                                                type="button"
-                                                onClick={() => addRange(dayKey)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-dashed border-white/20 text-slate-400 hover:text-white hover:border-brand-primary/50 hover:bg-brand-primary/10 transition-all"
-                                                title="הוסף משמרת נוספת"
-                                             >
-                                                 <Plus className="w-4 h-4" />
-                                             </button>
-                                         </>
-                                     ) : (
-                                         <span className="text-sm text-slate-500 italic px-2">סגור</span>
-                                     )}
+            <Card>
+                 <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-brand-primary" /> שעות פעילות
+                    </h3>
+                 </div>
+
+                 {validationError && (
+                     <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3 text-red-400">
+                         <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                         <p className="text-sm">{validationError}</p>
+                     </div>
+                 )}
+                 
+                 <div className="space-y-4">
+                     {days.map((dayName, i) => {
+                         const dayKey = i.toString();
+                         // Use existing settings OR fallback to default
+                         const dayConfig = localSettings.working_hours[dayKey] || DEFAULT_WORKING_HOURS[dayKey];
+                         
+                         return (
+                             <div key={i} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-transparent opacity-60'}`}>
+                                 <div className="flex items-center gap-6">
+                                     {/* Day Name & Toggle */}
+                                     <div className="w-32 flex items-center justify-between shrink-0">
+                                         <span className="text-white font-medium">{dayName}</span>
+                                         <button 
+                                            onClick={() => toggleDayOpen(dayKey)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${dayConfig.isOpen ? 'bg-brand-primary' : 'bg-slate-700'}`}
+                                         >
+                                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${dayConfig.isOpen ? 'translate-x-6' : 'translate-x-1'}`} />
+                                         </button>
+                                     </div>
+
+                                     {/* Ranges */}
+                                     <div className="flex-1 flex flex-wrap gap-3 items-center">
+                                         {dayConfig.isOpen ? (
+                                             <>
+                                                 {(dayConfig.ranges || []).map((range, rangeIdx) => (
+                                                     <div key={rangeIdx} className="flex items-center gap-2 bg-brand-dark/50 p-1.5 rounded-lg border border-brand-border">
+                                                         <select 
+                                                             value={range.start}
+                                                             onChange={(e) => updateRange(dayKey, rangeIdx, 'start', parseInt(e.target.value))}
+                                                             className="bg-transparent text-white text-sm outline-none cursor-pointer"
+                                                         >
+                                                             {Array.from({length: 25}, (_, h) => h).map(h => (
+                                                                 <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
+                                                             ))}
+                                                         </select>
+                                                         <span className="text-slate-500">-</span>
+                                                         <select 
+                                                             value={range.end}
+                                                             onChange={(e) => updateRange(dayKey, rangeIdx, 'end', parseInt(e.target.value))}
+                                                             className="bg-transparent text-white text-sm outline-none cursor-pointer"
+                                                         >
+                                                             {Array.from({length: 25}, (_, h) => h).map(h => (
+                                                                 <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
+                                                             ))}
+                                                         </select>
+                                                         
+                                                         {/* Allow deleting if more than 1 range, OR even if 1 to allow clearing */}
+                                                         <button 
+                                                            onClick={() => removeRange(dayKey, rangeIdx)}
+                                                            className="ml-1 p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                         >
+                                                             <X className="w-3 h-3" />
+                                                         </button>
+                                                     </div>
+                                                 ))}
+                                                 
+                                                 <button 
+                                                    type="button"
+                                                    onClick={() => addRange(dayKey)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-dashed border-white/20 text-slate-400 hover:text-white hover:border-brand-primary/50 hover:bg-brand-primary/10 transition-all"
+                                                    title="הוסף משמרת נוספת"
+                                                 >
+                                                     <Plus className="w-4 h-4" />
+                                                 </button>
+                                             </>
+                                         ) : (
+                                             <span className="text-sm text-slate-500 italic px-2">סגור</span>
+                                         )}
+                                     </div>
                                  </div>
                              </div>
-                         </div>
-                     );
-                 })}
-                 
-                 <div className="pt-6 mt-4 border-t border-white/5 flex justify-end">
-                     <Button onClick={handleSave} isLoading={saving}>
-                         <Save className="w-4 h-4" /> שמור שינויים
-                     </Button>
+                         );
+                     })}
+                     
+                     <div className="pt-6 mt-4 border-t border-white/5 flex justify-end">
+                         <Button onClick={handleSave} isLoading={saving}>
+                             <Save className="w-4 h-4" /> שמור שינויים
+                         </Button>
+                     </div>
                  </div>
-             </div>
-        </Card>
+            </Card>
+        </div>
     );
 };
 
@@ -613,7 +646,7 @@ const Admin: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
-  const [settings, setSettings] = useState<StudioSettings>({ working_hours: DEFAULT_WORKING_HOURS });
+  const [settings, setSettings] = useState<StudioSettings>({ working_hours: DEFAULT_WORKING_HOURS, studio_details: DEFAULT_STUDIO_DETAILS });
 
   // Filter State
   const [filteredAppointmentId, setFilteredAppointmentId] = useState<string | null>(null);
@@ -792,6 +825,7 @@ const Admin: React.FC = () => {
                             onCancelRequest={(apt: Appointment) => setApptToCancel(apt)}
                             filterId={filteredAppointmentId}
                             onClearFilter={handleClearFilter}
+                            studioAddress={settings.studio_details?.address}
                         />
                     )}
                     {activeTab === 'services' && (

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle } from 'lucide-react';
-import { Service, BookingStep } from '../types';
+import { Service, BookingStep, StudioSettings } from '../types';
 import { api } from '../services/mockApi';
+import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { Button, Card, Input } from '../components/ui';
 
 // --- Sub-Components defined outside to prevent re-render focus loss ---
@@ -200,9 +201,29 @@ const DetailsForm = ({ clientDetails, setClientDetails, selectedService, selecte
 );
 
 const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTime }: any) => {
+    const [studioPhone, setStudioPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
+
+    useEffect(() => {
+        // Fetch real studio settings to get the phone number
+        api.getSettings().then(settings => {
+            if (settings.studio_details?.phone) {
+                setStudioPhone(settings.studio_details.phone);
+            }
+        });
+        
+        // --- EMAIL SIMULATION LOGIC ---
+        // Since we don't have a real backend in this code-only environment,
+        // we simulate the email sending.
+        console.log(`[Email Mock] Sending confirmation to ${clientDetails.email}`);
+        // Optional: Alert the user this is a demo environment for email
+        // alert(`אימייל אישור נשלח (סימולציה) לכתובת: ${clientDetails.email}`);
+    }, []);
+
     const sendWhatsapp = () => {
         const msg = `היי יובל, הזמנתי תור ל${selectedService?.name} בתאריך ${selectedDate?.toLocaleDateString()} בשעה ${selectedTime}. שמי ${clientDetails.name}.`;
-        const url = `https://wa.me/972501234567?text=${encodeURIComponent(msg)}`; // Replace with studio number
+        // Use dynamically fetched phone or default
+        const phone = studioPhone.replace(/-/g, '').replace(/^0/, '972');
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
         window.open(url, '_blank');
     };
 
@@ -229,6 +250,8 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
                     חזרה לדף הבית
                 </Button>
             </div>
+            
+            <p className="text-xs text-slate-600 mt-6">* הערה: בסביבת הדגמה זו מיילים לא נשלחים בפועל.</p>
         </div>
     );
 };

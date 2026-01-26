@@ -38,11 +38,18 @@ export interface DaySchedule {
   ranges: TimeRange[];
 }
 
+export interface StudioDetails {
+  name: string;
+  phone: string;
+  address: string;
+}
+
 export interface StudioSettings {
   // Key is "0" for Sunday, "1" for Monday, etc.
   working_hours: {
     [key: string]: DaySchedule; 
-  }
+  };
+  studio_details: StudioDetails;
 }
 
 export enum BookingStep {

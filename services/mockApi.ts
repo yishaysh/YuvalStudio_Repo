@@ -1,24 +1,43 @@
 
-import { SERVICES, DEFAULT_WORKING_HOURS, MOCK_APPOINTMENTS } from '../constants';
+import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings } from '../types';
 import { supabase } from './supabaseClient';
 
 export const api = {
   // --- Settings ---
   getSettings: async (): Promise<StudioSettings> => {
-      const defaultSettings: StudioSettings = { working_hours: DEFAULT_WORKING_HOURS };
+      const defaultSettings: StudioSettings = { 
+        working_hours: DEFAULT_WORKING_HOURS,
+        studio_details: DEFAULT_STUDIO_DETAILS
+      };
+      
       if (!supabase) return defaultSettings;
 
       try {
-          const { data, error } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+          // Fetch both working_hours and studio_details
+          const { data, error } = await supabase
+            .from('settings')
+            .select('*')
+            .in('key', ['working_hours', 'studio_details']);
+
           if (error || !data) return defaultSettings;
+
+          const newSettings = { ...defaultSettings };
           
-          // Legacy check: if data has 'start' instead of 'ranges', use default to avoid crash
-          if (data.value['0'] && data.value['0'].start !== undefined) {
-             return defaultSettings;
-          }
+          data.forEach(row => {
+            if (row.key === 'working_hours') {
+               // Legacy check
+               if (row.value['0'] && row.value['0'].start !== undefined) {
+                  // Ignore legacy format
+               } else {
+                  newSettings.working_hours = row.value;
+               }
+            } else if (row.key === 'studio_details') {
+               newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
+            }
+          });
           
-          return { working_hours: data.value };
+          return newSettings;
       } catch (e) {
           console.error(e);
           return defaultSettings;
@@ -27,9 +46,16 @@ export const api = {
 
   updateSettings: async (settings: StudioSettings): Promise<boolean> => {
       if (!supabase) return false;
+      
+      const updates = [
+        { key: 'working_hours', value: settings.working_hours },
+        { key: 'studio_details', value: settings.studio_details }
+      ];
+
       const { error } = await supabase
         .from('settings')
-        .upsert({ key: 'working_hours', value: settings.working_hours }, { onConflict: 'key' });
+        .upsert(updates, { onConflict: 'key' });
+        
       return !error;
   },
 
