@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal } from '../components/ui';
@@ -187,22 +186,52 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
         let msg = '';
         const date = new Date(apt.start_time).toLocaleDateString('he-IL');
         const time = new Date(apt.start_time).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'});
-        // Use dynamic studio address from props
         const address = studioAddress || DEFAULT_STUDIO_DETAILS.address;
         
         if (type === 'reminder') {
-             msg = `היי ${apt.client_name}, תזכורת לתור בסטודיו של יובל מחר ב-${time}. אם יש שינוי אנא עדכן בהקדם.`;
+             msg = `*תזכורת לתור* ⏰
+             
+היי ${apt.client_name},
+רצינו להזכיר לך לגבי התור שקבעת לסטודיו של יובל:
+
+📅 *מחר בשעה:* ${time}
+📍 *כתובת:* ${address}
+
+מחכים לראותך!`;
         } else {
-             // Status based messages logic
              switch (apt.status) {
                 case 'confirmed':
-                     msg = `היי ${apt.client_name}, שמחה לבשר שהתור שלך ל${apt.service_name || 'פירסינג'} בסטודיו של יובל אושר! 🗓️ תאריך: ${date} ⌚ שעה: ${time} 📍 כתובת: ${address}. נתראה!`;
+                     msg = `💎 *אישור תור - הסטודיו של יובל* 💎
+
+היי ${apt.client_name}, שמחים לאשר את התור שלך!
+
+🗓 *תאריך:* ${date}
+⌚ *שעה:* ${time}
+📍 *כתובת:* ${address}
+💫 *טיפול:* ${apt.service_name || 'פירסינג'}
+
+נתראה בקרוב!`;
                      break;
                 case 'cancelled':
-                     msg = `היי ${apt.client_name}, מעדכנים שהתור שלך לסטודיו של יובל בתאריך ${date} בוטל. לקביעה מחדש ניתן להיכנס לאתר.`;
+                    // Extract reason from notes if available (Format: "סיבת ביטול: X")
+                    const cancelReasonMatch = apt.notes?.match(/סיבת ביטול: (.*?)(\n|$)/);
+                    const reason = cancelReasonMatch ? cancelReasonMatch[1] : '';
+
+                     msg = `⛔ *עדכון לגבי התור שלך*
+
+היי ${apt.client_name},
+לצערנו התור שנקבע לתאריך ${date} בשעה ${time} בוטל.
+
+${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
+ניתן לקבוע מחדש דרך האתר בכל עת.`;
                      break;
                 default: // pending
-                     msg = `היי ${apt.client_name}, קיבלנו את בקשתך לתור בסטודיו של יובל בתאריך ${date}. נעדכן ברגע שהתור יאושר סופית.`;
+                     msg = `⏳ *התור שלך בבדיקה*
+
+היי ${apt.client_name},
+קיבלנו את בקשתך לתור בסטודיו של יובל לתאריך ${date}.
+
+נעדכן ברגע שהתור יאושר סופית.`;
              }
         }
         
@@ -764,6 +793,7 @@ const Admin: React.FC = () => {
 
   // Modal State
   const [apptToCancel, setApptToCancel] = useState<Appointment | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const loadData = async () => {
      const [apptsData, servicesData, statsData, galleryData, settingsData] = await Promise.all([
@@ -803,8 +833,20 @@ const Admin: React.FC = () => {
 
   const handleConfirmCancel = async () => {
       if (!apptToCancel) return;
-      await api.updateAppointmentStatus(apptToCancel.id, 'cancelled');
+      
+      // Save reason to notes
+      const currentNotes = apptToCancel.notes || '';
+      const notesWithReason = cancelReason.trim() 
+        ? `סיבת ביטול: ${cancelReason}\n${currentNotes}`
+        : currentNotes;
+
+      await api.updateAppointment(apptToCancel.id, { 
+          status: 'cancelled',
+          notes: notesWithReason
+      });
+      
       setApptToCancel(null);
+      setCancelReason('');
       loadData();
   };
 
@@ -937,7 +979,7 @@ const Admin: React.FC = () => {
                         <AppointmentsTab 
                             appointments={appointments} 
                             onStatusUpdate={handleStatusUpdate} 
-                            onCancelRequest={(apt: Appointment) => setApptToCancel(apt)}
+                            onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }}
                             filterId={filteredAppointmentId}
                             onClearFilter={handleClearFilter}
                             studioAddress={settings.studio_details?.address}
@@ -962,11 +1004,22 @@ const Admin: React.FC = () => {
                 onClose={() => setApptToCancel(null)}
                 onConfirm={handleConfirmCancel}
                 title="ביטול תור"
-                description={`האם את/ה בטוח/ה שברצונך לבטל את התור של ${apptToCancel?.client_name} לתאריך ${apptToCancel?.start_time ? new Date(apptToCancel.start_time).toLocaleDateString('he-IL') : ''}? פעולה זו היא סופית.`}
+                description={`האם את/ה בטוח/ה שברצונך לבטל את התור של ${apptToCancel?.client_name} לתאריך ${apptToCancel?.start_time ? new Date(apptToCancel.start_time).toLocaleDateString('he-IL') : ''}?`}
                 confirmText="כן, בטל תור"
                 cancelText="חזור"
                 variant="danger"
-            />
+            >
+                <div className="text-right">
+                    <label className="text-sm text-slate-400 mb-2 block">סיבת ביטול (אופציונלי):</label>
+                    <textarea 
+                        className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none text-sm placeholder:text-slate-600 focus:border-red-500/50 min-h-[80px]"
+                        placeholder="למשל: לא חש בטוב / בקשת הלקוח..."
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                    />
+                    <p className="text-xs text-slate-500 mt-2">הסיבה תופיע בהודעת הוואטסאפ שתישלח ללקוח</p>
+                </div>
+            </ConfirmationModal>
         </div>
     </div>
   );

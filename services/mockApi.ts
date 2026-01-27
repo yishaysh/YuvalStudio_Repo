@@ -256,6 +256,12 @@ export const api = {
       return !error;
   },
 
+  updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
+      if (!supabase) return true;
+      const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+      return !error;
+  },
+
   // --- Stats ---
   getMonthlyStats: async () => {
       if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };

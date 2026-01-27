@@ -158,11 +158,13 @@ interface ConfirmationModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'primary';
+  children?: React.ReactNode;
 }
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ 
   isOpen, onClose, onConfirm, title, description, 
-  confirmText = 'אישור', cancelText = 'ביטול', variant = 'primary'
+  confirmText = 'אישור', cancelText = 'ביטול', variant = 'primary',
+  children
 }) => {
   return (
     <Modal 
@@ -171,7 +173,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       title={title}
       icon={variant === 'danger' ? <AlertTriangle className="w-8 h-8 text-red-400" /> : undefined}
     >
-      <p className="mb-8">{description}</p>
+      <p className="mb-6">{description}</p>
+      {children && <div className="mb-8 text-right">{children}</div>}
       <div className="flex gap-3 justify-center">
         <Button variant="ghost" onClick={onClose} className="flex-1">
           {cancelText}
