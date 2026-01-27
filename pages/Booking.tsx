@@ -69,10 +69,10 @@ const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service
   const facePoints: AnatomyPoint[] = [
     { id: 'eyebrow', x: 25, y: 32, label: 'גבה', keyword: 'גבה', type: 'curved' },
     { id: 'bridge', x: 50, y: 32, label: 'ברידג׳', keyword: 'ברידג', type: 'barbell' },
-    { id: 'nostril', x: 35, y: 58, label: 'נזם', keyword: 'נזם', type: 'stud' },
+    { id: 'nostril', x: 38, y: 58, label: 'נזם', keyword: 'נזם', type: 'stud' },
     { id: 'septum', x: 50, y: 64, label: 'ספטום', keyword: 'ספטום', type: 'septum' },
     { id: 'philtrum', x: 50, y: 70, label: 'מדוזה', keyword: 'מדוזה', type: 'stud' },
-    { id: 'monroe', x: 30, y: 66, label: 'מונרו', keyword: 'מונרו', type: 'stud' },
+    { id: 'monroe', x: 32, y: 66, label: 'מונרו', keyword: 'מונרו', type: 'stud' },
     { id: 'labret-side', x: 35, y: 82, label: 'סייד ליפ', keyword: 'שפה', type: 'ring' },
     { id: 'labret-center', x: 50, y: 85, label: 'לאברט', keyword: 'לאברט', type: 'stud' },
     { id: 'vertical-labret', x: 50, y: 82, label: 'ורטיקל', keyword: 'ורטיקל', type: 'curved' },
@@ -293,34 +293,46 @@ const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service
                      initial={{ pathLength: 0, opacity: 0 }}
                      animate={{ pathLength: 1, opacity: 1 }}
                      transition={{ duration: 1.5 }}
-                     d="M 15 20 C 15 20 20 60 30 80 C 40 100 80 95 80 95"
+                     d="M 15 10 C 15 10 10 50 25 80 C 35 95 50 100 50 100 C 50 100 65 95 75 80 C 90 50 85 10 85 10"
                   />
-                  <motion.path 
-                     d="M 85 20 C 85 20 80 60 70 80"
-                     initial={{ pathLength: 0 }}
-                     animate={{ pathLength: 1 }}
-                     transition={{ duration: 1.5 }}
-                  />
-                  {/* Nose */}
+                  
+                  {/* Eyes (Left & Right) */}
                   <motion.path 
                      initial={{ pathLength: 0, opacity: 0 }}
                      animate={{ pathLength: 1, opacity: 1 }}
-                     transition={{ duration: 1.5, delay: 0.3 }}
-                     d="M 50 20 L 50 55 C 50 55 42 62 35 58 M 50 55 C 50 55 58 62 65 58"
+                     transition={{ duration: 1.5, delay: 0.2 }}
+                     d="M 28 42 Q 36 38 44 42 Q 36 46 28 42 M 56 42 Q 64 38 72 42 Q 64 46 56 42"
                   />
-                  {/* Lips */}
+                  {/* Irises */}
                   <motion.path 
-                     initial={{ pathLength: 0, opacity: 0 }}
-                     animate={{ pathLength: 1, opacity: 1 }}
-                     transition={{ duration: 1.5, delay: 0.5 }}
-                     d="M 35 78 Q 50 82 65 78 M 36 80 Q 50 88 64 80"
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.4 }}
+                     d="M 36 42 A 3 3 0 1 1 36.1 42 M 64 42 A 3 3 0 1 1 64.1 42"
                   />
+
                   {/* Eyebrows */}
                   <motion.path 
                      initial={{ pathLength: 0, opacity: 0 }}
                      animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.3 }}
+                     d="M 25 35 Q 35 30 48 35 M 52 35 Q 65 30 75 35"
+                  />
+
+                  {/* Nose */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.5 }}
+                     d="M 50 35 L 50 65 C 50 65 42 70 38 68 M 50 65 C 50 65 58 70 62 68"
+                  />
+                  
+                  {/* Lips */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
                      transition={{ duration: 1.5, delay: 0.6 }}
-                     d="M 20 35 Q 35 28 45 35 M 55 35 Q 65 28 80 35"
+                     d="M 35 82 Q 50 85 65 82 M 36 82 Q 50 88 64 82"
                   />
                </g>
              )}
