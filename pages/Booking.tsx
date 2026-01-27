@@ -1,423 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, AlertCircle, Sparkles } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, Zap, Droplets, Info } from 'lucide-react';
 import { Service, BookingStep } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 
-// --- Interactive Anatomy Map Component ---
-
-interface AnatomyPoint {
-  id: string;
-  x: number;
-  y: number;
-  label: string;
-  keyword: string; 
-  type: 'stud' | 'ring' | 'barbell' | 'curved' | 'industrial' | 'septum'; 
-  rotation?: number; // Optional rotation for the jewelry
-}
-
-// --- PRECISE COORDINATES (0-100 ViewBox) ---
-
-const earPoints: AnatomyPoint[] = [
-    // Industrial crosses from approx (28,25) to (82,20)
-    { id: 'industrial', x: 55, y: 22, label: 'אינדסטריאל', keyword: 'אינדסטריאל', type: 'industrial', rotation: -15 }, 
-    
-    { id: 'helix-upper', x: 82, y: 18, label: 'הליקס', keyword: 'הליקס', type: 'ring' },
-    { id: 'forward-helix', x: 28, y: 25, label: 'פורוורד הליקס', keyword: 'פורוורד', type: 'stud' },
-    { id: 'rook', x: 45, y: 32, label: 'רוק', keyword: 'רוק', type: 'curved', rotation: -10 },
-    { id: 'daith', x: 36, y: 46, label: 'דיית׳', keyword: 'דיית', type: 'ring' },
-    { id: 'tragus', x: 23, y: 52, label: 'טראגוס', keyword: 'טראגוס', type: 'stud' },
-    { id: 'snug', x: 80, y: 55, label: 'סנאג', keyword: 'סנאג', type: 'curved', rotation: 10 },
-    { id: 'conch', x: 52, y: 55, label: 'קונץ׳', keyword: 'קונץ', type: 'ring' },
-    { id: 'anti-tragus', x: 62, y: 72, label: 'אנטי-טראגוס', keyword: 'אנטי', type: 'stud' },
-    { id: 'lobe-upper', x: 58, y: 80, label: 'תנוך עליון', keyword: 'תנוך', type: 'stud' },
-    { id: 'lobe-main', x: 52, y: 89, label: 'תנוך', keyword: 'תנוך', type: 'stud' },
-];
-
-const facePoints: AnatomyPoint[] = [
-    { id: 'eyebrow', x: 32, y: 34, label: 'גבה', keyword: 'גבה', type: 'curved', rotation: -15 },
-    { id: 'bridge', x: 50, y: 34, label: 'ברידג׳', keyword: 'ברידג', type: 'barbell' },
-    { id: 'nostril', x: 43, y: 57, label: 'נזם', keyword: 'נזם', type: 'stud' },
-    { id: 'septum', x: 50, y: 63, label: 'ספטום', keyword: 'ספטום', type: 'septum' },
-    { id: 'philtrum', x: 50, y: 69, label: 'מדוזה', keyword: 'מדוזה', type: 'stud' },
-    { id: 'monroe', x: 36, y: 67, label: 'מונרו', keyword: 'מונרו', type: 'stud' },
-    { id: 'labret-side', x: 38, y: 79, label: 'סייד ליפ', keyword: 'שפה', type: 'ring' },
-    { id: 'labret-center', x: 50, y: 81, label: 'לאברט', keyword: 'לאברט', type: 'stud' },
-    { id: 'vertical-labret', x: 50, y: 78, label: 'ורטיקל', keyword: 'ורטיקל', type: 'curved' },
-];
-
-const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service[], onSelect: (s: Service | null) => void, selectedService: Service | null }) => {
-  const [view, setView] = useState<'ear' | 'face'>('ear');
-  const [hoverMessage, setHoverMessage] = useState<{ x: number, y: number, text: string } | null>(null);
-  const [visualSelectionId, setVisualSelectionId] = useState<string | null>(null);
-
-  useEffect(() => {
-      if (selectedService) {
-          const point = [...earPoints, ...facePoints].find(p => selectedService.name.includes(p.keyword));
-          if (point) setVisualSelectionId(point.id);
-      }
-  }, [selectedService]);
-
-  const findService = (keyword: string) => services.find(s => s.name.includes(keyword) || s.category.includes(keyword));
-
-  const handlePointClick = (point: AnatomyPoint) => {
-    setVisualSelectionId(point.id);
-    const service = findService(point.keyword);
-    if (service) {
-      onSelect(service);
-      setHoverMessage(null);
-    } else {
-      onSelect(null);
-      setHoverMessage({ x: point.x, y: point.y, text: 'שירות זה אינו זמין כרגע' });
-      setTimeout(() => setHoverMessage(null), 3000);
-    }
-  };
-
-  const currentPoints = view === 'ear' ? earPoints : facePoints;
-
-  const JewelryRenderer = ({ point, isSelected }: { point: AnatomyPoint, isSelected: boolean }) => {
-     if (!isSelected) {
-         return <circle cx={0} cy={0} r="2" className="fill-white/20 group-hover:fill-white/60 transition-colors" />;
-     }
-
-     const colorPrimary = "#d4b585"; 
-     const colorHighlight = "#fffbeb"; 
-     const glowFilter = "url(#jewelryGlow)";
-     const rot = point.rotation || 0;
-
-     switch(point.type) {
-         case 'industrial':
-             // Correct Industrial Barbell shape
-             return (
-                 <g filter={glowFilter} transform={`rotate(${rot})`}>
-                     {/* Long bar connecting forward helix to outer helix */}
-                     <motion.line 
-                        x1="-28" y1="3" x2="28" y2="-3" 
-                        stroke={colorPrimary} 
-                        strokeWidth="1.8" 
-                        strokeLinecap="round"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 0.5 }}
-                     />
-                     <circle cx="-28" cy="3" r="2.2" fill={colorHighlight} />
-                     <circle cx="28" cy="-3" r="2.2" fill={colorHighlight} />
-                 </g>
-             );
-         case 'septum':
-             return (
-                 <g filter={glowFilter} transform={`translate(0, 2)`}>
-                     <motion.path 
-                        d="M -4 -2 Q 0 5 4 -2" 
-                        fill="none" 
-                        stroke={colorPrimary} 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round"
-                        initial={{ opacity: 0, pathLength: 0 }}
-                        animate={{ opacity: 1, pathLength: 1 }}
-                     />
-                     <circle cx="-4" cy="-2" r="1.2" fill={colorHighlight} />
-                     <circle cx="4" cy="-2" r="1.2" fill={colorHighlight} />
-                 </g>
-             );
-         case 'ring':
-             return (
-                 <g filter={glowFilter}>
-                     <motion.circle 
-                        r="4" 
-                        fill="none" 
-                        stroke={colorPrimary} 
-                        strokeWidth="1.2" 
-                        strokeDasharray="20 5" 
-                        initial={{ rotate: 0, scale: 0 }}
-                        animate={{ rotate: 360, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                     />
-                     <circle cx="0" cy="4" r="1.5" fill={colorHighlight} />
-                 </g>
-             );
-         case 'barbell': 
-             return (
-                 <g filter={glowFilter} transform={`rotate(${rot})`}>
-                     <line x1="-6" y1="0" x2="6" y2="0" stroke={colorPrimary} strokeWidth="1.2" />
-                     <circle cx="-6" cy="0" r="1.8" fill={colorHighlight} />
-                     <circle cx="6" cy="0" r="1.8" fill={colorHighlight} />
-                 </g>
-             );
-         case 'curved': 
-             return (
-                 <g filter={glowFilter} transform={`rotate(${rot})`}>
-                     <motion.path 
-                        d="M -4 -4 Q 0 0 4 4" 
-                        fill="none" 
-                        stroke={colorPrimary} 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                     />
-                     <circle cx="-4" cy="-4" r="1.8" fill={colorHighlight} />
-                     <circle cx="4" cy="4" r="1.8" fill={colorHighlight} />
-                 </g>
-             );
-         case 'stud': 
-         default:
-             return (
-                 <g filter={glowFilter}>
-                    <motion.path 
-                       d="M 0 -2.5 L 2 0 L 0 2.5 L -2 0 Z" 
-                       fill={colorHighlight} 
-                       initial={{ scale: 0 }}
-                       animate={{ scale: [1, 1.2, 1] }}
-                       transition={{ repeat: Infinity, duration: 2, repeatDelay: 1 }}
-                    />
-                    <circle cx="0" cy="0" r="1.5" fill={colorHighlight} />
-                 </g>
-             );
-     }
-  };
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center min-h-[500px]">
-      <div className="relative order-2 md:order-1 flex flex-col items-center">
-        <div className="flex gap-4 mb-8 bg-brand-surface p-1 rounded-full border border-white/5">
-          <button 
-            onClick={() => setView('ear')}
-            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${view === 'ear' ? 'bg-brand-primary text-brand-dark' : 'text-slate-400 hover:text-white'}`}
-          >
-            אוזן
-          </button>
-          <button 
-             onClick={() => setView('face')}
-             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${view === 'face' ? 'bg-brand-primary text-brand-dark' : 'text-slate-400 hover:text-white'}`}
-          >
-            פנים
-          </button>
-        </div>
-
-        <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px] select-none">
-           <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl overflow-visible">
-             <defs>
-               <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                 <stop offset="0%" stopColor="#d4b585" stopOpacity="0.8" />
-                 <stop offset="100%" stopColor="#c19f6e" stopOpacity="0.4" />
-               </linearGradient>
-               <filter id="jewelryGlow" x="-50%" y="-50%" width="200%" height="200%">
-                 <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" result="blur" />
-                 <feColorMatrix in="blur" type="matrix" values="
-                    0 0 0 0 1
-                    0 0 0 0 0.9
-                    0 0 0 0 0.5
-                    0 0 0 0.6 0" result="coloredBlur"/>
-                 <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                 </feMerge>
-               </filter>
-             </defs>
-
-             {/* Background Illustration Group */}
-             <motion.g
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1.5 }}
-             >
-                 {view === 'ear' ? (
-                   // Precise Ear Illustration
-                   <g fill="none" stroke="url(#goldGradient)" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
-                      {/* Outer Rim (Helix to Lobe) */}
-                      <path d="M 50 95 C 35 95 25 85 25 70 C 25 60 22 55 20 45 C 18 35 25 15 50 10 C 75 5 95 20 95 45 C 95 75 75 95 50 95" />
-                      
-                      {/* Inner Helix Ridge */}
-                      <path d="M 50 15 Q 80 15 85 45 Q 87 65 75 75" opacity="0.8" />
-                      
-                      {/* Antihelix / Rook Area */}
-                      <path d="M 40 30 Q 50 35 50 50 Q 50 65 60 70" opacity="0.8" />
-                      
-                      {/* Daith / Crus of Helix */}
-                      <path d="M 28 45 Q 35 48 38 48" opacity="0.8" />
-                      
-                      {/* Tragus */}
-                      <path d="M 20 45 Q 28 50 28 58 Q 28 62 22 65" opacity="0.9" />
-                      
-                      {/* Antitragus */}
-                      <path d="M 55 80 Q 62 78 65 70" opacity="0.8" />
-                   </g>
-                 ) : (
-                   // Precise Face Illustration (Minimalist)
-                   <g fill="none" stroke="url(#goldGradient)" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
-                      {/* Nose Outline */}
-                      <path d="M 50 30 L 50 55 Q 50 60 55 60 M 42 58 Q 38 55 42 50 M 58 58 Q 62 55 58 50" opacity="0.9" />
-                      <path d="M 45 62 Q 50 65 55 62" opacity="0.7" />
-
-                      {/* Lips Outline */}
-                      <path d="M 35 75 Q 50 70 65 75" opacity="0.9" /> {/* Upper Lip Top */}
-                      <path d="M 35 75 Q 50 78 65 75" opacity="0.9" /> {/* Upper Lip Bottom */}
-                      <path d="M 37 76 Q 50 85 63 76" opacity="0.9" /> {/* Lower Lip */}
-
-                      {/* Eyebrows (Left side for demo) */}
-                      <path d="M 25 38 Q 35 32 45 35" opacity="0.8" />
-                      <path d="M 55 35 Q 65 32 75 38" opacity="0.8" />
-                      
-                      {/* Face Contour Hint */}
-                      <path d="M 15 50 Q 15 90 50 98 Q 85 90 85 50" opacity="0.3" strokeDasharray="2 2" />
-                   </g>
-                 )}
-             </motion.g>
-
-             {/* Hit Areas & Jewelry */}
-             {currentPoints.map((point) => {
-               const isSelected = visualSelectionId === point.id;
-               return (
-                 <g key={point.id} onClick={() => handlePointClick(point)} className="cursor-pointer group">
-                   {/* Larger Hit Area (Invisible) */}
-                   <circle cx={point.x} cy={point.y} r="6" fill="transparent" />
-                   
-                   {/* Jewelry Graphic */}
-                   <g transform={`translate(${point.x}, ${point.y})`}>
-                      <JewelryRenderer point={point} isSelected={isSelected} />
-                   </g>
-
-                   {/* Text Label on Selection/Hover */}
-                   <g className={`transition-opacity duration-300 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                       <text 
-                        x={point.x} 
-                        y={point.y + 8} 
-                        fontSize="3.5" 
-                        fill="white"
-                        textAnchor="middle"
-                        className="font-sans pointer-events-none drop-shadow-md select-none"
-                        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.9)' }}
-                        >
-                        {point.label}
-                        </text>
-                   </g>
-                 </g>
-               );
-             })}
-           </svg>
-           
-           <AnimatePresence>
-             {hoverMessage && (
-               <motion.div
-                 initial={{ opacity: 0, y: 5 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 exit={{ opacity: 0, y: 5 }}
-                 className="absolute z-20 bg-brand-surface border border-white/10 text-slate-200 text-xs px-4 py-2 rounded-xl shadow-xl backdrop-blur-md whitespace-nowrap pointer-events-none flex items-center gap-2"
-                 style={{ 
-                   left: `${hoverMessage.x}%`, 
-                   top: `${hoverMessage.y - 12}%`,
-                   transform: 'translate(-50%, -100%)' 
-                 }}
-               >
-                 <AlertCircle className="w-3 h-3 text-brand-primary" />
-                 {hoverMessage.text}
-                 <div className="absolute bottom-[-5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-brand-surface border-b border-r border-white/10 rotate-45"></div>
-               </motion.div>
-             )}
-           </AnimatePresence>
-        </div>
-      </div>
-
-      <div className="order-1 md:order-2 h-full">
-        <h3 className="text-2xl font-serif text-white mb-6 border-r-2 border-brand-primary pr-4">
-           {selectedService ? 'הבחירה שלך' : 'בחר אזור לניקוב'}
-        </h3>
-        
-        <AnimatePresence mode="wait">
-          {selectedService ? (
-            <motion.div
-              key="selected"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
-              <Card className="bg-brand-surface border-brand-primary/30 relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                 
-                 <div className="relative z-10">
-                   <div className="flex justify-between items-start mb-4">
-                     <h2 className="text-3xl font-medium text-white">{selectedService.name}</h2>
-                     <div className="text-3xl font-serif text-brand-primary">₪{selectedService.price}</div>
-                   </div>
-                   
-                   <div className="space-y-4 mb-8">
-                      <div className="flex items-center gap-3 text-slate-400">
-                        <Clock className="w-4 h-4 text-brand-primary" />
-                        <span>משך טיפול: <span className="text-white">{selectedService.duration_minutes} דקות</span></span>
-                      </div>
-                      <div className="flex items-center gap-3 text-slate-400">
-                        <Sparkles className="w-4 h-4 text-brand-primary" />
-                        <span>רמת כאב: <span className="text-white">●●○○○ (קל)</span></span>
-                      </div>
-                      <p className="text-slate-400 text-sm leading-relaxed border-t border-white/5 pt-4">
-                        {selectedService.description}
-                      </p>
-                   </div>
-                   
-                   <div className="flex gap-3">
-                     <button onClick={() => { onSelect(null as any); setVisualSelectionId(null); }} className="text-sm text-slate-500 hover:text-white underline">
-                        בחר שירות אחר
-                     </button>
-                   </div>
-                 </div>
-              </Card>
-            </motion.div>
-          ) : (
-             <motion.div
-              key="list"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
-             >
-                <p className="text-slate-500 text-sm mb-4">
-                   לחץ על האזורים במפה או בחר מהרשימה המלאה:
-                </p>
-                {services.filter(s => view === 'ear' ? s.category === 'Ear' : s.category !== 'Ear').map((service) => (
-                   <div 
-                      key={service.id}
-                      onClick={() => {
-                          const point = [...earPoints, ...facePoints].find(p => service.name.includes(p.keyword));
-                          if (point) setVisualSelectionId(point.id);
-                          onSelect(service);
-                      }}
-                      className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-brand-primary/20 cursor-pointer transition-all group"
-                   >
-                      <div className="flex items-center gap-4">
-                         <div className="w-10 h-10 rounded-lg bg-brand-dark overflow-hidden">
-                            <img src={service.image_url} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100" />
-                         </div>
-                         <div>
-                            <div className="text-white font-medium text-sm group-hover:text-brand-primary transition-colors">{service.name}</div>
-                            <div className="text-xs text-slate-500">{service.duration_minutes} דק'</div>
-                         </div>
-                      </div>
-                      <div className="text-brand-primary/70 font-serif">₪{service.price}</div>
-                   </div>
-                ))}
-             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
+// --- Local Data Enhancements ---
+// Since the DB types are simple, we map extra visual data locally for the "Wow" factor
+const SERVICE_META: Record<string, { pain: number; healing: string }> = {
+    'Ear': { pain: 3, healing: '4-8 שבועות' },
+    'Face': { pain: 5, healing: '2-4 חודשים' },
+    'Body': { pain: 4, healing: '3-6 חודשים' },
+    'Jewelry': { pain: 0, healing: '-' }
 };
+
+const getMeta = (category: string) => SERVICE_META[category] || { pain: 2, healing: 'משתנה' };
 
 const Booking: React.FC = () => {
   const [step, setStep] = useState<BookingStep>(BookingStep.SELECT_SERVICE);
   const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  
+  // Selection State
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  
+  // Form State
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    api.getServices().then(setServices);
+    api.getServices().then((data) => {
+        setServices(data);
+        setFilteredServices(data);
+    });
   }, []);
+
+  useEffect(() => {
+      if (activeCategory === 'All') {
+          setFilteredServices(services);
+      } else {
+          setFilteredServices(services.filter(s => s.category === activeCategory));
+      }
+  }, [activeCategory, services]);
 
   useEffect(() => {
       if (selectedDate) {
@@ -464,104 +93,349 @@ const Booking: React.FC = () => {
       }
   };
 
-  return (
-    <div className="min-h-screen bg-brand-dark pt-24 pb-12">
-        <div className="container mx-auto px-6">
-            <div className="mb-8 flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-serif text-white mb-2">קביעת תור</h1>
-                    <p className="text-slate-400 text-sm">שלב {step} מתוך 4</p>
-                </div>
-                {step > 1 && step < 4 && (
-                    <button onClick={() => setStep(step - 1)} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm">
-                        <ArrowRight className="w-4 h-4" /> חזרה
-                    </button>
-                )}
-            </div>
+  // --- Components ---
 
-            <AnimatePresence mode="wait">
-                {step === BookingStep.SELECT_SERVICE && (
-                    <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                        <AnatomyMap services={services} selectedService={selectedService} onSelect={setSelectedService} />
-                        <div className="flex justify-center mt-8">
-                            <Button disabled={!selectedService} onClick={() => setStep(BookingStep.SELECT_DATE)} className="w-full md:w-auto min-w-[200px]">
-                                המשך לבחירת תאריך
+  const PainLevel = ({ level }: { level: number }) => (
+      <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+              <div 
+                key={i} 
+                className={`w-1.5 h-4 rounded-full transition-all ${i <= level ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} 
+              />
+          ))}
+      </div>
+  );
+
+  const categories = [
+      { id: 'All', label: 'הכל' },
+      { id: 'Ear', label: 'אוזניים' },
+      { id: 'Face', label: 'פנים' },
+      { id: 'Body', label: 'גוף' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-brand-dark pt-24 pb-12 overflow-hidden">
+        <div className="container mx-auto px-4 lg:px-8">
+            
+            <div className="flex flex-col lg:flex-row gap-8 relative">
+                
+                {/* LEFT SIDE: MAIN CONTENT */}
+                <div className="flex-1 z-10">
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-serif text-white mb-2">
+                            {step === BookingStep.SELECT_SERVICE && 'בחירת טיפול'}
+                            {step === BookingStep.SELECT_DATE && 'תאריך ושעה'}
+                            {step === BookingStep.DETAILS && 'פרטים אחרונים'}
+                            {step === BookingStep.CONFIRMATION && 'אישור הזמנה'}
+                        </h1>
+                        <p className="text-slate-400 flex items-center gap-2">
+                            <span className="bg-brand-primary/10 text-brand-primary text-xs px-2 py-0.5 rounded-full border border-brand-primary/20">שלב {step} מתוך 3</span>
+                            {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך'}
+                            {step === BookingStep.SELECT_DATE && 'מתי נוח לך להגיע אלינו?'}
+                            {step === BookingStep.DETAILS && 'כדי שנוכל לשמור לך את התור'}
+                        </p>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        {/* STEP 1: SERVICE SELECTION */}
+                        {step === BookingStep.SELECT_SERVICE && (
+                            <motion.div 
+                                key="step1"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="space-y-6"
+                            >
+                                {/* Category Filter */}
+                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                    {categories.map(cat => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setActiveCategory(cat.id)}
+                                            className={`px-6 py-2 rounded-full text-sm transition-all whitespace-nowrap border ${
+                                                activeCategory === cat.id 
+                                                ? 'bg-white text-brand-dark border-white font-medium' 
+                                                : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'
+                                            }`}
+                                        >
+                                            {cat.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Service Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {filteredServices.map((service) => {
+                                        const meta = getMeta(service.category);
+                                        const isSelected = selectedService?.id === service.id;
+                                        return (
+                                            <motion.div
+                                                layout
+                                                key={service.id}
+                                                onClick={() => setSelectedService(service)}
+                                                className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 group ${
+                                                    isSelected 
+                                                    ? 'border-brand-primary bg-brand-primary/5 shadow-[0_0_30px_rgba(212,181,133,0.1)]' 
+                                                    : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'
+                                                }`}
+                                            >
+                                                <div className="flex h-32">
+                                                    <div className="w-32 shrink-0 relative overflow-hidden">
+                                                        <img src={service.image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                                        <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors" />
+                                                    </div>
+                                                    <div className="flex-1 p-4 flex flex-col justify-between">
+                                                        <div className="flex justify-between items-start">
+                                                            <h3 className={`font-medium text-lg ${isSelected ? 'text-brand-primary' : 'text-white'}`}>{service.name}</h3>
+                                                            <span className="text-brand-primary font-serif font-bold">₪{service.price}</span>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-end justify-between mt-2">
+                                                            <div className="text-xs text-slate-400 space-y-1">
+                                                                <div className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {service.duration_minutes} דקות</div>
+                                                                <div className="flex items-center gap-1.5"><Droplets className="w-3 h-3" /> החלמה: {meta.healing}</div>
+                                                            </div>
+                                                            
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <span className="text-[10px] text-slate-500 uppercase tracking-widest">רמת כאב</span>
+                                                                <PainLevel level={meta.pain} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 2: DATE & TIME */}
+                        {step === BookingStep.SELECT_DATE && (
+                            <motion.div 
+                                key="step2"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-4">
+                                    <h3 className="text-white font-medium flex items-center gap-2">
+                                        <Calendar className="w-5 h-5 text-brand-primary"/> בחר תאריך
+                                    </h3>
+                                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                                        {generateCalendarDays().map((date, i) => {
+                                            const isSelected = selectedDate?.toDateString() === date.toDateString();
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => { setSelectedDate(date); setSelectedSlot(null); }}
+                                                    className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all ${
+                                                        isSelected 
+                                                        ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' 
+                                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'
+                                                    }`}
+                                                >
+                                                    <span className="text-xs">{date.toLocaleDateString('he-IL', { weekday: 'short' })}</span>
+                                                    <span className="text-xl font-bold font-serif">{date.getDate()}</span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 min-h-[200px]">
+                                    <h3 className="text-white font-medium flex items-center gap-2">
+                                        <Clock className="w-5 h-5 text-brand-primary"/> בחר שעה
+                                    </h3>
+                                    {!selectedDate ? (
+                                        <div className="text-slate-600 text-sm border border-dashed border-white/10 rounded-xl p-8 text-center">אנא בחר תאריך כדי לראות שעות פנויות</div>
+                                    ) : isLoadingSlots ? (
+                                        <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 text-brand-primary animate-spin" /></div>
+                                    ) : (
+                                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                                            {availableSlots.length > 0 ? availableSlots.map((slot, i) => (
+                                                <button
+                                                    key={i}
+                                                    disabled={!slot.available}
+                                                    onClick={() => setSelectedSlot(slot.time)}
+                                                    className={`py-2 rounded-lg text-sm border transition-all ${
+                                                        selectedSlot === slot.time
+                                                        ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]'
+                                                        : slot.available
+                                                            ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50'
+                                                            : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700'
+                                                    }`}
+                                                >
+                                                    {slot.time}
+                                                </button>
+                                            )) : (
+                                                <div className="col-span-full text-center text-slate-500 py-8">אין תורים פנויים לתאריך זה.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 3: DETAILS */}
+                        {step === BookingStep.DETAILS && (
+                            <motion.div 
+                                key="step3"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                            >
+                                <Card className="border-none bg-white/5">
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <Input 
+                                                label="שם מלא" 
+                                                value={formData.name}
+                                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                            />
+                                            <Input 
+                                                label="טלפון" 
+                                                type="tel"
+                                                value={formData.phone}
+                                                onChange={e => setFormData({...formData, phone: e.target.value})}
+                                            />
+                                        </div>
+                                        <Input 
+                                            label="אימייל (לקבלת אישור)" 
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={e => setFormData({...formData, email: e.target.value})}
+                                        />
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-sm font-medium text-slate-400 ms-1">הערות / בקשות מיוחדות</label>
+                                            <textarea 
+                                                className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[100px]"
+                                                value={formData.notes}
+                                                onChange={e => setFormData({...formData, notes: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+                            </motion.div>
+                        )}
+
+                        {/* STEP 4: CONFIRMATION */}
+                        {step === BookingStep.CONFIRMATION && (
+                            <motion.div
+                                key="step4"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center py-12"
+                            >
+                                <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                                    <Check className="w-10 h-10" />
+                                </div>
+                                <h2 className="text-4xl font-serif text-white mb-4">תודה רבה!</h2>
+                                <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">
+                                    התור שלך ל{selectedService?.name} נקבע בהצלחה.<br/>
+                                    שלחנו לך הודעת אישור לנייד ולמייל.
+                                </p>
+                                <Button onClick={() => window.location.href = '/'}>
+                                    חזרה לדף הבית
+                                </Button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Navigation Buttons (Desktop: Bottom Left, Mobile: Fixed Bottom) */}
+                    {step < BookingStep.CONFIRMATION && (
+                        <div className="mt-8 flex items-center gap-4">
+                            {step > 1 && (
+                                <button 
+                                    onClick={() => setStep(step - 1)} 
+                                    className="px-6 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                    חזרה
+                                </button>
+                            )}
+                            <Button 
+                                onClick={() => {
+                                    if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.SELECT_DATE);
+                                    else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
+                                    else if(step === BookingStep.DETAILS) handleBook();
+                                }}
+                                disabled={
+                                    (step === BookingStep.SELECT_SERVICE && !selectedService) ||
+                                    (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
+                                    (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
+                                    isSubmitting
+                                }
+                                isLoading={isSubmitting}
+                                className="flex-1 md:flex-none md:min-w-[200px]"
+                            >
+                                {step === BookingStep.DETAILS ? 'אשר וקבע תור' : 'המשך'}
                             </Button>
                         </div>
-                    </motion.div>
-                )}
+                    )}
+                </div>
 
-                {step === BookingStep.SELECT_DATE && (
-                    <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-4xl mx-auto">
-                        <Card className="mb-8">
-                            <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Calendar className="w-5 h-5 text-brand-primary"/> בחר תאריך</h3>
-                            <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                                {generateCalendarDays().map((date, i) => {
-                                    const isSelected = selectedDate?.toDateString() === date.toDateString();
-                                    return (
-                                        <button key={i} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} className={`flex flex-col items-center justify-center min-w-[80px] h-24 rounded-xl border transition-all ${isSelected ? 'bg-brand-primary text-brand-dark border-brand-primary' : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'}`}>
-                                            <span className="text-xs">{date.toLocaleDateString('he-IL', { weekday: 'short' })}</span>
-                                            <span className="text-2xl font-bold font-serif">{date.getDate()}</span>
-                                            <span className="text-xs">{date.toLocaleDateString('he-IL', { month: 'short' })}</span>
-                                        </button>
-                                    )
-                                })}
+                {/* RIGHT SIDE: DYNAMIC TICKET (Sticky) */}
+                <div className="hidden lg:block w-80 relative">
+                    <div className="sticky top-28">
+                        <div className="relative bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                            {/* Ticket Header */}
+                            <div className="bg-brand-primary p-6 relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                                <h2 className="text-brand-dark font-serif font-bold text-xl relative z-10">סיכום הזמנה</h2>
+                                <div className="text-brand-dark/70 text-xs font-medium uppercase tracking-widest relative z-10">Yuval Studio</div>
                             </div>
-                        </Card>
-                        {selectedDate && (
-                            <Card>
-                                <h3 className="text-white font-medium mb-4 flex items-center gap-2"><Clock className="w-5 h-5 text-brand-primary"/> בחר שעה</h3>
-                                {isLoadingSlots ? <div className="py-12 flex justify-center text-brand-primary"><Loader2 className="w-8 h-8 animate-spin" /></div> : (
-                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                                        {availableSlots.length > 0 ? availableSlots.map((slot, i) => (
-                                            <button key={i} disabled={!slot.available} onClick={() => setSelectedSlot(slot.time)} className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold' : slot.available ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-600 cursor-not-allowed line-through'}`}>
-                                                {slot.time}
-                                            </button>
-                                        )) : <div className="col-span-full text-center text-slate-500 py-8">אין תורים פנויים לתאריך זה. נסה תאריך אחר.</div>}
-                                    </div>
-                                )}
-                            </Card>
-                        )}
-                        <div className="flex justify-center mt-8">
-                            <Button disabled={!selectedDate || !selectedSlot} onClick={() => setStep(BookingStep.DETAILS)} className="w-full md:w-auto min-w-[200px]">המשך למילוי פרטים</Button>
-                        </div>
-                    </motion.div>
-                )}
 
-                {step === BookingStep.DETAILS && (
-                    <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-2xl mx-auto">
-                        <Card>
-                            <h3 className="text-white font-medium mb-6">פרטים אישיים</h3>
-                            <div className="space-y-4">
-                                <Input label="שם מלא" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                <Input label="טלפון נייד" type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-                                <Input label="אימייל" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-400 ms-1">הערות נוספות</label>
-                                    <textarea className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[100px]" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                            {/* Ticket Body */}
+                            <div className="p-6 space-y-6">
+                                {/* Service Info */}
+                                <div className={`transition-all duration-500 ${selectedService ? 'opacity-100 translate-x-0' : 'opacity-30 translate-x-2 grayscale'}`}>
+                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">טיפול נבחר</div>
+                                    <div className="font-medium text-white text-lg">{selectedService?.name || '---'}</div>
+                                    <div className="text-brand-primary">{selectedService ? `₪${selectedService.price}` : ''}</div>
+                                </div>
+
+                                <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
+
+                                {/* Date Info */}
+                                <div className={`transition-all duration-500 ${selectedDate && selectedSlot ? 'opacity-100 translate-x-0' : 'opacity-30 translate-x-2 grayscale'}`}>
+                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">מועד התור</div>
+                                    <div className="font-medium text-white text-lg">
+                                        {selectedDate ? selectedDate.toLocaleDateString('he-IL', {day:'numeric', month:'long'}) : '---'}
+                                    </div>
+                                    <div className="text-slate-300">
+                                        {selectedSlot || '--:--'}
+                                    </div>
+                                </div>
+
+                                <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
+
+                                {/* Total */}
+                                <div>
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-slate-400 text-sm">סה"כ לתשלום</span>
+                                        <span className="text-3xl font-serif text-white">{selectedService ? `₪${selectedService.price}` : '0'}</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-2">
+                                        * התשלום מתבצע בסטודיו בסיום הטיפול
+                                    </p>
                                 </div>
                             </div>
-                            <div className="mt-8 pt-6 border-t border-white/10">
-                                <div className="flex justify-between items-center mb-2 text-sm text-slate-400"><span>שירות נבחר:</span><span className="text-white font-medium">{selectedService?.name}</span></div>
-                                <div className="flex justify-between items-center mb-2 text-sm text-slate-400"><span>מועד:</span><span className="text-white font-medium">{selectedDate?.toLocaleDateString('he-IL')} בשעה {selectedSlot}</span></div>
-                                <div className="flex justify-between items-center mt-4 text-xl text-white font-serif"><span>סה"כ לתשלום:</span><span className="text-brand-primary">₪{selectedService?.price}</span></div>
-                            </div>
-                        </Card>
-                        <div className="flex justify-center mt-8">
-                            <Button disabled={!formData.name || !formData.phone || isSubmitting} onClick={handleBook} isLoading={isSubmitting} className="w-full md:w-auto min-w-[200px]">אשר וקבע תור</Button>
-                        </div>
-                    </motion.div>
-                )}
 
-                {step === BookingStep.CONFIRMATION && (
-                    <motion.div key="step4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md mx-auto text-center">
-                        <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500"><Sparkles className="w-12 h-12" /></div>
-                        <h2 className="text-3xl font-serif text-white mb-4">התור נקבע בהצלחה!</h2>
-                        <p className="text-slate-400 mb-8">תודה {formData.name}, קבענו לך תור ל{selectedService?.name} בתאריך {selectedDate?.toLocaleDateString('he-IL')} בשעה {selectedSlot}.<br/>נשלח לך פרטים נוספים לנייד.</p>
-                        <Button onClick={() => window.location.href = '/'}>חזרה לדף הבית</Button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            {/* Ticket Bottom Design */}
+                            <div className="bg-brand-dark h-3 w-full relative">
+                                <div className="absolute -top-3 w-full h-3 bg-[radial-gradient(circle,transparent_50%,#1e293b_50%)] bg-[length:12px_12px] rotate-180"></div>
+                            </div>
+                        </div>
+                        
+                        {/* Trust Badges */}
+                        <div className="mt-6 flex justify-center gap-4 text-slate-500">
+                            <div className="flex items-center gap-1.5 text-xs"><Check className="w-3 h-3 text-brand-primary" /> ללא מקדמה</div>
+                            <div className="flex items-center gap-1.5 text-xs"><Info className="w-3 h-3 text-brand-primary" /> ביטול ללא עלות</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
   );
