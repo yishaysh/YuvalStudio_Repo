@@ -8,29 +8,102 @@ import { Button, Card, Input } from '../components/ui';
 
 // --- Interactive Anatomy Map Component ---
 
+interface AnatomyPoint {
+  id: string;
+  x: number;
+  y: number;
+  label: string;
+  keyword: string; // Used to match with DB service names
+  type: 'stud' | 'ring' | 'barbell' | 'curved'; // Visualization type
+}
+
 const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service[], onSelect: (s: Service) => void, selectedService: Service | null }) => {
   const [view, setView] = useState<'ear' | 'face'>('ear');
+  const [hoverMessage, setHoverMessage] = useState<{ x: number, y: number, text: string } | null>(null);
 
-  // Helper to find service by partial name match (since IDs might change in DB)
+  // Helper to find service by partial name match
   const findService = (keyword: string) => services.find(s => s.name.includes(keyword) || s.category.includes(keyword));
 
-  // Points configuration
-  const earPoints = [
-    { id: 'helix', x: 75, y: 15, label: 'הליקס', keyword: 'הליקס' },
-    { id: 'industrial', x: 60, y: 10, label: 'אינדסטריאל', keyword: 'אינדסטריאל' },
-    { id: 'tragus', x: 35, y: 45, label: 'טראגוס', keyword: 'טראגוס' }, // Adjusted from generic
-    { id: 'lobe', x: 45, y: 85, label: 'תנוך', keyword: 'תנוך' },
-    { id: 'conch', x: 55, y: 50, label: 'קונץ׳', keyword: 'קונץ' }, // Fallback generic
+  const handlePointClick = (point: AnatomyPoint) => {
+    const service = findService(point.keyword);
+    if (service) {
+      onSelect(service);
+      setHoverMessage(null);
+    } else {
+      // Show temporary tooltip for missing service
+      setHoverMessage({ x: point.x, y: point.y, text: 'שירות זה אינו זמין כרגע' });
+      setTimeout(() => setHoverMessage(null), 2000);
+    }
+  };
+
+  // Comprehensive Points Configuration
+  const earPoints: AnatomyPoint[] = [
+    { id: 'helix-upper', x: 65, y: 15, label: 'הליקס עליון', keyword: 'הליקס', type: 'ring' },
+    { id: 'helix-mid', x: 78, y: 25, label: 'הליקס', keyword: 'הליקס', type: 'stud' },
+    { id: 'industrial', x: 55, y: 18, label: 'אינדסטריאל', keyword: 'אינדסטריאל', type: 'barbell' },
+    { id: 'forward-helix', x: 32, y: 22, label: 'פורוורד הליקס', keyword: 'פורוורד', type: 'stud' },
+    { id: 'rook', x: 42, y: 32, label: 'רוק', keyword: 'רוק', type: 'curved' },
+    { id: 'daith', x: 35, y: 45, label: 'דיית׳', keyword: 'דיית', type: 'ring' },
+    { id: 'tragus', x: 28, y: 52, label: 'טראגוס', keyword: 'טראגוס', type: 'stud' },
+    { id: 'snug', x: 75, y: 55, label: 'סנאג', keyword: 'סנאג', type: 'curved' },
+    { id: 'conch', x: 55, y: 50, label: 'קונץ׳', keyword: 'קונץ', type: 'ring' },
+    { id: 'anti-tragus', x: 60, y: 72, label: 'אנטי-טראגוס', keyword: 'אנטי', type: 'stud' },
+    { id: 'lobe-upper', x: 55, y: 80, label: 'תנוך עליון', keyword: 'תנוך', type: 'stud' },
+    { id: 'lobe-main', x: 45, y: 88, label: 'תנוך', keyword: 'תנוך', type: 'stud' },
   ];
 
-  const facePoints = [
-    { id: 'nose', x: 50, y: 55, label: 'נזם', keyword: 'נזם' },
-    { id: 'septum', x: 50, y: 62, label: 'ספטום', keyword: 'ספטום' },
-    { id: 'eyebrow', x: 25, y: 35, label: 'גבה', keyword: 'גבה' }, // Fallback
-    { id: 'lip', x: 50, y: 75, label: 'שפה', keyword: 'שפה' }, // Fallback
+  const facePoints: AnatomyPoint[] = [
+    { id: 'eyebrow', x: 30, y: 35, label: 'גבה', keyword: 'גבה', type: 'curved' },
+    { id: 'bridge', x: 50, y: 35, label: 'ברידג׳', keyword: 'ברידג', type: 'barbell' },
+    { id: 'nostril-high', x: 42, y: 52, label: 'נזם גבוה', keyword: 'נזם', type: 'stud' },
+    { id: 'nostril', x: 38, y: 58, label: 'נזם', keyword: 'נזם', type: 'ring' },
+    { id: 'septum', x: 50, y: 62, label: 'ספטום', keyword: 'ספטום', type: 'ring' },
+    { id: 'philtrum', x: 50, y: 68, label: 'מדוזה', keyword: 'מדוזה', type: 'stud' },
+    { id: 'monroe', x: 35, y: 66, label: 'מונרו', keyword: 'מונרו', type: 'stud' },
+    { id: 'labret-side', x: 35, y: 78, label: 'סייד ליפ', keyword: 'שפה', type: 'ring' },
+    { id: 'labret-center', x: 50, y: 80, label: 'לאברט', keyword: 'לאברט', type: 'stud' },
+    { id: 'vertical-labret', x: 50, y: 78, label: 'ורטיקל', keyword: 'ורטיקל', type: 'curved' },
   ];
 
   const currentPoints = view === 'ear' ? earPoints : facePoints;
+
+  // --- Visualization of Jewelry Types ---
+  const JewelryIcon = ({ type, isSelected }: { type: string, isSelected: boolean }) => {
+     if (!isSelected) return <circle r="1.5" className="fill-white/50 group-hover:fill-white transition-colors" />;
+     
+     const color = "#d4b585"; // Brand Primary
+
+     switch(type) {
+         case 'ring':
+             return <circle r="2.5" fill="none" stroke={color} strokeWidth="0.8" />;
+         case 'barbell':
+             return (
+                 <g transform="rotate(45)">
+                     <line x1="-3" y1="0" x2="3" y2="0" stroke={color} strokeWidth="0.8" />
+                     <circle cx="-3" cy="0" r="1" fill={color} />
+                     <circle cx="3" cy="0" r="1" fill={color} />
+                 </g>
+             );
+         case 'curved':
+             return (
+                 <path d="M -2.5 -1 Q 0 1 2.5 -1" fill="none" stroke={color} strokeWidth="0.8" strokeLinecap="round" />
+             );
+         case 'stud':
+         default:
+             return (
+                 <g>
+                    <circle r="1.5" fill={color} />
+                    <motion.path 
+                       d="M 0 -3 L 0.5 -0.5 L 3 0 L 0.5 0.5 L 0 3 L -0.5 0.5 L -3 0 L -0.5 -0.5 Z" 
+                       fill={color} 
+                       initial={{ scale: 0, opacity: 0 }}
+                       animate={{ scale: 1, opacity: 0.8 }}
+                       transition={{ repeat: Infinity, duration: 1.5, repeatType: "reverse" }}
+                    />
+                 </g>
+             );
+     }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center min-h-[500px]">
@@ -53,7 +126,7 @@ const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service
         </div>
 
         {/* The SVG Illustration */}
-        <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px]">
+        <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px] select-none">
            <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl">
              <defs>
                <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -68,79 +141,128 @@ const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service
 
              {/* Outlines */}
              {view === 'ear' ? (
-               <motion.path 
-                 initial={{ pathLength: 0, opacity: 0 }}
-                 animate={{ pathLength: 1, opacity: 1 }}
-                 transition={{ duration: 1.5, ease: "easeInOut" }}
-                 d="M 45 90 C 25 90 20 70 20 50 C 20 20 40 5 60 5 C 85 5 90 25 90 45 C 90 70 75 90 45 90 Z M 60 15 C 75 15 80 30 80 45 C 80 60 70 75 50 75"
-                 fill="none"
-                 stroke="url(#goldGradient)"
-                 strokeWidth="0.8"
-                 strokeLinecap="round"
-               />
+               <g stroke="url(#goldGradient)" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  {/* Outer Ear Shape */}
+                  <motion.path 
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 1.5 }}
+                    d="M 45 92 C 30 92 25 80 25 70 C 25 60 22 55 22 40 C 22 15 40 5 60 5 C 80 5 90 20 90 40 C 90 65 80 85 60 92 C 55 94 50 92 45 92"
+                  />
+                  {/* Inner Cartilage (Helix Rim) */}
+                  <motion.path 
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 1.5, delay: 0.2 }}
+                    d="M 55 12 C 75 12 82 25 82 40 C 82 65 75 75 60 75"
+                  />
+                  {/* Tragus */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.4 }}
+                     d="M 30 45 C 35 45 35 55 30 58"
+                  />
+                   {/* Anti-Tragus / Conch area */}
+                   <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.5 }}
+                     d="M 35 65 C 45 60 55 60 60 50"
+                  />
+               </g>
              ) : (
-               <motion.path 
-                 initial={{ pathLength: 0, opacity: 0 }}
-                 animate={{ pathLength: 1, opacity: 1 }}
-                 transition={{ duration: 1.5, ease: "easeInOut" }}
-                 d="M 20 20 Q 50 20 80 20 Q 90 50 80 80 Q 50 100 20 80 Q 10 50 20 20 M 40 55 Q 50 60 60 55 M 40 75 Q 50 80 60 75"
-                 fill="none"
-                 stroke="url(#goldGradient)"
-                 strokeWidth="0.8"
-                 strokeLinecap="round"
-               />
+               <g stroke="url(#goldGradient)" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  {/* Face Outline (Half/Abstract) */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5 }}
+                     d="M 20 20 C 20 20 25 60 35 80 C 45 100 80 95 80 95"
+                  />
+                   <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5 }}
+                     d="M 80 20 C 80 20 75 60 65 80"
+                  />
+                  {/* Nose */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.3 }}
+                     d="M 50 25 L 50 55 C 50 55 45 60 40 58 M 50 55 C 50 55 55 60 60 58"
+                  />
+                  {/* Lips */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.5 }}
+                     d="M 35 75 Q 50 80 65 75 M 38 78 Q 50 85 62 78"
+                  />
+                  {/* Eyebrows */}
+                  <motion.path 
+                     initial={{ pathLength: 0, opacity: 0 }}
+                     animate={{ pathLength: 1, opacity: 1 }}
+                     transition={{ duration: 1.5, delay: 0.6 }}
+                     d="M 25 30 Q 35 25 45 30 M 55 30 Q 65 25 75 30"
+                  />
+               </g>
              )}
 
              {/* Hotspots */}
              {currentPoints.map((point) => {
                const service = findService(point.keyword);
-               // If no service found for this keyword, don't show point (or show disabled)
-               if (!service) return null;
-
-               const isSelected = selectedService?.id === service.id;
+               // Note: We display ALL points now, but handle clicks differently if service is missing
+               const isSelected = selectedService ? (findService(point.keyword)?.id === selectedService.id) : false;
 
                return (
-                 <g key={point.id} onClick={() => onSelect(service)} className="cursor-pointer group">
-                   {/* Pulse Effect */}
-                   <motion.circle
-                     cx={point.x} cy={point.y}
-                     r="3"
-                     className="fill-brand-primary/20"
-                     animate={{ r: [3, 8, 3], opacity: [0.5, 0, 0.5] }}
-                     transition={{ duration: 2, repeat: Infinity }}
-                   />
-                   {/* Main Dot */}
-                   <circle 
-                     cx={point.x} cy={point.y} 
-                     r={isSelected ? "2.5" : "1.5"} 
-                     className={`transition-all duration-300 ${isSelected ? 'fill-brand-primary' : 'fill-white group-hover:fill-brand-primary'}`}
-                   />
+                 <g key={point.id} onClick={() => handlePointClick(point)} className="cursor-pointer group">
+                   {/* Hit Area (Invisible) */}
+                   <circle cx={point.x} cy={point.y} r="5" fill="transparent" />
                    
-                   {/* Label Line */}
-                   <motion.line
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      x1={point.x} y1={point.y}
-                      x2={point.x > 50 ? point.x + 10 : point.x - 10}
-                      y2={point.y}
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="0.2"
-                   />
-                   
-                   {/* Label Text */}
-                   <text 
-                     x={point.x > 50 ? point.x + 12 : point.x - 12} 
-                     y={point.y + 1} 
-                     fontSize="3" 
-                     className={`font-sans font-light ${isSelected ? 'fill-brand-primary' : 'fill-slate-400 group-hover:fill-white'}`}
-                     textAnchor={point.x > 50 ? "start" : "end"}
-                   >
-                     {point.label}
-                   </text>
+                   {/* Visualization */}
+                   <g transform={`translate(${point.x}, ${point.y})`}>
+                      <JewelryIcon type={point.type} isSelected={isSelected} />
+                   </g>
+
+                   {/* Label (Only show on hover or selected) */}
+                   <g className={`opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isSelected ? 'opacity-100' : ''}`}>
+                       <text 
+                        x={point.x} 
+                        y={point.y + 6} 
+                        fontSize="3" 
+                        fill="white"
+                        textAnchor="middle"
+                        className="font-sans pointer-events-none drop-shadow-md bg-black"
+                        >
+                        {point.label}
+                        </text>
+                   </g>
                  </g>
                );
              })}
            </svg>
+           
+           {/* Missing Service Tooltip */}
+           <AnimatePresence>
+             {hoverMessage && (
+               <motion.div
+                 initial={{ opacity: 0, y: 5 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 exit={{ opacity: 0, y: 5 }}
+                 className="absolute z-20 bg-red-500/90 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg backdrop-blur-sm whitespace-nowrap pointer-events-none"
+                 style={{ 
+                   left: `${hoverMessage.x}%`, 
+                   top: `${hoverMessage.y - 10}%`,
+                   transform: 'translate(-50%, -100%)' 
+                 }}
+               >
+                 <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500/90 rotate-45"></div>
+                 {hoverMessage.text}
+               </motion.div>
+             )}
+           </AnimatePresence>
         </div>
       </div>
 
