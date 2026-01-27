@@ -1,12 +1,232 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle, Mail, Smartphone, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle, Mail, AlertCircle, MapPin, Sparkles } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
-import { DEFAULT_STUDIO_DETAILS } from '../constants';
+import { DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS } from '../constants';
 import { Button, Card, Input } from '../components/ui';
 
-// --- Sub-Components defined outside to prevent re-render focus loss ---
+// --- Interactive Anatomy Map Component ---
+
+const AnatomyMap = ({ services, onSelect, selectedService }: { services: Service[], onSelect: (s: Service) => void, selectedService: Service | null }) => {
+  const [view, setView] = useState<'ear' | 'face'>('ear');
+
+  // Helper to find service by partial name match (since IDs might change in DB)
+  const findService = (keyword: string) => services.find(s => s.name.includes(keyword) || s.category.includes(keyword));
+
+  // Points configuration
+  const earPoints = [
+    { id: 'helix', x: 75, y: 15, label: 'הליקס', keyword: 'הליקס' },
+    { id: 'industrial', x: 60, y: 10, label: 'אינדסטריאל', keyword: 'אינדסטריאל' },
+    { id: 'tragus', x: 35, y: 45, label: 'טראגוס', keyword: 'טראגוס' }, // Adjusted from generic
+    { id: 'lobe', x: 45, y: 85, label: 'תנוך', keyword: 'תנוך' },
+    { id: 'conch', x: 55, y: 50, label: 'קונץ׳', keyword: 'קונץ' }, // Fallback generic
+  ];
+
+  const facePoints = [
+    { id: 'nose', x: 50, y: 55, label: 'נזם', keyword: 'נזם' },
+    { id: 'septum', x: 50, y: 62, label: 'ספטום', keyword: 'ספטום' },
+    { id: 'eyebrow', x: 25, y: 35, label: 'גבה', keyword: 'גבה' }, // Fallback
+    { id: 'lip', x: 50, y: 75, label: 'שפה', keyword: 'שפה' }, // Fallback
+  ];
+
+  const currentPoints = view === 'ear' ? earPoints : facePoints;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center min-h-[500px]">
+      {/* Left Side: The Map */}
+      <div className="relative order-2 md:order-1 flex flex-col items-center">
+        {/* Toggle View */}
+        <div className="flex gap-4 mb-8 bg-brand-surface p-1 rounded-full border border-white/5">
+          <button 
+            onClick={() => setView('ear')}
+            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${view === 'ear' ? 'bg-brand-primary text-brand-dark' : 'text-slate-400 hover:text-white'}`}
+          >
+            אוזן
+          </button>
+          <button 
+             onClick={() => setView('face')}
+             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${view === 'face' ? 'bg-brand-primary text-brand-dark' : 'text-slate-400 hover:text-white'}`}
+          >
+            פנים
+          </button>
+        </div>
+
+        {/* The SVG Illustration */}
+        <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px]">
+           <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl">
+             <defs>
+               <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                 <stop offset="0%" stopColor="#d4b585" stopOpacity="0.8" />
+                 <stop offset="100%" stopColor="#c19f6e" stopOpacity="0.4" />
+               </linearGradient>
+               <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                 <feGaussianBlur stdDeviation="2" result="blur" />
+                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
+               </filter>
+             </defs>
+
+             {/* Outlines */}
+             {view === 'ear' ? (
+               <motion.path 
+                 initial={{ pathLength: 0, opacity: 0 }}
+                 animate={{ pathLength: 1, opacity: 1 }}
+                 transition={{ duration: 1.5, ease: "easeInOut" }}
+                 d="M 45 90 C 25 90 20 70 20 50 C 20 20 40 5 60 5 C 85 5 90 25 90 45 C 90 70 75 90 45 90 Z M 60 15 C 75 15 80 30 80 45 C 80 60 70 75 50 75"
+                 fill="none"
+                 stroke="url(#goldGradient)"
+                 strokeWidth="0.8"
+                 strokeLinecap="round"
+               />
+             ) : (
+               <motion.path 
+                 initial={{ pathLength: 0, opacity: 0 }}
+                 animate={{ pathLength: 1, opacity: 1 }}
+                 transition={{ duration: 1.5, ease: "easeInOut" }}
+                 d="M 20 20 Q 50 20 80 20 Q 90 50 80 80 Q 50 100 20 80 Q 10 50 20 20 M 40 55 Q 50 60 60 55 M 40 75 Q 50 80 60 75"
+                 fill="none"
+                 stroke="url(#goldGradient)"
+                 strokeWidth="0.8"
+                 strokeLinecap="round"
+               />
+             )}
+
+             {/* Hotspots */}
+             {currentPoints.map((point) => {
+               const service = findService(point.keyword);
+               // If no service found for this keyword, don't show point (or show disabled)
+               if (!service) return null;
+
+               const isSelected = selectedService?.id === service.id;
+
+               return (
+                 <g key={point.id} onClick={() => onSelect(service)} className="cursor-pointer group">
+                   {/* Pulse Effect */}
+                   <motion.circle
+                     cx={point.x} cy={point.y}
+                     r="3"
+                     className="fill-brand-primary/20"
+                     animate={{ r: [3, 8, 3], opacity: [0.5, 0, 0.5] }}
+                     transition={{ duration: 2, repeat: Infinity }}
+                   />
+                   {/* Main Dot */}
+                   <circle 
+                     cx={point.x} cy={point.y} 
+                     r={isSelected ? "2.5" : "1.5"} 
+                     className={`transition-all duration-300 ${isSelected ? 'fill-brand-primary' : 'fill-white group-hover:fill-brand-primary'}`}
+                   />
+                   
+                   {/* Label Line */}
+                   <motion.line
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      x1={point.x} y1={point.y}
+                      x2={point.x > 50 ? point.x + 10 : point.x - 10}
+                      y2={point.y}
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="0.2"
+                   />
+                   
+                   {/* Label Text */}
+                   <text 
+                     x={point.x > 50 ? point.x + 12 : point.x - 12} 
+                     y={point.y + 1} 
+                     fontSize="3" 
+                     className={`font-sans font-light ${isSelected ? 'fill-brand-primary' : 'fill-slate-400 group-hover:fill-white'}`}
+                     textAnchor={point.x > 50 ? "start" : "end"}
+                   >
+                     {point.label}
+                   </text>
+                 </g>
+               );
+             })}
+           </svg>
+        </div>
+      </div>
+
+      {/* Right Side: Service Info / List Fallback */}
+      <div className="order-1 md:order-2 h-full">
+        <h3 className="text-2xl font-serif text-white mb-6 border-r-2 border-brand-primary pr-4">
+           {selectedService ? 'הבחירה שלך' : 'בחר אזור לניקוב'}
+        </h3>
+        
+        <AnimatePresence mode="wait">
+          {selectedService ? (
+            <motion.div
+              key="selected"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <Card className="bg-brand-surface border-brand-primary/30 relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                 
+                 <div className="relative z-10">
+                   <div className="flex justify-between items-start mb-4">
+                     <h2 className="text-3xl font-medium text-white">{selectedService.name}</h2>
+                     <div className="text-3xl font-serif text-brand-primary">₪{selectedService.price}</div>
+                   </div>
+                   
+                   <div className="space-y-4 mb-8">
+                      <div className="flex items-center gap-3 text-slate-400">
+                        <Clock className="w-4 h-4 text-brand-primary" />
+                        <span>משך טיפול: <span className="text-white">{selectedService.duration_minutes} דקות</span></span>
+                      </div>
+                      <div className="flex items-center gap-3 text-slate-400">
+                        <Sparkles className="w-4 h-4 text-brand-primary" />
+                        <span>רמת כאב: <span className="text-white">●●○○○ (קל)</span></span>
+                      </div>
+                      <p className="text-slate-400 text-sm leading-relaxed border-t border-white/5 pt-4">
+                        {selectedService.description}
+                      </p>
+                   </div>
+                   
+                   <div className="flex gap-3">
+                     <button onClick={() => onSelect(null as any)} className="text-sm text-slate-500 hover:text-white underline">
+                        בחר שירות אחר
+                     </button>
+                   </div>
+                 </div>
+              </Card>
+            </motion.div>
+          ) : (
+             <motion.div
+              key="list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
+             >
+                <p className="text-slate-500 text-sm mb-4">
+                   לחץ על האזורים במפה או בחר מהרשימה המלאה:
+                </p>
+                {services.filter(s => view === 'ear' ? s.category === 'Ear' : s.category !== 'Ear').map((service) => (
+                   <div 
+                      key={service.id}
+                      onClick={() => onSelect(service)}
+                      className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-brand-primary/20 cursor-pointer transition-all group"
+                   >
+                      <div className="flex items-center gap-4">
+                         <div className="w-10 h-10 rounded-lg bg-brand-dark overflow-hidden">
+                            <img src={service.image_url} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100" />
+                         </div>
+                         <div>
+                            <div className="text-white font-medium text-sm group-hover:text-brand-primary transition-colors">{service.name}</div>
+                            <div className="text-xs text-slate-500">{service.duration_minutes} דק'</div>
+                         </div>
+                      </div>
+                      <div className="text-brand-primary/70 font-serif">₪{service.price}</div>
+                   </div>
+                ))}
+             </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+
+// --- Original Sub-Components ---
 
 const Stepper = ({ step }: { step: number }) => (
   <div className="flex items-center justify-center gap-4 mb-8">
@@ -21,47 +241,43 @@ const Stepper = ({ step }: { step: number }) => (
   </div>
 );
 
-const ServiceSelection = ({ services, selectedService, onSelect }: any) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {services.map((service: Service) => (
-      <motion.div
-        key={service.id}
-        whileHover={{ y: -4 }}
-        onClick={() => onSelect(service)}
-        className={`cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 group ${selectedService?.id === service.id ? 'border-brand-primary ring-1 ring-brand-primary/30 bg-brand-surface' : 'border-white/5 bg-brand-surface/50 hover:bg-brand-surface'}`}
-      >
-        <div className="aspect-video w-full overflow-hidden relative">
-           <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors z-10"></div>
-           <img src={service.image_url} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" alt={service.name} />
-        </div>
-        <div className="p-5">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-medium text-lg text-white">{service.name}</h3>
-            <span className="text-brand-primary font-serif">₪{service.price}</span>
-          </div>
-          <div className="flex items-center text-xs text-slate-500 gap-2 mt-3">
-            <Clock className="w-3 h-3" />
-            <span>{service.duration_minutes} דקות</span>
-          </div>
-        </div>
-      </motion.div>
-    ))}
-  </div>
-);
-
 const DateTimeSelection = ({ 
   selectedDate, 
   setSelectedDate, 
   selectedTime, 
   setSelectedTime, 
   availableSlots,
-  loadingSlots 
+  loadingSlots,
+  workingHours
 }: any) => {
-  const dates = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d;
-  });
+  
+  // Logic to generate valid dates based on Settings
+  const generateAvailableDates = () => {
+      const dates = [];
+      let currentDate = new Date();
+      let daysFound = 0;
+      
+      // Safety break after checking 60 days to prevent infinite loops if studio is closed for months
+      let safetyCounter = 0;
+
+      while (daysFound < 14 && safetyCounter < 60) {
+          const dayIndex = currentDate.getDay().toString();
+          // Check if explicit setting exists, or use default fallback if somehow missing
+          const dayConfig = workingHours?.[dayIndex] || DEFAULT_WORKING_HOURS[dayIndex];
+
+          if (dayConfig && dayConfig.isOpen) {
+              dates.push(new Date(currentDate));
+              daysFound++;
+          }
+          
+          // Move to next day
+          currentDate.setDate(currentDate.getDate() + 1);
+          safetyCounter++;
+      }
+      return dates;
+  };
+
+  const dates = generateAvailableDates();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -127,10 +343,10 @@ const DateTimeSelection = ({
                     onClick={() => setSelectedTime(slot.time)}
                     className={`py-3 text-sm rounded-lg border transition-all relative overflow-hidden ${
                       !isAvailable 
-                       ? 'bg-white/[0.02] border-transparent text-slate-600 cursor-not-allowed opacity-60' // Unavailable Style
+                       ? 'bg-white/[0.02] border-transparent text-slate-600 cursor-not-allowed opacity-60' 
                        : isSelected
-                          ? 'border-brand-primary bg-brand-primary/10 text-brand-primary font-medium shadow-[0_0_15px_rgba(212,181,133,0.15)]' // Selected Style
-                          : 'border-white/5 text-slate-300 hover:border-brand-primary/30 hover:bg-white/5' // Default Available Style
+                          ? 'border-brand-primary bg-brand-primary/10 text-brand-primary font-medium shadow-[0_0_15px_rgba(212,181,133,0.15)]' 
+                          : 'border-white/5 text-slate-300 hover:border-brand-primary/30 hover:bg-white/5' 
                     }`}
                   >
                     <span className={!isAvailable ? 'line-through decoration-slate-600/50' : ''}>
@@ -254,7 +470,6 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
         window.open(getWhatsappLink(), '_blank');
     };
 
-    // Client-side Mailto Fallback
     const handleManualEmail = () => {
         const subject = `אישור תור ל${selectedService?.name}`;
         const body = `היי ${clientDetails.name},\n\nהתור שלך נקבע בהצלחה!\nשירות: ${selectedService?.name}\nתאריך: ${selectedDate?.toLocaleDateString()}\nשעה: ${selectedTime}\n\nנתראה בסטודיו!\nיובל סטודיו`;
@@ -268,7 +483,6 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
                 <h3 className="text-2xl font-serif text-white mb-2">מבצע רישום במערכת...</h3>
                 <p className="text-slate-500 text-sm">שולח אישור למייל ולוואטסאפ</p>
                 
-                {/* Visual Fake Progress */}
                 <div className="mt-8 space-y-3 w-full max-w-xs text-xs text-slate-500">
                      <div className="flex justify-between items-center">
                          <span>מייל ללקוח...</span>
@@ -299,7 +513,6 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
             </p>
             
             <div className="flex flex-col gap-3 w-full max-w-sm mx-auto">
-                 {/* 1. Update Studio */}
                  <Button onClick={handleSendWhatsapp} disabled={!studioPhone} className="bg-[#25D366] text-white hover:bg-[#128C7E] border-transparent w-full py-4 shadow-none">
                      <div className="flex items-center justify-center w-full gap-2">
                         <MessageCircle className="w-5 h-5" /> 
@@ -307,7 +520,6 @@ const SuccessView = ({ clientDetails, selectedService, selectedDate, selectedTim
                      </div>
                  </Button>
 
-                 {/* 2. Manual Email Fallback */}
                  <Button onClick={handleManualEmail} variant="secondary" className="w-full py-4 border-white/5 bg-white/5">
                      <div className="flex items-center justify-center w-full gap-2">
                         <Mail className="w-5 h-5" /> 
@@ -330,6 +542,7 @@ const Booking: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [settings, setSettings] = useState<StudioSettings | null>(null);
   
   // Form State
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -341,15 +554,20 @@ const Booking: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Scroll to top on step change
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
 
   useEffect(() => {
-    api.getServices().then(data => {
-      setServices(data);
-      setLoading(false);
-    });
+    const fetchData = async () => {
+        const [loadedServices, loadedSettings] = await Promise.all([
+            api.getServices(),
+            api.getSettings()
+        ]);
+        setServices(loadedServices);
+        setSettings(loadedSettings);
+        setLoading(false);
+    };
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -360,7 +578,6 @@ const Booking: React.FC = () => {
         const slots = await api.getAvailability(selectedDate);
         setAvailableSlots(slots);
         setLoadingSlots(false);
-        // Scroll to time selection after date pick
         setTimeout(() => {
           document.getElementById('time-selection-area')?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -371,7 +588,17 @@ const Booking: React.FC = () => {
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
-    setStep(BookingStep.SELECT_DATE);
+    // Don't auto advance, let user confirm selection in map view
+  };
+
+  const handleNext = () => {
+     if (step === BookingStep.SELECT_SERVICE && selectedService) setStep(BookingStep.SELECT_DATE);
+     else if (step === BookingStep.SELECT_DATE && selectedDate && selectedTime) setStep(BookingStep.DETAILS);
+     else if (step === BookingStep.DETAILS) {
+       if (validateForm()) {
+         submitBooking();
+       }
+     }
   };
 
   const validateForm = () => {
@@ -387,15 +614,6 @@ const Booking: React.FC = () => {
     });
 
     return isEmailValid && isPhoneValid && clientDetails.name.length > 0;
-  };
-
-  const handleNext = () => {
-     if (step === BookingStep.SELECT_DATE && selectedDate && selectedTime) setStep(BookingStep.DETAILS);
-     else if (step === BookingStep.DETAILS) {
-       if (validateForm()) {
-         submitBooking();
-       }
-     }
   };
 
   const handleBack = () => {
@@ -440,7 +658,7 @@ const Booking: React.FC = () => {
           ) : (
             <>
               {step === 1 && (
-                <ServiceSelection 
+                <AnatomyMap 
                   services={services} 
                   selectedService={selectedService} 
                   onSelect={handleServiceSelect} 
@@ -454,6 +672,7 @@ const Booking: React.FC = () => {
                   setSelectedTime={setSelectedTime} 
                   availableSlots={availableSlots} 
                   loadingSlots={loadingSlots}
+                  workingHours={settings?.working_hours}
                 />
               )}
               {step === 3 && (
@@ -481,14 +700,16 @@ const Booking: React.FC = () => {
              </button>
            ) : <div></div>}
            
-           {/* Static Next Button for Step 3 */}
            {step === 3 && (
-             <Button 
-               onClick={handleNext} 
-               isLoading={isSubmitting}
-               className="w-40"
-             >
+             <Button onClick={handleNext} isLoading={isSubmitting} className="w-40">
                אשר
+             </Button>
+           )}
+           
+           {/* Step 1 Next Button (Only if service selected) */}
+           {step === 1 && selectedService && (
+             <Button onClick={handleNext} className="w-40 flex items-center gap-2">
+                המשך <ArrowLeft className="w-4 h-4" />
              </Button>
            )}
         </div>
