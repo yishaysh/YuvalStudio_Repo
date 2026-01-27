@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle, Mail, Smartphone, AlertCircle } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
-import { api } from '../services/mockApi';
+import { api, TimeSlot } from '../services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { Button, Card, Input } from '../components/ui';
 
@@ -110,25 +110,35 @@ const DateTimeSelection = ({
                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 text-slate-500">
                   <AlertCircle className="w-5 h-5" />
                </div>
-               לא נמצאו תורים פנויים לתאריך זה.
+               לא נמצאו משמרות לתאריך זה.
                <br />
-               אנא בחר תאריך אחר.
+               ייתכן והסטודיו סגור ביום זה.
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {availableSlots.map((slot: string) => (
-                <button
-                  key={slot}
-                  onClick={() => setSelectedTime(slot)}
-                  className={`py-3 text-sm rounded-lg border transition-all ${
-                    selectedTime === slot
-                       ? 'border-brand-primary bg-brand-primary/10 text-brand-primary font-medium shadow-[0_0_15px_rgba(212,181,133,0.15)]'
-                    : 'border-white/5 text-slate-300 hover:border-brand-primary/30 hover:bg-white/5'
-                  }`}
-                >
-                  {slot}
-                </button>
-              ))}
+              {availableSlots.map((slot: TimeSlot) => {
+                const isSelected = selectedTime === slot.time;
+                const isAvailable = slot.available;
+                
+                return (
+                  <button
+                    key={slot.time}
+                    disabled={!isAvailable}
+                    onClick={() => setSelectedTime(slot.time)}
+                    className={`py-3 text-sm rounded-lg border transition-all relative overflow-hidden ${
+                      !isAvailable 
+                       ? 'bg-white/[0.02] border-transparent text-slate-600 cursor-not-allowed opacity-60' // Unavailable Style
+                       : isSelected
+                          ? 'border-brand-primary bg-brand-primary/10 text-brand-primary font-medium shadow-[0_0_15px_rgba(212,181,133,0.15)]' // Selected Style
+                          : 'border-white/5 text-slate-300 hover:border-brand-primary/30 hover:bg-white/5' // Default Available Style
+                    }`}
+                  >
+                    <span className={!isAvailable ? 'line-through decoration-slate-600/50' : ''}>
+                        {slot.time}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </Card>
@@ -325,7 +335,7 @@ const Booking: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [clientDetails, setClientDetails] = useState({ name: '', email: '', phone: '', notes: '' });
   const [validationErrors, setValidationErrors] = useState({ email: false, phone: false });
   const [isSubmitting, setIsSubmitting] = useState(false);

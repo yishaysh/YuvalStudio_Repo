@@ -2,6 +2,11 @@ import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHL
 import { Appointment, Service, StudioSettings } from '../types';
 import { supabase } from './supabaseClient';
 
+export interface TimeSlot {
+    time: string;
+    available: boolean;
+}
+
 export const api = {
   // --- Settings ---
   getSettings: async (): Promise<StudioSettings> => {
@@ -100,7 +105,7 @@ export const api = {
   },
 
   // --- Appointments ---
-  getAvailability: async (date: Date): Promise<string[]> => {
+  getAvailability: async (date: Date): Promise<TimeSlot[]> => {
     // 1. Fetch Settings
     let workingHours = DEFAULT_WORKING_HOURS;
     if (supabase) {
@@ -132,9 +137,12 @@ export const api = {
     // Sort slots just in case ranges were out of order
     allSlots.sort();
 
-    if (!supabase) return allSlots;
+    // Map to object structure
+    const slotsWithStatus = allSlots.map(time => ({ time, available: true }));
 
-    // 4. Filter against existing appointments (Range Check)
+    if (!supabase) return slotsWithStatus;
+
+    // 4. Check against existing appointments (Range Check)
     try {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
@@ -157,25 +165,22 @@ export const api = {
           end: new Date(app.end_time).getTime()
       })) || [];
 
-      // Filter slots: Remove any slot that falls inside a busy range
-      return allSlots.filter(slotStr => {
-          const [h, m] = slotStr.split(':').map(Number);
+      // Update availability status
+      return slotsWithStatus.map(slot => {
+          const [h, m] = slot.time.split(':').map(Number);
           const slotDate = new Date(date);
           slotDate.setHours(h, m, 0, 0);
           const slotTime = slotDate.getTime();
 
           // A slot is unavailable if its start time is >= existing start time AND < existing end time
-          // Example: Appt 11:30-12:00. 
-          // Slot 11:30 -> (11:30 >= 11:30 && 11:30 < 12:00) -> TRUE (Busy)
-          // Slot 12:00 -> (12:00 >= 11:30 && 12:00 < 12:00) -> FALSE (Free)
           const isBusy = busyRanges.some(range => slotTime >= range.start && slotTime < range.end);
           
-          return !isBusy;
+          return { ...slot, available: !isBusy };
       });
 
     } catch (err) {
       console.error('Error fetching availability:', err);
-      return allSlots;
+      return slotsWithStatus;
     }
   },
 
