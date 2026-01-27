@@ -20,6 +20,7 @@ export interface Appointment {
   start_time: string; // ISO String
   status: 'pending' | 'confirmed' | 'cancelled';
   notes?: string;
+  signature?: string; // Base64 string of the signature
 }
 
 export interface DayAvailability {
@@ -63,5 +64,6 @@ export enum BookingStep {
   SELECT_SERVICE = 1,
   SELECT_DATE = 2,
   DETAILS = 3,
-  CONFIRMATION = 4
+  CONSENT = 4,
+  CONFIRMATION = 5
 }
