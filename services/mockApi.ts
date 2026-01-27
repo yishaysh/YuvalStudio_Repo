@@ -1,4 +1,3 @@
-
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings } from '../types';
 import { supabase } from './supabaseClient';
@@ -135,30 +134,44 @@ export const api = {
 
     if (!supabase) return allSlots;
 
-    // 4. Filter against existing appointments
+    // 4. Filter against existing appointments (Range Check)
     try {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
+      // Fetch Start AND End time
       const { data: existingAppointments, error } = await supabase
         .from('appointments')
-        .select('start_time')
+        .select('start_time, end_time')
         .gte('start_time', startOfDay.toISOString())
         .lte('start_time', endOfDay.toISOString())
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled'); // Includes 'pending' and 'confirmed'
 
       if (error) throw error;
 
-      const busyTimes = new Set(
-        existingAppointments?.map(app => {
-          const d = new Date(app.start_time);
-          return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false });
-        })
-      );
+      // Convert existing appointments to timestamp ranges
+      const busyRanges = existingAppointments?.map(app => ({
+          start: new Date(app.start_time).getTime(),
+          end: new Date(app.end_time).getTime()
+      })) || [];
 
-      return allSlots.filter(slot => !busyTimes.has(slot));
+      // Filter slots: Remove any slot that falls inside a busy range
+      return allSlots.filter(slotStr => {
+          const [h, m] = slotStr.split(':').map(Number);
+          const slotDate = new Date(date);
+          slotDate.setHours(h, m, 0, 0);
+          const slotTime = slotDate.getTime();
+
+          // A slot is unavailable if its start time is >= existing start time AND < existing end time
+          // Example: Appt 11:30-12:00. 
+          // Slot 11:30 -> (11:30 >= 11:30 && 11:30 < 12:00) -> TRUE (Busy)
+          // Slot 12:00 -> (12:00 >= 11:30 && 12:00 < 12:00) -> FALSE (Free)
+          const isBusy = busyRanges.some(range => slotTime >= range.start && slotTime < range.end);
+          
+          return !isBusy;
+      });
 
     } catch (err) {
       console.error('Error fetching availability:', err);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle, Mail, Smartphone } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, MessageCircle, Mail, Smartphone, AlertCircle } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
 import { api } from '../services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
@@ -104,6 +104,15 @@ const DateTimeSelection = ({
           ) : loadingSlots ? (
              <div className="h-64 flex items-center justify-center text-brand-primary">
               <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : availableSlots.length === 0 ? (
+            <div className="h-64 flex flex-col items-center justify-center text-slate-400 text-sm">
+               <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 text-slate-500">
+                  <AlertCircle className="w-5 h-5" />
+               </div>
+               לא נמצאו תורים פנויים לתאריך זה.
+               <br />
+               אנא בחר תאריך אחר.
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
