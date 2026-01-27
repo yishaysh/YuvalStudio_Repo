@@ -574,13 +574,16 @@ const Booking: React.FC = () => {
     if (selectedDate) {
       setAvailableSlots([]); 
       setLoadingSlots(true);
+      
+      // Fix: Scroll immediately to make UX responsive
+      setTimeout(() => {
+        document.getElementById('time-selection-area')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+
       const loadSlots = async () => {
         const slots = await api.getAvailability(selectedDate);
         setAvailableSlots(slots);
         setLoadingSlots(false);
-        setTimeout(() => {
-          document.getElementById('time-selection-area')?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
       };
       loadSlots();
     }
