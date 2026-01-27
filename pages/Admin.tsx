@@ -177,30 +177,37 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
 
     useEffect(() => {
         if (filterId && rowRefs.current[filterId]) {
-            // Scroll into view with a slight delay to ensure render is complete
-            // Increased timeout to 500ms to allow the page to scroll to top first
             setTimeout(() => {
                 rowRefs.current[filterId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 500);
         }
     }, [filterId]);
 
-    const sendWhatsapp = (apt: any, type: 'confirm' | 'reminder') => {
+    const sendWhatsapp = (apt: any, type: 'status_update' | 'reminder') => {
         let msg = '';
         const date = new Date(apt.start_time).toLocaleDateString('he-IL');
         const time = new Date(apt.start_time).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'});
         // Use dynamic studio address from props
         const address = studioAddress || DEFAULT_STUDIO_DETAILS.address;
         
-        // Changed to female gender "שמחה"
-        if (type === 'confirm') {
-            msg = `היי ${apt.client_name}, שמחה לבשר שהתור שלך ל${apt.service_name || 'פירסינג'} בסטודיו של יובל אושר! 🗓️ תאריך: ${date} ⌚ שעה: ${time} 📍 כתובת: ${address}. נתראה!`;
+        if (type === 'reminder') {
+             msg = `היי ${apt.client_name}, תזכורת לתור בסטודיו של יובל מחר ב-${time}. אם יש שינוי אנא עדכן בהקדם.`;
         } else {
-            msg = `היי ${apt.client_name}, תזכורת לתור בסטודיו של יובל מחר ב-${time}. אם יש שינוי אנא עדכן בהקדם.`;
+             // Status based messages logic
+             switch (apt.status) {
+                case 'confirmed':
+                     msg = `היי ${apt.client_name}, שמחה לבשר שהתור שלך ל${apt.service_name || 'פירסינג'} בסטודיו של יובל אושר! 🗓️ תאריך: ${date} ⌚ שעה: ${time} 📍 כתובת: ${address}. נתראה!`;
+                     break;
+                case 'cancelled':
+                     msg = `היי ${apt.client_name}, מעדכנים שהתור שלך לסטודיו של יובל בתאריך ${date} בוטל. לקביעה מחדש ניתן להיכנס לאתר.`;
+                     break;
+                default: // pending
+                     msg = `היי ${apt.client_name}, קיבלנו את בקשתך לתור בסטודיו של יובל בתאריך ${date}. נעדכן ברגע שהתור יאושר סופית.`;
+             }
         }
         
         const phone = apt.client_phone.startsWith('0') ? `972${apt.client_phone.substring(1)}` : apt.client_phone;
-        const cleanPhone = phone.replace(/-/g, '');
+        const cleanPhone = phone.replace(/\D/g, '');
         
         const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
         window.open(url, '_blank');
@@ -272,12 +279,27 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
                                 <div className="flex items-center justify-end gap-2">
                                     {/* Whatsapp Actions */}
                                     <div className="flex bg-white/5 rounded-lg mr-2">
-                                        <button onClick={() => sendWhatsapp(apt, 'confirm')} className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-r-lg border-l border-white/5 transition-colors" title="שלח אישור הזמנה">
+                                        <button 
+                                            onClick={() => sendWhatsapp(apt, 'status_update')} 
+                                            className={`p-2 transition-colors ${
+                                                apt.status === 'confirmed' 
+                                                    ? 'rounded-r-lg border-l border-white/5 text-emerald-400 hover:bg-emerald-500/20' 
+                                                    : 'rounded-lg ' + (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
+                                            }`} 
+                                            title={apt.status === 'cancelled' ? "שלח הודעת ביטול" : "שלח הודעת סטטוס"}
+                                        >
                                             <Send className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => sendWhatsapp(apt, 'reminder')} className="p-2 text-slate-400 hover:bg-white/10 rounded-l-lg transition-colors" title="שלח תזכורת">
-                                            <Clock className="w-4 h-4" />
-                                        </button>
+                                        
+                                        {apt.status === 'confirmed' && (
+                                            <button 
+                                                onClick={() => sendWhatsapp(apt, 'reminder')} 
+                                                className="p-2 text-slate-400 hover:bg-white/10 rounded-l-lg transition-colors" 
+                                                title="שלח תזכורת"
+                                            >
+                                                <Clock className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* Status Actions */}
@@ -469,24 +491,20 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
     const validateSchedule = (s: StudioSettings): string | null => {
         for (let i = 0; i < 7; i++) {
             const dayKey = i.toString();
-            // Fallback to default if not in settings yet
             const day = s.working_hours[dayKey] || DEFAULT_WORKING_HOURS[dayKey];
             
             if (!day || !day.isOpen) continue;
             
-            // Check ranges
             const ranges = [...(day.ranges || [])].sort((a, b) => a.start - b.start);
             
             if (ranges.length === 0) return `יום ${days[i]} מוגדר כפתוח אך ללא שעות פעילות.`;
 
             for (let j = 0; j < ranges.length; j++) {
                 const range = ranges[j];
-                // Check internal logic (Start < End)
                 if (range.start >= range.end) {
                     return `יום ${days[i]}: שעת ההתחלה חייבת להיות לפני שעת הסיום (${range.start}:00 - ${range.end}:00).`;
                 }
 
-                // Check Overlap with next
                 if (j < ranges.length - 1) {
                     const nextRange = ranges[j + 1];
                     if (range.end > nextRange.start) {
@@ -502,7 +520,6 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
         const error = validateSchedule(localSettings);
         if (error) {
             setValidationError(error);
-            // Clear error after 5 seconds
             setTimeout(() => setValidationError(null), 5000);
             return;
         }
@@ -516,7 +533,6 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
         const currentDayConfig = localSettings.working_hours[dayIndex] || DEFAULT_WORKING_HOURS[dayIndex];
         const isOpen = !currentDayConfig.isOpen;
         
-        // If opening and no ranges, add default
         let newRanges = currentDayConfig.ranges || [];
         if (isOpen && newRanges.length === 0) {
             newRanges = [{ start: 10, end: 18 }];
@@ -559,12 +575,11 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
         const currentDayConfig = localSettings.working_hours[dayIndex] || DEFAULT_WORKING_HOURS[dayIndex];
         const currentRanges = currentDayConfig.ranges || [];
         
-        // Intelligently suggest next slot
         const lastEnd = currentRanges.length > 0 ? currentRanges[currentRanges.length - 1].end : 10;
         const newStart = lastEnd < 23 ? lastEnd : 23;
         const newEnd = newStart + 1 <= 24 ? newStart + 1 : 24;
 
-        if (newStart >= 24) return; // Cannot add past midnight
+        if (newStart >= 24) return;
 
         setLocalSettings(prev => ({
             ...prev,
@@ -650,13 +665,11 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                  <div className="space-y-4">
                      {days.map((dayName, i) => {
                          const dayKey = i.toString();
-                         // Use existing settings OR fallback to default
                          const dayConfig = localSettings.working_hours[dayKey] || DEFAULT_WORKING_HOURS[dayKey];
                          
                          return (
                              <div key={i} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-transparent opacity-60'}`}>
                                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                                     {/* Day Name & Toggle */}
                                      <div className="w-full sm:w-32 flex items-center justify-between shrink-0">
                                          <span className="text-white font-medium">{dayName}</span>
                                          <button 
@@ -667,7 +680,6 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                                          </button>
                                      </div>
 
-                                     {/* Ranges */}
                                      <div className="flex-1 flex flex-wrap gap-3 items-center">
                                          {dayConfig.isOpen ? (
                                              <>
@@ -693,7 +705,6 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                                                              ))}
                                                          </select>
                                                          
-                                                         {/* Allow deleting if more than 1 range, OR even if 1 to allow clearing */}
                                                          <button 
                                                             onClick={() => removeRange(dayKey, rangeIdx)}
                                                             className="ml-1 p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
