@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, Zap, Droplets, Info } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, Droplets, Info } from 'lucide-react';
 import { Service, BookingStep } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 
 // --- Local Data Enhancements ---
-// Since the DB types are simple, we map extra visual data locally for the "Wow" factor
 const SERVICE_META: Record<string, { pain: number; healing: string }> = {
     'Ear': { pain: 3, healing: '4-8 שבועות' },
     'Face': { pain: 5, healing: '2-4 חודשים' },
@@ -114,13 +113,13 @@ const Booking: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-brand-dark pt-24 pb-12 overflow-hidden">
+    <div className="min-h-screen bg-brand-dark pt-24 pb-12">
         <div className="container mx-auto px-4 lg:px-8">
             
-            <div className="flex flex-col lg:flex-row gap-8 relative">
+            <div className="flex flex-col lg:flex-row gap-8 relative items-start">
                 
                 {/* LEFT SIDE: MAIN CONTENT */}
-                <div className="flex-1 z-10">
+                <div className="flex-1 w-full z-10">
                     <div className="mb-8">
                         <h1 className="text-4xl font-serif text-white mb-2">
                             {step === BookingStep.SELECT_SERVICE && 'בחירת טיפול'}
@@ -141,13 +140,13 @@ const Booking: React.FC = () => {
                         {step === BookingStep.SELECT_SERVICE && (
                             <motion.div 
                                 key="step1"
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
+                                exit={{ opacity: 0, y: -10 }}
                                 className="space-y-6"
                             >
                                 {/* Category Filter */}
-                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                <div className="flex gap-3 overflow-x-auto pb-2">
                                     {categories.map(cat => (
                                         <button
                                             key={cat.id}
@@ -223,14 +222,14 @@ const Booking: React.FC = () => {
                                     <h3 className="text-white font-medium flex items-center gap-2">
                                         <Calendar className="w-5 h-5 text-brand-primary"/> בחר תאריך
                                     </h3>
-                                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                                    <div className="flex gap-3 overflow-x-auto pb-4">
                                         {generateCalendarDays().map((date, i) => {
                                             const isSelected = selectedDate?.toDateString() === date.toDateString();
                                             return (
                                                 <button
                                                     key={i}
                                                     onClick={() => { setSelectedDate(date); setSelectedSlot(null); }}
-                                                    className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all ${
+                                                    className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all shrink-0 ${
                                                         isSelected 
                                                         ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' 
                                                         : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'
@@ -343,15 +342,15 @@ const Booking: React.FC = () => {
                         )}
                     </AnimatePresence>
 
-                    {/* Navigation Buttons (Desktop: Bottom Left, Mobile: Fixed Bottom) */}
+                    {/* Navigation Buttons */}
                     {step < BookingStep.CONFIRMATION && (
                         <div className="mt-8 flex items-center gap-4">
                             {step > 1 && (
                                 <button 
                                     onClick={() => setStep(step - 1)} 
-                                    className="px-6 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                                    className="px-6 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2"
                                 >
-                                    חזרה
+                                    <ArrowRight className="w-4 h-4" /> חזרה
                                 </button>
                             )}
                             <Button 
@@ -376,7 +375,7 @@ const Booking: React.FC = () => {
                 </div>
 
                 {/* RIGHT SIDE: DYNAMIC TICKET (Sticky) */}
-                <div className="hidden lg:block w-80 relative">
+                <div className="hidden lg:block w-80 relative shrink-0">
                     <div className="sticky top-28">
                         <div className="relative bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                             {/* Ticket Header */}
