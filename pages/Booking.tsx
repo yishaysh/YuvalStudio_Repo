@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, Droplets, Info } from 'lucide-react';
-import { Service, BookingStep } from '../types';
+import { Calendar, Clock, Check, Loader2, ArrowRight, Droplets, Info, Send } from 'lucide-react';
+import { Service, BookingStep, StudioSettings } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
+import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
 
 // --- Local Data Enhancements ---
 const SERVICE_META: Record<string, { pain: number; healing: string }> = {
@@ -28,15 +29,21 @@ const Booking: React.FC = () => {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   
+  // Settings State for Calendar
+  const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
+
   // Form State
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // Fetch Services
     api.getServices().then((data) => {
         setServices(data);
         setFilteredServices(data);
     });
+    // Fetch Settings for Calendar
+    api.getSettings().then(setStudioSettings);
   }, []);
 
   useEffect(() => {
@@ -60,12 +67,23 @@ const Booking: React.FC = () => {
   const generateCalendarDays = () => {
       const today = new Date();
       const days = [];
-      for(let i = 0; i < 14; i++) {
+      const workingHours = studioSettings?.working_hours || DEFAULT_WORKING_HOURS;
+
+      // Generate next 21 days to find enough open slots
+      for(let i = 0; i < 21; i++) {
           const d = new Date(today);
           d.setDate(today.getDate() + i);
-          days.push(d);
+          
+          const dayIndex = d.getDay().toString();
+          const dayConfig = workingHours[dayIndex];
+
+          // Only include days that are marked as Open
+          if (dayConfig && dayConfig.isOpen) {
+              days.push(d);
+          }
       }
-      return days;
+      // Return first 14 available days
+      return days.slice(0, 14);
   };
 
   const handleBook = async () => {
@@ -92,6 +110,24 @@ const Booking: React.FC = () => {
       }
   };
 
+  const sendConfirmationWhatsapp = () => {
+      if (!selectedService || !selectedDate || !selectedSlot) return;
+      
+      const phone = studioSettings?.studio_details.phone || DEFAULT_STUDIO_DETAILS.phone;
+      const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '972');
+      
+      const msg = `היי, קבעתי תור באתר! 👋
+      
+שם: ${formData.name}
+טיפול: ${selectedService.name}
+תאריך: ${selectedDate.toLocaleDateString('he-IL')}
+שעה: ${selectedSlot}
+
+אשמח לאישור סופי. תודה!`;
+
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   // --- Components ---
 
   const PainLevel = ({ level }: { level: number }) => (
@@ -113,7 +149,7 @@ const Booking: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-brand-dark pt-24 pb-12">
+    <div className="min-h-screen bg-brand-dark pt-24 pb-24 lg:pb-12">
         <div className="container mx-auto px-4 lg:px-8">
             
             <div className="flex flex-col lg:flex-row gap-8 relative items-start">
@@ -163,7 +199,7 @@ const Booking: React.FC = () => {
                                 </div>
 
                                 {/* Service Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20 lg:pb-0">
                                     {filteredServices.map((service) => {
                                         const meta = getMeta(service.category);
                                         const isSelected = selectedService?.id === service.id;
@@ -330,51 +366,81 @@ const Booking: React.FC = () => {
                                 <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                                     <Check className="w-10 h-10" />
                                 </div>
-                                <h2 className="text-4xl font-serif text-white mb-4">תודה רבה!</h2>
+                                <h2 className="text-4xl font-serif text-white mb-4">בקשתך התקבלה בהצלחה!</h2>
                                 <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">
-                                    התור שלך ל{selectedService?.name} נקבע בהצלחה.<br/>
-                                    שלחנו לך הודעת אישור לנייד ולמייל.
+                                    התור שלך ל{selectedService?.name} נקלט במערכת כממתין לאישור.<br/>
+                                    הסטודיו ייצור איתך קשר בהקדם לאישור סופי.
                                 </p>
-                                <Button onClick={() => window.location.href = '/'}>
-                                    חזרה לדף הבית
-                                </Button>
+                                
+                                <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-8">
+                                    <Button 
+                                        onClick={sendConfirmationWhatsapp}
+                                        className="bg-green-600 hover:bg-green-700 text-white border-none flex items-center gap-2"
+                                    >
+                                        <Send className="w-4 h-4" />
+                                        שלח אישור לסטודיו בוואטסאפ
+                                    </Button>
+                                    <Button variant="ghost" onClick={() => window.location.href = '/'}>
+                                        חזרה לדף הבית
+                                    </Button>
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
 
-                    {/* Navigation Buttons */}
-                    {step < BookingStep.CONFIRMATION && (
-                        <div className="mt-8 flex items-center gap-4">
-                            {step > 1 && (
-                                <button 
-                                    onClick={() => setStep(step - 1)} 
-                                    className="px-6 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2"
-                                >
-                                    <ArrowRight className="w-4 h-4" /> חזרה
-                                </button>
-                            )}
-                            <Button 
-                                onClick={() => {
-                                    if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.SELECT_DATE);
-                                    else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
-                                    else if(step === BookingStep.DETAILS) handleBook();
-                                }}
-                                disabled={
-                                    (step === BookingStep.SELECT_SERVICE && !selectedService) ||
-                                    (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
-                                    (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
-                                    isSubmitting
-                                }
-                                isLoading={isSubmitting}
-                                className="flex-1 md:flex-none md:min-w-[200px]"
-                            >
-                                {step === BookingStep.DETAILS ? 'אשר וקבע תור' : 'המשך'}
-                            </Button>
-                        </div>
+                    {/* Floating Action Button (Steps 1, 2, 3) */}
+                    <AnimatePresence>
+                    {step < BookingStep.CONFIRMATION && selectedService && (
+                         <motion.div 
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            className="fixed bottom-0 left-0 right-0 p-4 bg-brand-dark/95 backdrop-blur-lg border-t border-white/10 z-50 flex justify-center shadow-2xl"
+                         >
+                             <div className="w-full max-w-4xl flex items-center justify-between gap-4">
+                                 <div className="hidden md:flex flex-col">
+                                     <span className="text-xs text-slate-400">סה"כ לתשלום</span>
+                                     <span className="text-xl font-serif text-brand-primary">₪{selectedService.price}</span>
+                                 </div>
+                                 
+                                 {step > 1 && (
+                                     <Button 
+                                        variant="ghost" 
+                                        onClick={() => setStep(step - 1)}
+                                        className="shrink-0"
+                                     >
+                                         חזרה
+                                     </Button>
+                                 )}
+
+                                 <Button 
+                                     onClick={() => {
+                                         if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.SELECT_DATE);
+                                         else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
+                                         else if(step === BookingStep.DETAILS) handleBook();
+                                     }}
+                                     disabled={
+                                         (step === BookingStep.SELECT_SERVICE && !selectedService) ||
+                                         (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
+                                         (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
+                                         isSubmitting
+                                     }
+                                     isLoading={isSubmitting}
+                                     className="w-full md:w-auto md:min-w-[250px] shadow-brand-primary/20"
+                                 >
+                                     <div className="flex items-center gap-2">
+                                         {step === BookingStep.DETAILS ? 'אשר וקבע תור' : 'המשך לשלב הבא'}
+                                         {step < BookingStep.DETAILS && <ArrowRight className="w-4 h-4" />}
+                                     </div>
+                                 </Button>
+                             </div>
+                         </motion.div>
                     )}
+                    </AnimatePresence>
+
                 </div>
 
-                {/* RIGHT SIDE: DYNAMIC TICKET (Sticky) */}
+                {/* RIGHT SIDE: DYNAMIC TICKET (Sticky - Desktop Only) */}
                 <div className="hidden lg:block w-80 relative shrink-0">
                     <div className="sticky top-28">
                         <div className="relative bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
