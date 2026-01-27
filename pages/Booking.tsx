@@ -110,7 +110,7 @@ const DateTimeSelection = ({
                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 text-slate-500">
                   <AlertCircle className="w-5 h-5" />
                </div>
-               לא נמצאו משמרות לתאריך זה.
+               לא נמצאו תורים פתוחים לתאריך זה.
                <br />
                ייתכן והסטודיו סגור ביום זה.
             </div>
