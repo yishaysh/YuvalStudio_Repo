@@ -4,11 +4,21 @@ import { Card, Button, Input, ConfirmationModal } from '../components/ui';
 import { Appointment, Service, StudioSettings, DaySchedule, TimeRange } from '../types';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } from '../constants';
 import { 
-  Activity, Calendar, DollarSign, Users, 
+  Activity, Calendar as CalendarIcon, DollarSign, Users, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, MessageCircle, Settings as SettingsIcon, Edit2, Send, Save, Power, AlertCircle, Filter, MapPin, Phone
+  Trash2, Image as ImageIcon, MessageCircle, Settings as SettingsIcon, Edit2, Send, Save, Power, AlertCircle, Filter, MapPin, Phone, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Helper Functions for Calendar ---
+const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+const isToday = (date: Date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+};
 
 // --- Tab Components ---
 
@@ -56,7 +66,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
         </Card>
         <Card className="flex items-center gap-4 border-l-4 border-l-brand-secondary">
           <div className="w-12 h-12 rounded-full bg-brand-surface border border-white/5 flex items-center justify-center text-slate-400">
-            <Calendar className="w-6 h-6" />
+            <CalendarIcon className="w-6 h-6" />
           </div>
           <div>
             <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">תורים החודש</p>
@@ -170,7 +180,131 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
   );
 }
 
-// 2. APPOINTMENTS TAB
+// 2. CALENDAR TAB
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress }: any) => {
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+    const today = new Date();
+
+    const appointmentsByDay = appointments.reduce((acc: any, apt: any) => {
+        const date = new Date(apt.start_time);
+        if (date.getMonth() === month && date.getFullYear() === year) {
+            const day = date.getDate();
+            if (!acc[day]) acc[day] = [];
+            acc[day].push(apt);
+        }
+        return acc;
+    }, {});
+
+    const nextMonth = () => setCurrentMonth(new Date(year, month + 1));
+    const prevMonth = () => setCurrentMonth(new Date(year, month - 1));
+
+    const selectedAppointments = selectedDay ? appointmentsByDay[selectedDay] || [] : [];
+
+    const weekDays = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+
+    return (
+        <div className="space-y-8">
+            <Card className="p-6">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-serif text-white">
+                        {currentMonth.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+                    </h3>
+                    <div className="flex gap-2">
+                        <button onClick={prevMonth} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                        <button onClick={nextMonth} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-7 gap-px bg-white/5 rounded-xl overflow-hidden border border-white/5">
+                    {weekDays.map(day => (
+                        <div key={day} className="bg-brand-dark py-4 text-center text-xs font-medium text-slate-500 uppercase tracking-widest border-b border-white/5">
+                            {day}
+                        </div>
+                    ))}
+                    
+                    {Array.from({ length: firstDay }).map((_, i) => (
+                        <div key={`empty-${i}`} className="bg-brand-dark/20 h-24 md:h-32" />
+                    ))}
+
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const date = new Date(year, month, day);
+                        const dayAppointments = appointmentsByDay[day] || [];
+                        const hasAppointments = dayAppointments.length > 0;
+                        const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        const isActive = selectedDay === day;
+
+                        let bgColor = 'bg-brand-dark';
+                        if (hasAppointments) {
+                            bgColor = isPast ? 'bg-red-500/10' : 'bg-emerald-500/10';
+                        }
+
+                        return (
+                            <div 
+                                key={day} 
+                                onClick={() => setSelectedDay(day)}
+                                className={`h-24 md:h-32 p-2 cursor-pointer transition-all relative group border-r border-b border-white/5 ${bgColor} ${isActive ? 'ring-2 ring-brand-primary z-10' : 'hover:bg-white/[0.03]'}`}
+                            >
+                                <span className={`text-sm font-medium ${isToday(date) ? 'text-brand-primary' : 'text-slate-400'}`}>
+                                    {day}
+                                </span>
+                                {hasAppointments && (
+                                    <div className="mt-2 space-y-1">
+                                        <div className={`text-[10px] md:text-xs font-medium truncate ${isPast ? 'text-red-400/80' : 'text-emerald-400/80'}`}>
+                                            {dayAppointments.length} תורים
+                                        </div>
+                                        <div className="hidden md:block">
+                                            {dayAppointments.slice(0, 2).map((apt: any) => (
+                                                <div key={apt.id} className="text-[10px] text-slate-500 truncate">
+                                                    • {apt.client_name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </Card>
+
+            {/* Selected Day Details */}
+            <AnimatePresence mode="wait">
+                {selectedDay && (
+                    <motion.div
+                        key={`${year}-${month}-${selectedDay}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                    >
+                        <h4 className="text-xl font-medium text-white mb-4 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-brand-primary" />
+                            תורים ליום {selectedDay} ב{currentMonth.toLocaleDateString('he-IL', { month: 'long' })}
+                        </h4>
+                        <AppointmentsTab 
+                            appointments={selectedAppointments} 
+                            onStatusUpdate={onStatusUpdate} 
+                            onCancelRequest={onCancelRequest}
+                            studioAddress={studioAddress}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+// 3. APPOINTMENTS TAB
 const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
 
@@ -197,7 +331,7 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
 📅 *מחר בשעה:* ${time}
 📍 *כתובת:* ${address}
 
-מחכים לראותך!`;
+מחכים לראותך! 🙏`;
         } else {
              switch (apt.status) {
                 case 'confirmed':
@@ -210,10 +344,9 @@ const AppointmentsTab = ({ appointments, onStatusUpdate, onCancelRequest, filter
 📍 *כתובת:* ${address}
 💫 *טיפול:* ${apt.service_name || 'פירסינג'}
 
-נתראה בקרוב!`;
+נתראה בקרוב! ✨`;
                      break;
                 case 'cancelled':
-                    // Extract reason from notes if available (Format: "סיבת ביטול: X")
                     const cancelReasonMatch = apt.notes?.match(/סיבת ביטול: (.*?)(\n|$)/);
                     const reason = cancelReasonMatch ? cancelReasonMatch[1] : '';
 
@@ -231,7 +364,7 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 היי ${apt.client_name},
 קיבלנו את בקשתך לתור בסטודיו של יובל לתאריך ${date}.
 
-נעדכן ברגע שהתור יאושר סופית.`;
+נעדכן ברגע שהתור יאושר סופית. 🕊️`;
              }
         }
         
@@ -360,7 +493,7 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
     )
 }
 
-// 3. SERVICES TAB
+// 4. SERVICES TAB
 const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentService, setCurrentService] = useState<Partial<Service>>({ category: 'Ear' });
@@ -370,7 +503,6 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
     const handleSave = async () => {
         if (!currentService.name || !currentService.price) return;
         
-        // Handle Image Upload
         let imageUrl = currentService.image_url;
         if (fileInputRef.current?.files?.[0]) {
             setUploading(true);
@@ -457,7 +589,7 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
     )
 }
 
-// 4. GALLERY TAB
+// 5. GALLERY TAB
 const GalleryTab = ({ gallery, onUpload }: any) => {
     const [uploading, setUploading] = useState(false);
 
@@ -500,7 +632,6 @@ const GalleryTab = ({ gallery, onUpload }: any) => {
                      <div key={i} className="aspect-square rounded-xl overflow-hidden border border-white/5 relative group">
                          <img src={item.image_url} className="w-full h-full object-cover" alt="" />
                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                             {/* Future: Delete button */}
                          </div>
                      </div>
                  ))}
@@ -509,7 +640,7 @@ const GalleryTab = ({ gallery, onUpload }: any) => {
     )
 }
 
-// 5. SETTINGS TAB
+// 6. SETTINGS TAB
 const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdate: (s: StudioSettings) => void }) => {
     const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
     const [saving, setSaving] = useState(false);
@@ -781,17 +912,14 @@ const Admin: React.FC = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Data State
   const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
   const [settings, setSettings] = useState<StudioSettings>({ working_hours: DEFAULT_WORKING_HOURS, studio_details: DEFAULT_STUDIO_DETAILS, monthly_goals: DEFAULT_MONTHLY_GOALS });
 
-  // Filter State
   const [filteredAppointmentId, setFilteredAppointmentId] = useState<string | null>(null);
 
-  // Modal State
   const [apptToCancel, setApptToCancel] = useState<Appointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -828,13 +956,12 @@ const Admin: React.FC = () => {
 
   const handleStatusUpdate = async (id: string, status: string) => {
       await api.updateAppointmentStatus(id, status);
-      loadData(); // Refresh
+      loadData();
   };
 
   const handleConfirmCancel = async () => {
       if (!apptToCancel) return;
       
-      // Save reason to notes
       const currentNotes = apptToCancel.notes || '';
       const notesWithReason = cancelReason.trim() 
         ? `סיבת ביטול: ${cancelReason}\n${currentNotes}`
@@ -880,7 +1007,6 @@ const Admin: React.FC = () => {
   const handleViewAppointment = (id: string) => {
       setFilteredAppointmentId(id);
       setActiveTab('appointments');
-      // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -927,7 +1053,6 @@ const Admin: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-dark pt-24 pb-12">
         <div className="container mx-auto px-6">
-            {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
                 <div>
                    <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
@@ -936,7 +1061,8 @@ const Admin: React.FC = () => {
                 <div className="flex gap-2 p-1 bg-brand-surface/50 rounded-xl overflow-x-auto max-w-full">
                     {[
                         { id: 'dashboard', icon: Activity, label: 'ראשי' },
-                        { id: 'appointments', icon: Calendar, label: 'יומן תורים' },
+                        { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
+                        { id: 'appointments', icon: Filter, label: 'כל התורים' },
                         { id: 'services', icon: Edit2, label: 'שירותים' },
                         { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
                         { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
@@ -957,7 +1083,6 @@ const Admin: React.FC = () => {
                 </div>
             </div>
 
-            {/* Content Area */}
             <AnimatePresence mode="wait">
                 <motion.div
                     key={activeTab}
@@ -973,6 +1098,14 @@ const Admin: React.FC = () => {
                             onViewAppointment={handleViewAppointment}
                             settings={settings}
                             onUpdateSettings={handleUpdateSettings}
+                        />
+                    )}
+                    {activeTab === 'calendar' && (
+                        <CalendarTab 
+                            appointments={appointments}
+                            onStatusUpdate={handleStatusUpdate}
+                            onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }}
+                            studioAddress={settings.studio_details?.address}
                         />
                     )}
                     {activeTab === 'appointments' && (
@@ -998,7 +1131,6 @@ const Admin: React.FC = () => {
                 </motion.div>
             </AnimatePresence>
             
-            {/* Cancel Confirmation Modal */}
             <ConfirmationModal
                 isOpen={!!apptToCancel}
                 onClose={() => setApptToCancel(null)}
