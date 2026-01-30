@@ -6,7 +6,7 @@ import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } 
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, Users, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, MessageCircle, Settings as SettingsIcon, Edit2, Send, Save, Power, AlertCircle, Filter, MapPin, Phone, ChevronRight, ChevronLeft
+  Trash2, Image as ImageIcon, MessageCircle, Settings as SettingsIcon, Edit2, Send, Save, Power, AlertCircle, Filter, MapPin, Phone, ChevronRight, ChevronLeft, CalendarDays, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -180,8 +180,8 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
   );
 }
 
-// 2. CALENDAR TAB
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress }: any) => {
+// 2. CALENDAR TAB (REDESIGNED)
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onGoToDetails }: any) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
 
@@ -204,102 +204,227 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
     const nextMonth = () => setCurrentMonth(new Date(year, month + 1));
     const prevMonth = () => setCurrentMonth(new Date(year, month - 1));
 
-    const selectedAppointments = selectedDay ? appointmentsByDay[selectedDay] || [] : [];
+    const selectedAppointments = selectedDay ? (appointmentsByDay[selectedDay] || []).sort((a: any, b: any) => 
+        new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    ) : [];
 
     const weekDays = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 
     return (
-        <div className="space-y-8">
-            <Card className="p-6">
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-2xl font-serif text-white">
-                        {currentMonth.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-                    </h3>
-                    <div className="flex gap-2">
-                        <button onClick={prevMonth} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-                        <button onClick={nextMonth} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {/* Calendar Main View */}
+            <div className="xl:col-span-2 space-y-6">
+                <Card className="p-0 overflow-hidden bg-brand-surface/40 backdrop-blur-xl border-white/5">
+                    {/* Header */}
+                    <div className="p-6 flex items-center justify-between bg-white/[0.02] border-b border-white/5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                                <CalendarIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-serif text-white leading-none">
+                                    {currentMonth.toLocaleDateString('he-IL', { month: 'long' })}
+                                </h3>
+                                <p className="text-slate-500 text-xs mt-1 uppercase tracking-widest">{year}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={prevMonth} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl text-slate-400 transition-all active:scale-95">
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                            <button onClick={nextMonth} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl text-slate-400 transition-all active:scale-95">
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Weekdays */}
+                    <div className="grid grid-cols-7 bg-white/[0.01]">
+                        {weekDays.map(day => (
+                            <div key={day} className="py-4 text-center text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Grid */}
+                    <div className="grid grid-cols-7 gap-px bg-white/5">
+                        {Array.from({ length: firstDay }).map((_, i) => (
+                            <div key={`empty-${i}`} className="bg-brand-dark/20 h-24 sm:h-32" />
+                        ))}
+
+                        {Array.from({ length: daysInMonth }).map((_, i) => {
+                            const day = i + 1;
+                            const date = new Date(year, month, day);
+                            const dayAppointments = appointmentsByDay[day] || [];
+                            const count = dayAppointments.length;
+                            const isCurrent = isToday(date);
+                            const isActive = selectedDay === day;
+
+                            // Density visualization
+                            let indicatorColor = "bg-slate-700";
+                            if (count > 0) indicatorColor = "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]";
+                            if (count > 4) indicatorColor = "bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.4)]";
+                            if (count > 7) indicatorColor = "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]";
+
+                            return (
+                                <motion.div 
+                                    key={day} 
+                                    onClick={() => setSelectedDay(day)}
+                                    whileHover={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                                    className={`h-24 sm:h-32 p-3 cursor-pointer transition-all relative border-white/5 bg-brand-dark flex flex-col justify-between overflow-hidden ${isActive ? 'ring-2 ring-inset ring-brand-primary/50' : ''}`}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <span className={`text-sm font-medium ${isCurrent ? 'w-7 h-7 bg-brand-primary text-brand-dark rounded-full flex items-center justify-center' : (isActive ? 'text-brand-primary' : 'text-slate-400')}`}>
+                                            {day}
+                                        </span>
+                                        {count > 0 && (
+                                            <span className="text-[10px] font-bold text-slate-500">{count} תורים</span>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="space-y-1.5">
+                                        {dayAppointments.slice(0, 2).map((apt: any) => (
+                                            <div key={apt.id} className="hidden sm:block text-[10px] text-slate-500 truncate bg-white/5 px-1.5 py-0.5 rounded">
+                                                {apt.client_name}
+                                            </div>
+                                        ))}
+                                        <div className={`h-1 rounded-full w-full transition-all duration-500 ${indicatorColor}`} style={{ opacity: count > 0 ? 1 : 0.2 }} />
+                                    </div>
+
+                                    {/* Selection Overlay */}
+                                    {isActive && (
+                                        <motion.div 
+                                            layoutId="calendarSelection"
+                                            className="absolute inset-0 bg-brand-primary/5 pointer-events-none"
+                                            initial={false}
+                                        />
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </Card>
+                
+                <div className="flex gap-4 items-center px-2">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="w-2 h-2 rounded-full bg-slate-700" /> פנוי
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" /> תורים בודדים
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="w-2 h-2 rounded-full bg-brand-primary" /> עמוס
                     </div>
                 </div>
+            </div>
 
-                <div className="grid grid-cols-7 gap-px bg-white/5 rounded-xl overflow-hidden border border-white/5">
-                    {weekDays.map(day => (
-                        <div key={day} className="bg-brand-dark py-4 text-center text-xs font-medium text-slate-500 uppercase tracking-widest border-b border-white/5">
-                            {day}
-                        </div>
-                    ))}
-                    
-                    {Array.from({ length: firstDay }).map((_, i) => (
-                        <div key={`empty-${i}`} className="bg-brand-dark/20 h-24 md:h-32" />
-                    ))}
-
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const date = new Date(year, month, day);
-                        const dayAppointments = appointmentsByDay[day] || [];
-                        const hasAppointments = dayAppointments.length > 0;
-                        const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                        const isActive = selectedDay === day;
-
-                        let bgColor = 'bg-brand-dark';
-                        if (hasAppointments) {
-                            bgColor = isPast ? 'bg-red-500/10' : 'bg-emerald-500/10';
-                        }
-
-                        return (
-                            <div 
-                                key={day} 
-                                onClick={() => setSelectedDay(day)}
-                                className={`h-24 md:h-32 p-2 cursor-pointer transition-all relative group border-r border-b border-white/5 ${bgColor} ${isActive ? 'ring-2 ring-brand-primary z-10' : 'hover:bg-white/[0.03]'}`}
-                            >
-                                <span className={`text-sm font-medium ${isToday(date) ? 'text-brand-primary' : 'text-slate-400'}`}>
-                                    {day}
-                                </span>
-                                {hasAppointments && (
-                                    <div className="mt-2 space-y-1">
-                                        <div className={`text-[10px] md:text-xs font-medium truncate ${isPast ? 'text-red-400/80' : 'text-emerald-400/80'}`}>
-                                            {dayAppointments.length} תורים
-                                        </div>
-                                        <div className="hidden md:block">
-                                            {dayAppointments.slice(0, 2).map((apt: any) => (
-                                                <div key={apt.id} className="text-[10px] text-slate-500 truncate">
-                                                    • {apt.client_name}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+            {/* Selected Day Timeline */}
+            <div className="xl:col-span-1">
+                <AnimatePresence mode="wait">
+                    {selectedDay ? (
+                        <motion.div
+                            key={`${year}-${month}-${selectedDay}`}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-4 h-full flex flex-col"
+                        >
+                            <div className="flex items-end justify-between mb-2">
+                                <div>
+                                    <h4 className="text-2xl font-serif text-white">יום {selectedDay}</h4>
+                                    <p className="text-brand-primary text-sm font-medium">{currentMonth.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs text-slate-500 uppercase tracking-widest block mb-1">סה"כ תורים</span>
+                                    <span className="text-xl font-serif text-white">{selectedAppointments.length}</span>
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
-            </Card>
 
-            {/* Selected Day Details */}
-            <AnimatePresence mode="wait">
-                {selectedDay && (
-                    <motion.div
-                        key={`${year}-${month}-${selectedDay}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                    >
-                        <h4 className="text-xl font-medium text-white mb-4 flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-brand-primary" />
-                            תורים ליום {selectedDay} ב{currentMonth.toLocaleDateString('he-IL', { month: 'long' })}
-                        </h4>
-                        <AppointmentsTab 
-                            appointments={selectedAppointments} 
-                            onStatusUpdate={onStatusUpdate} 
-                            onCancelRequest={onCancelRequest}
-                            studioAddress={studioAddress}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            <Card className="flex-1 bg-brand-surface/40 backdrop-blur-xl border-white/5 p-0 overflow-hidden flex flex-col">
+                                <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">לוח זמנים יומי</span>
+                                    {selectedAppointments.length > 0 && (
+                                        <button 
+                                            onClick={() => onGoToDetails(selectedAppointments[0].id)}
+                                            className="text-[10px] text-brand-primary hover:text-white transition-colors flex items-center gap-1"
+                                        >
+                                            <ExternalLink className="w-3 h-3" /> הצג הכל בטבלה
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar max-h-[600px]">
+                                    {selectedAppointments.length > 0 ? (
+                                        <div className="relative border-r border-white/10 pr-6 space-y-8 py-2">
+                                            {selectedAppointments.map((apt: any) => {
+                                                const time = new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+                                                return (
+                                                    <div key={apt.id} className="relative group">
+                                                        {/* Dot on timeline */}
+                                                        <div className={`absolute -right-[29px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-brand-dark z-10 transition-transform group-hover:scale-125 ${
+                                                            apt.status === 'confirmed' ? 'bg-emerald-400' : (apt.status === 'cancelled' ? 'bg-red-400' : 'bg-amber-400')
+                                                        }`} />
+                                                        
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-bold text-brand-primary">{time}</span>
+                                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                                                                    apt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' : (apt.status === 'cancelled' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400')
+                                                                }`}>
+                                                                    {apt.status === 'confirmed' ? 'מאושר' : (apt.status === 'cancelled' ? 'בוטל' : 'ממתין')}
+                                                                </span>
+                                                            </div>
+                                                            <h5 className="text-white font-medium group-hover:text-brand-primary transition-colors">{apt.client_name}</h5>
+                                                            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                                                <span className="px-1.5 py-0.5 bg-white/5 rounded border border-white/5">{apt.service_name || 'פירסינג'}</span>
+                                                                <span className="text-slate-600">|</span>
+                                                                <span>₪{apt.service_price}</span>
+                                                            </div>
+                                                            
+                                                            {/* Mini Actions */}
+                                                            <div className="flex gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
+                                                                {apt.status === 'pending' && (
+                                                                    <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-white transition-all">
+                                                                        <Check className="w-3 h-3" />
+                                                                    </button>
+                                                                )}
+                                                                <button onClick={() => onCancelRequest(apt)} className="p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-slate-600 mb-4">
+                                                <CalendarDays className="w-6 h-6" />
+                                            </div>
+                                            <p className="text-slate-500 text-sm">אין תורים רשומים<br/>ליום זה</p>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="p-4 bg-white/[0.02] border-t border-white/5">
+                                    <button 
+                                        onClick={() => window.location.href = '#/booking'}
+                                        className="w-full py-2.5 text-xs font-bold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark rounded-xl transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" /> קבע תור ידני
+                                    </button>
+                                </div>
+                            </Card>
+                        </motion.div>
+                    ) : (
+                        <div className="h-full flex items-center justify-center">
+                            <p className="text-slate-600 text-sm animate-pulse">בחר יום בלוח השנה לצפייה בפרטים</p>
+                        </div>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 };
@@ -1020,7 +1145,7 @@ const Admin: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md"
+          className="w-full max-md"
         >
           <Card className="p-8 text-center">
             <div className="w-16 h-16 bg-brand-surface rounded-full flex items-center justify-center mx-auto mb-6 text-brand-primary">
@@ -1106,6 +1231,7 @@ const Admin: React.FC = () => {
                             onStatusUpdate={handleStatusUpdate}
                             onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }}
                             studioAddress={settings.studio_details?.address}
+                            onGoToDetails={handleViewAppointment}
                         />
                     )}
                     {activeTab === 'appointments' && (
