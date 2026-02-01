@@ -306,6 +306,12 @@ export const api = {
       await supabase.from('gallery').insert([{ image_url: imageUrl }]);
   },
 
+  deleteFromGallery: async (id: string) => {
+      if(!supabase) return false;
+      const { error } = await supabase.from('gallery').delete().eq('id', id);
+      return !error;
+  },
+
   // --- Storage ---
   uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
       if(!supabase) return null;

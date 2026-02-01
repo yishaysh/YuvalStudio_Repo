@@ -421,7 +421,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                             <h3 className="text-xl font-serif text-white leading-none">
                                 {currentMonth.toLocaleDateString('he-IL', { month: 'long' })}
                             </h3>
-                            <p className="text-slate-500 text-[10px] mt-1 uppercase tracking-widest">{year}</p>
+                            <p className="text-slate-500 text--[10px] mt-1 uppercase tracking-widest">{year}</p>
                         </div>
                     </div>
                     <div className="flex gap-1">
@@ -616,7 +616,7 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
 }
 
 // 5. GALLERY TAB
-const GalleryTab = ({ gallery, onUpload }: any) => {
+const GalleryTab = ({ gallery, onUpload, onDelete }: any) => {
     const [uploading, setUploading] = useState(false);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -654,10 +654,13 @@ const GalleryTab = ({ gallery, onUpload }: any) => {
              </div>
 
              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 {gallery.map((item: any, i: number) => (
-                     <div key={i} className="aspect-square rounded-xl overflow-hidden border border-white/5 relative group">
+                 {gallery.map((item: any) => (
+                     <div key={item.id} className="aspect-square rounded-xl overflow-hidden border border-white/5 relative group">
                          <img src={item.image_url} className="w-full h-full object-cover" alt="" />
-                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                             <button onClick={() => onDelete(item.id)} className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-500 transition-colors" title="מחק תמונה">
+                                 <Trash2 className="w-5 h-5" />
+                             </button>
                          </div>
                      </div>
                  ))}
@@ -1053,6 +1056,13 @@ const Admin: React.FC = () => {
       loadData();
   }
   
+  const handleDeleteGalleryImage = async (id: string) => {
+      if(window.confirm('האם אתה בטוח שברצונך למחוק תמונה זו מהגלריה?')) {
+          await api.deleteFromGallery(id);
+          loadData();
+      }
+  }
+  
   const handleUpdateSettings = async (newSettings: StudioSettings) => {
       await api.updateSettings(newSettings);
       loadData();
@@ -1180,7 +1190,7 @@ const Admin: React.FC = () => {
                             onDeleteService={handleDeleteService} 
                         />
                     )}
-                    {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} />}
+                    {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} />}
                     {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
                 </m.div>
             </AnimatePresence>
