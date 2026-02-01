@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { SectionHeading } from '../components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/mockApi';
-import { X } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const m = motion as any;
 
@@ -17,7 +17,7 @@ const STATIC_IMAGES = [
 
 const JewelryPage: React.FC = () => {
   const [images, setImages] = useState<string[]>(STATIC_IMAGES);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const loadGallery = async () => {
@@ -35,6 +35,27 @@ const JewelryPage: React.FC = () => {
     loadGallery();
   }, []);
 
+  const handleNext = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedIndex((prev) => prev === null ? null : (prev + 1) % images.length);
+  }, [images.length]);
+
+  const handlePrev = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedIndex((prev) => prev === null ? null : (prev - 1 + images.length) % images.length);
+  }, [images.length]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedIndex === null) return;
+      if (e.key === 'ArrowLeft') handleNext();
+      if (e.key === 'ArrowRight') handlePrev();
+      if (e.key === 'Escape') setSelectedIndex(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIndex, handleNext, handlePrev]);
+
   return (
     <div className="pt-24 pb-20">
       <section className="text-center mb-20 px-6">
@@ -51,7 +72,7 @@ const JewelryPage: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               className="break-inside-avoid rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group"
-              onClick={() => setSelectedImage(src)}
+              onClick={() => setSelectedIndex(i)}
               whileHover={{ y: -5 }}
             >
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors z-10" />
@@ -67,31 +88,65 @@ const JewelryPage: React.FC = () => {
 
       {/* Lightbox Modal */}
       <AnimatePresence>
-        {selectedImage && (
+        {selectedIndex !== null && (
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setSelectedImage(null)}
+            onClick={() => setSelectedIndex(null)}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md"
           >
             <button
-              onClick={() => setSelectedImage(null)}
+              onClick={() => setSelectedIndex(null)}
               className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors p-2 z-50 bg-black/20 rounded-full"
             >
               <X className="w-8 h-8" />
             </button>
 
+            {/* Navigation Buttons */}
+            {images.length > 1 && (
+                <>
+                    <button
+                        onClick={handlePrev}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white hover:bg-white/10 transition-all p-3 rounded-full hidden md:flex z-50"
+                        title="הקודם"
+                    >
+                        <ChevronRight className="w-10 h-10" />
+                    </button>
+
+                    <button
+                        onClick={handleNext}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white hover:bg-white/10 transition-all p-3 rounded-full hidden md:flex z-50"
+                        title="הבא"
+                    >
+                        <ChevronLeft className="w-10 h-10" />
+                    </button>
+                </>
+            )}
+
             <m.img
-              src={selectedImage}
+              key={selectedIndex}
+              src={images[selectedIndex]}
               alt="Full screen"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -20, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl cursor-grab active:cursor-grabbing"
               onClick={(e: any) => e.stopPropagation()} 
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={1}
+              onDragEnd={(e: any, { offset, velocity }: any) => {
+                const swipe = offset.x;
+                if (swipe < -100) handleNext();
+                else if (swipe > 100) handlePrev();
+              }}
             />
+            
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-slate-500 text-sm font-medium tracking-widest bg-black/20 px-4 py-1 rounded-full backdrop-blur-sm">
+                {selectedIndex + 1} / {images.length}
+            </div>
           </m.div>
         )}
       </AnimatePresence>
