@@ -1251,13 +1251,18 @@ const Admin: React.FC = () => {
           const input = document.getElementById('pdf-template');
           if (input) {
               try {
-                  const canvas = await html2canvas(input, { scale: 2 });
-                  const imgData = canvas.toDataURL('image/png');
+                  const canvas = await html2canvas(input, { 
+                      scale: 2,
+                      useCORS: true,
+                      logging: false
+                  });
+                  // Use JPEG with 0.75 quality instead of PNG to reduce file size significantly
+                  const imgData = canvas.toDataURL('image/jpeg', 0.75);
                   const pdf = new jsPDF('p', 'mm', 'a4');
                   const pdfWidth = pdf.internal.pageSize.getWidth();
                   const pdfHeight = pdf.internal.pageSize.getHeight();
                   
-                  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                  pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
                   pdf.save(`Consent_${apt.client_name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
               } catch (err) {
                   console.error("PDF Generation failed", err);
