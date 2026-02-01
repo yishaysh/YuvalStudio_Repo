@@ -6,7 +6,7 @@ import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } 
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -670,6 +670,7 @@ const GalleryTab = ({ gallery, onUpload }: any) => {
 const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdate: (s: StudioSettings) => void }) => {
     const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
     const [saving, setSaving] = useState(false);
+    const [detailsSaving, setDetailsSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
 
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -702,17 +703,22 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
         return null;
     };
 
-    const handleSave = async () => {
-        const error = validateSchedule(localSettings);
+    const persistChange = async (newSettings: StudioSettings) => {
+        const error = validateSchedule(newSettings);
         if (error) {
             setValidationError(error);
-            setTimeout(() => setValidationError(null), 5000);
             return;
         }
-
+        setValidationError(null);
         setSaving(true);
-        await onUpdate(localSettings);
+        await onUpdate(newSettings);
         setSaving(false);
+    };
+
+    const handleSaveDetails = async () => {
+        setDetailsSaving(true);
+        await onUpdate(localSettings);
+        setDetailsSaving(false);
     };
 
     const toggleDayOpen = (dayIndex: string) => {
@@ -724,17 +730,20 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
             newRanges = [{ start: 10, end: 18 }];
         }
 
-        setLocalSettings(prev => ({
-            ...prev,
+        const newSettings = {
+            ...localSettings,
             working_hours: {
-                ...prev.working_hours,
+                ...localSettings.working_hours,
                 [dayIndex]: {
                     ...currentDayConfig,
                     isOpen,
                     ranges: newRanges
                 }
             }
-        }));
+        };
+
+        setLocalSettings(newSettings);
+        persistChange(newSettings);
     };
 
     const updateRange = (dayIndex: string, rangeIndex: number, field: keyof TimeRange, value: number) => {
@@ -745,16 +754,19 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
             newRanges[rangeIndex] = { ...newRanges[rangeIndex], [field]: value };
         }
         
-        setLocalSettings(prev => ({
-            ...prev,
+        const newSettings = {
+            ...localSettings,
             working_hours: {
-                ...prev.working_hours,
+                ...localSettings.working_hours,
                 [dayIndex]: {
                     ...currentDayConfig,
                     ranges: newRanges
                 }
             }
-        }));
+        };
+
+        setLocalSettings(newSettings);
+        persistChange(newSettings);
     };
 
     const addRange = (dayIndex: string) => {
@@ -767,32 +779,38 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
 
         if (newStart >= 24) return;
 
-        setLocalSettings(prev => ({
-            ...prev,
+        const newSettings = {
+            ...localSettings,
             working_hours: {
-                ...prev.working_hours,
+                ...localSettings.working_hours,
                 [dayIndex]: {
                     ...currentDayConfig,
                     ranges: [...currentRanges, { start: newStart, end: newEnd }]
                 }
             }
-        }));
+        };
+
+        setLocalSettings(newSettings);
+        persistChange(newSettings);
     };
 
     const removeRange = (dayIndex: string, rangeIndex: number) => {
         const currentDayConfig = localSettings.working_hours[dayIndex] || DEFAULT_WORKING_HOURS[dayIndex];
         const newRanges = (currentDayConfig.ranges || []).filter((_, i) => i !== rangeIndex);
         
-        setLocalSettings(prev => ({
-            ...prev,
+        const newSettings = {
+            ...localSettings,
             working_hours: {
-                ...prev.working_hours,
+                ...localSettings.working_hours,
                 [dayIndex]: {
                     ...currentDayConfig,
                     ranges: newRanges
                 }
             }
-        }));
+        };
+
+        setLocalSettings(newSettings);
+        persistChange(newSettings);
     };
 
     return (
@@ -831,6 +849,11 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                         }))}
                         placeholder="info@yuvalstudio.com"
                     />
+                    <div className="flex justify-end pt-2">
+                        <Button onClick={handleSaveDetails} isLoading={detailsSaving} variant="secondary">
+                             שמור פרטים
+                        </Button>
+                    </div>
                  </div>
             </Card>
 
@@ -839,6 +862,17 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                     <h3 className="text-lg font-medium text-white flex items-center gap-2">
                         <Clock className="w-5 h-5 text-brand-primary" /> שעות פעילות
                     </h3>
+                    <div className="flex items-center gap-2">
+                        {saving ? (
+                             <div className="flex items-center gap-1.5 text-xs text-brand-primary animate-pulse">
+                                 <Loader2 className="w-3 h-3 animate-spin" /> שומר...
+                             </div>
+                        ) : (
+                             <div className="text-xs text-slate-500 flex items-center gap-1">
+                                 <Check className="w-3 h-3" /> השינויים נשמרו
+                             </div>
+                        )}
+                    </div>
                  </div>
 
                  {validationError && (
@@ -917,12 +951,6 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
                              </div>
                          );
                      })}
-                     
-                     <div className="pt-6 mt-4 border-t border-white/5 flex justify-end">
-                         <Button onClick={handleSave} isLoading={saving}>
-                             <Save className="w-4 h-4" /> שמור שינויים
-                         </Button>
-                     </div>
                  </div>
             </Card>
         </div>
