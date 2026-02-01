@@ -133,6 +133,11 @@ const Booking: React.FC = () => {
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
+  // Scroll to top on step change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
   useEffect(() => {
     api.getServices().then((data) => {
         setServices(data);
