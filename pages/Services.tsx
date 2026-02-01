@@ -4,12 +4,14 @@ import { SERVICES } from '../constants';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+const m = motion as any;
+
 const ServicesPage: React.FC = () => {
   return (
     <div className="pt-24 pb-20">
       <section className="relative py-20 bg-brand-surface/30 mb-20">
         <div className="container mx-auto px-6 text-center relative z-10">
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -17,14 +19,14 @@ const ServicesPage: React.FC = () => {
             <p className="text-slate-400 max-w-2xl mx-auto text-lg font-light">
               מגוון רחב של שירותי פירסינג מקצועיים, המבוצעים בסטנדרטים הגבוהים ביותר של היגיינה ואסתטיקה.
             </p>
-          </motion.div>
+          </m.div>
         </div>
       </section>
 
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {SERVICES.map((service, i) => (
-            <motion.div
+            <m.div
               key={service.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -52,7 +54,7 @@ const ServicesPage: React.FC = () => {
                   </Button>
                 </Link>
               </Card>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </div>

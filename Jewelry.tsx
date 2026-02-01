@@ -1,6 +1,8 @@
 import React from 'react';
-import { SectionHeading } from '../components/ui';
+import { SectionHeading } from './components/ui';
 import { motion } from 'framer-motion';
+
+const m = motion as any;
 
 const JewelryPage: React.FC = () => {
   const images = [
@@ -22,7 +24,7 @@ const JewelryPage: React.FC = () => {
       <div className="container mx-auto px-6">
         <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
           {images.map((src, i) => (
-            <motion.div
+            <m.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -34,7 +36,7 @@ const JewelryPage: React.FC = () => {
                 alt={`Jewelry ${i}`} 
                 className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" 
               />
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </div>

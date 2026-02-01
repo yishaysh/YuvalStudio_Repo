@@ -2,6 +2,8 @@ import React from 'react';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 
+const m = motion as any;
+
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
@@ -50,12 +52,12 @@ interface CardProps extends Omit<HTMLMotionProps<"div">, "children"> {
 
 export const Card: React.FC<CardProps> = ({ children, className = '', ...props }) => {
   return (
-    <motion.div 
+    <m.div 
       className={`bg-brand-surface/50 backdrop-blur-md border border-white/5 p-6 rounded-2xl shadow-xl ${className}`}
       {...props}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 };
 
@@ -107,7 +109,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       {isOpen && (
         <>
           {/* Backdrop */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -115,11 +117,11 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             {/* Modal Content */}
-            <motion.div
+            <m.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
               className="w-full max-w-md bg-brand-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative"
             >
               <button 
@@ -140,8 +142,8 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                   {children}
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

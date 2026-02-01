@@ -6,6 +6,8 @@ import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
 
+const m = motion as any;
+
 // --- Local Data Enhancements ---
 const SERVICE_META: Record<string, { pain: number; healing: string }> = {
     'Ear': { pain: 3, healing: '4-8 שבועות' },
@@ -248,7 +250,7 @@ const Booking: React.FC = () => {
                     <AnimatePresence mode="wait">
                         {/* STEP 1: SERVICE SELECTION */}
                         {step === BookingStep.SELECT_SERVICE && (
-                            <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                            <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                                 <div className="flex gap-3 overflow-x-auto pb-2">
                                     {categories.map(cat => (
                                         <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`px-6 py-2 rounded-full text-sm transition-all whitespace-nowrap border ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
@@ -259,7 +261,7 @@ const Booking: React.FC = () => {
                                         const meta = getMeta(service.category);
                                         const isSelected = selectedService?.id === service.id;
                                         return (
-                                            <motion.div layout key={service.id} onClick={() => setSelectedService(service)} className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 group ${isSelected ? 'border-brand-primary bg-brand-primary/5 shadow-[0_0_30px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}>
+                                            <m.div layout key={service.id} onClick={() => setSelectedService(service)} className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 group ${isSelected ? 'border-brand-primary bg-brand-primary/5 shadow-[0_0_30px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}>
                                                 <div className="flex h-32">
                                                     <div className="w-32 shrink-0 relative overflow-hidden">
                                                         <img src={service.image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -282,16 +284,16 @@ const Booking: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </motion.div>
+                                            </m.div>
                                         );
                                     })}
                                 </div>
-                            </motion.div>
+                            </m.div>
                         )}
 
                         {/* STEP 2: DATE & TIME */}
                         {step === BookingStep.SELECT_DATE && (
-                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                 <div className="space-y-4">
                                     <h3 className="text-white font-medium flex items-center gap-2"><Calendar className="w-5 h-5 text-brand-primary"/> בחר תאריך</h3>
                                     <div className="flex gap-3 overflow-x-auto pb-4">
@@ -322,12 +324,12 @@ const Booking: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                            </motion.div>
+                            </m.div>
                         )}
 
                         {/* STEP 3: DETAILS */}
                         {step === BookingStep.DETAILS && (
-                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                            <m.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                 <Card className="border-none bg-white/5 space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <Input label="שם מלא" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
@@ -339,12 +341,12 @@ const Booking: React.FC = () => {
                                         <textarea className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[100px]" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
                                     </div>
                                 </Card>
-                            </motion.div>
+                            </m.div>
                         )}
 
                         {/* STEP 4: CONSENT */}
                         {step === BookingStep.CONSENT && (
-                            <motion.div key="consent" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                            <m.div key="consent" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <Card className="bg-white/5 border-none p-6">
                                     <div className="flex items-center gap-2 text-brand-primary mb-4">
                                         <FileText className="w-5 h-5" />
@@ -378,12 +380,12 @@ const Booking: React.FC = () => {
                                         />
                                     </div>
                                 </Card>
-                            </motion.div>
+                            </m.div>
                         )}
 
                         {/* STEP 5: CONFIRMATION */}
                         {step === BookingStep.CONFIRMATION && (
-                            <motion.div key="step5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
+                            <m.div key="step5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
                                 <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                                     <Check className="w-10 h-10" />
                                 </div>
@@ -395,7 +397,7 @@ const Booking: React.FC = () => {
                                     </Button>
                                     <Button variant="ghost" onClick={() => window.location.href = '/'}>חזרה לדף הבית</Button>
                                 </div>
-                            </motion.div>
+                            </m.div>
                         )}
                     </AnimatePresence>
 

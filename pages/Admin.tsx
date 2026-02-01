@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const m = motion as any;
+
 // --- Helper Functions ---
 const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -317,11 +319,11 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                             <span className="text-brand-primary">{Math.round(revenuePercent)}%</span>
                         </div>
                         <div className="h-2 bg-brand-dark rounded-full overflow-hidden">
-                            <motion.div 
+                            <m.div 
                             initial={{ width: 0 }} 
                             animate={{ width: `${revenuePercent}%` }}
                             className="h-full bg-brand-primary"
-                            ></motion.div>
+                            ></m.div>
                         </div>
                     </div>
                     <div>
@@ -330,11 +332,11 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                             <span className="text-brand-primary">{Math.round(apptPercent)}%</span>
                         </div>
                         <div className="h-2 bg-brand-dark rounded-full overflow-hidden">
-                            <motion.div 
+                            <m.div 
                             initial={{ width: 0 }} 
                             animate={{ width: `${apptPercent}%` }}
                             className="h-full bg-brand-secondary"
-                            ></motion.div>
+                            ></m.div>
                         </div>
                     </div>
                 </div>
@@ -488,7 +490,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
             <div ref={listRef} className="scroll-mt-24">
                 <AnimatePresence mode="wait">
                     {selectedDay && (
-                        <motion.div
+                        <m.div
                             key={selectedDay}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -509,7 +511,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                                 onCancelRequest={onCancelRequest}
                                 studioAddress={studioAddress}
                             />
-                        </motion.div>
+                        </m.div>
                     )}
                 </AnimatePresence>
             </div>
@@ -1041,7 +1043,7 @@ const Admin: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 pt-20">
-        <motion.div 
+        <m.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-md"
@@ -1069,7 +1071,7 @@ const Admin: React.FC = () => {
               </Button>
             </form>
           </Card>
-        </motion.div>
+        </m.div>
       </div>
     );
   }
@@ -1108,7 +1110,7 @@ const Admin: React.FC = () => {
             </div>
 
             <AnimatePresence mode="wait">
-                <motion.div
+                <m.div
                     key={activeTab}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1152,7 +1154,7 @@ const Admin: React.FC = () => {
                     )}
                     {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} />}
                     {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
-                </motion.div>
+                </m.div>
             </AnimatePresence>
             
             <ConfirmationModal

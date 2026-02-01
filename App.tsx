@@ -11,6 +11,8 @@ import { Menu, X, Instagram, Facebook, MapPin, Lock } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 
+const m = motion as any;
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const location = useLocation();
@@ -72,7 +74,7 @@ const Navbar = () => {
       {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -87,7 +89,7 @@ const Navbar = () => {
               <div className="w-12 h-[1px] bg-white/10 my-2"></div>
               <Link to="/admin" className="text-sm text-slate-500 hover:text-white border border-white/10 px-6 py-2 rounded-full">כניסת מנהל</Link>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </nav>

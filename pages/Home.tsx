@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Feather, Shield } from 'lucide-react';
 import { Button, SectionHeading, Card } from '../components/ui';
 
+const m = motion as any;
+
 const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-dark text-white overflow-x-hidden font-sans">
@@ -23,7 +25,7 @@ const Home: React.FC = () => {
         </div>
 
         <div className="container mx-auto px-6 relative z-10 text-center">
-          <motion.div 
+          <m.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, ease: "easeOut" }}
@@ -51,7 +53,7 @@ const Home: React.FC = () => {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       </section>
 
@@ -66,7 +68,7 @@ const Home: React.FC = () => {
             { icon: Feather, title: 'מגע עדין', desc: 'טכניקות ניקוב מתקדמות המפחיתות כאב ומאיצות החלמה.' },
             { icon: Sparkles, title: 'תכשיטי יוקרה', desc: 'קולקציית זהב 14K וטיטניום המותאמת אישית לאנטומיה שלך.' }
           ].map((item, i) => (
-            <motion.div
+            <m.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -80,7 +82,7 @@ const Home: React.FC = () => {
                 <h3 className="text-xl font-medium text-white mb-3">{item.title}</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
               </Card>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </section>

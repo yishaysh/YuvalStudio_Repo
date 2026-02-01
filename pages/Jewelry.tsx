@@ -1,16 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SectionHeading } from '../components/ui';
 import { motion } from 'framer-motion';
+import { api } from '../services/mockApi';
+
+const m = motion as any;
+
+const STATIC_IMAGES = [
+  'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1630019852942-e5e1237d6d49?q=80&w=800&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1589904107470-38e07923366c?q=80&w=800&auto=format&fit=crop',
+];
 
 const JewelryPage: React.FC = () => {
-  const images = [
-    'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1630019852942-e5e1237d6d49?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1589904107470-38e07923366c?q=80&w=800&auto=format&fit=crop',
-  ];
+  const [images, setImages] = useState<string[]>(STATIC_IMAGES);
+
+  useEffect(() => {
+    const loadGallery = async () => {
+      try {
+        const data = await api.getGallery();
+        if (data && data.length > 0) {
+          const dbImages = data.map((item: any) => item.image_url);
+          // Show uploaded images first, then static ones
+          setImages([...dbImages, ...STATIC_IMAGES]);
+        }
+      } catch (error) {
+        console.error("Failed to load gallery images", error);
+      }
+    };
+    loadGallery();
+  }, []);
 
   return (
     <div className="pt-24 pb-20">
@@ -22,7 +43,7 @@ const JewelryPage: React.FC = () => {
       <div className="container mx-auto px-6">
         <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
           {images.map((src, i) => (
-            <motion.div
+            <m.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -34,7 +55,7 @@ const JewelryPage: React.FC = () => {
                 alt={`Jewelry ${i}`} 
                 className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" 
               />
-            </motion.div>
+            </m.div>
           ))}
         </div>
       </div>

@@ -3,6 +3,8 @@ import { Card } from '../components/ui';
 import { Droplets, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+const m = motion as any;
+
 const AftercarePage: React.FC = () => {
   const steps = [
     {
@@ -38,7 +40,7 @@ const AftercarePage: React.FC = () => {
 
       <div className="space-y-6">
         {steps.map((step, i) => (
-          <motion.div
+          <m.div
             key={i}
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -53,7 +55,7 @@ const AftercarePage: React.FC = () => {
                 <p className="text-slate-400 leading-relaxed">{step.content}</p>
               </div>
             </Card>
-          </motion.div>
+          </m.div>
         ))}
       </div>
 
