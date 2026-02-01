@@ -254,11 +254,16 @@ const Booking: React.FC = () => {
                             {step === BookingStep.CONFIRMATION && 'אישור הזמנה'}
                         </h1>
                         <p className="text-slate-400 flex items-center gap-2">
-                            <span className="bg-brand-primary/10 text-brand-primary text-xs px-2 py-0.5 rounded-full border border-brand-primary/20">שלב {step} מתוך 4</span>
+                            {step !== BookingStep.CONFIRMATION && (
+                                <span className="bg-brand-primary/10 text-brand-primary text-xs px-2 py-0.5 rounded-full border border-brand-primary/20">
+                                    שלב {step} מתוך 4
+                                </span>
+                            )}
                             {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך'}
                             {step === BookingStep.SELECT_DATE && 'מתי נוח לך להגיע אלינו?'}
                             {step === BookingStep.DETAILS && 'איך נוכל ליצור איתך קשר?'}
                             {step === BookingStep.CONSENT && 'אנא קרא וחתום על הצהרת ההסכמה'}
+                            {step === BookingStep.CONFIRMATION && 'תודה שבחרת בסטודיו של יובל'}
                         </p>
                     </div>
 

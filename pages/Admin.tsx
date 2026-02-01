@@ -6,9 +6,13 @@ import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } 
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+// @ts-ignore
+import { jsPDF } from 'jspdf';
+// @ts-ignore
+import html2canvas from 'html2canvas';
 
 const m = motion as any;
 
@@ -84,7 +88,7 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 
 // --- SHARED COMPONENTS ---
 
-const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress }: any) => {
+const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
 
     useEffect(() => {
@@ -175,10 +179,21 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                         {apt.status === 'confirmed' && (
                                             <button 
                                                 onClick={() => sendWhatsapp(apt, 'reminder', studioAddress)} 
-                                                className="p-2 text-slate-400 hover:bg-white/10 rounded-l-lg transition-colors" 
+                                                className="p-2 text-slate-400 hover:bg-white/10 border-l border-white/5 transition-colors" 
                                                 title="שלח תזכורת"
                                             >
                                                 <Clock className="w-4 h-4" />
+                                            </button>
+                                        )}
+
+                                        {/* PDF Button - Only if signature exists (optional logic) */}
+                                        {apt.signature && (
+                                            <button 
+                                                onClick={() => onDownloadPdf(apt)} 
+                                                className="p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-l-lg transition-colors" 
+                                                title="הורד הצהרת בריאות (PDF)"
+                                            >
+                                                <FileText className="w-4 h-4" />
                                             </button>
                                         )}
                                     </div>
@@ -371,7 +386,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
 }
 
 // 2. CALENDAR TAB (REDESIGNED)
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress }: any) => {
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf }: any) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
     const listRef = useRef<HTMLDivElement>(null);
@@ -510,6 +525,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                                 onStatusUpdate={onStatusUpdate}
                                 onCancelRequest={onCancelRequest}
                                 studioAddress={studioAddress}
+                                onDownloadPdf={onDownloadPdf}
                             />
                         </m.div>
                     )}
@@ -1025,6 +1041,86 @@ const SettingsTab = ({ settings, onUpdate }: { settings: StudioSettings, onUpdat
 };
 
 
+// --- PDF Template Component (Hidden) ---
+const ConsentPdfTemplate: React.FC<{ data: Appointment; settings: StudioSettings }> = ({ data, settings }) => {
+    return (
+        <div id="pdf-template" className="bg-white text-slate-900 p-10 w-[210mm] min-h-[297mm] relative font-sans">
+            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-6 mb-8">
+                <div>
+                    <h1 className="text-4xl font-serif font-bold text-slate-900 uppercase tracking-widest">Yuval Studio</h1>
+                    <p className="text-sm text-slate-500 mt-1">Professional Piercing & Jewelry</p>
+                </div>
+                <div className="text-right text-xs text-slate-500">
+                    <p>{settings.studio_details.address}</p>
+                    <p>{settings.studio_details.phone}</p>
+                    <p>{settings.studio_details.email}</p>
+                </div>
+            </div>
+
+            <div className="mb-12 text-center">
+                 <h2 className="text-2xl font-bold underline underline-offset-4 mb-2">הצהרת בריאות וטופס הסכמה</h2>
+                 <p className="text-sm text-slate-600">Medical History & Consent Form</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+                <div>
+                    <p className="font-bold text-slate-700 mb-1">פרטי לקוח / Client Details</p>
+                    <div className="space-y-2 border-l-2 border-slate-200 pl-4">
+                        <p><span className="font-medium">שם:</span> {data.client_name}</p>
+                        <p><span className="font-medium">טלפון:</span> {data.client_phone}</p>
+                        <p><span className="font-medium">אימייל:</span> {data.client_email}</p>
+                    </div>
+                </div>
+                <div>
+                    <p className="font-bold text-slate-700 mb-1">פרטי טיפול / Procedure</p>
+                    <div className="space-y-2 border-l-2 border-slate-200 pl-4">
+                         <p><span className="font-medium">סוג טיפול:</span> {data.service_name}</p>
+                         <p><span className="font-medium">תאריך:</span> {new Date(data.start_time).toLocaleDateString('he-IL')}</p>
+                         <p><span className="font-medium">שעה:</span> {new Date(data.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mb-12 p-6 bg-slate-50 rounded-lg border border-slate-200 text-sm leading-relaxed">
+                <h3 className="font-bold mb-4">הצהרת המטופל / Declaration</h3>
+                <ul className="list-disc list-inside space-y-2 text-slate-700">
+                    <li>אני מצהיר/ה כי אני מעל גיל 16 או מלווה באישור הורה/אפוטרופוס.</li>
+                    <li>איני סובל/ת ממחלות דם, סוכרת לא מאוזנת, צהבת, או מחלות זיהומיות אחרות.</li>
+                    <li>איני נוטל/ת תרופות המדללות את הדם (אספירין, קומדין וכו').</li>
+                    <li>איני בהריון ואיני מניקה (רלוונטי לנקבים מסוימים).</li>
+                    <li>ידוע לי כי תהליך ההחלמה דורש טיפול והיגיינה, ואני מתחייב/ת לפעול לפי ההוראות.</li>
+                    <li>אני מבין/ה את הסיכונים הכרוכים בביצוע פירסינג (זיהום, צלקות, דחייה).</li>
+                </ul>
+            </div>
+
+            <div className="grid grid-cols-2 gap-12 mt-auto pt-12 border-t border-slate-200">
+                 <div>
+                     <p className="text-sm font-bold mb-4">חתימת הלקוח / Client Signature</p>
+                     <div className="border-b border-slate-900 pb-2 mb-2">
+                         {data.signature ? (
+                             <img src={data.signature} alt="Signature" className="h-16 object-contain" />
+                         ) : (
+                             <div className="h-16 flex items-center text-slate-400 italic">No Signature</div>
+                         )}
+                     </div>
+                     <p className="text-xs text-slate-500">{new Date(data.start_time).toLocaleString('he-IL')}</p>
+                 </div>
+                 <div className="text-left">
+                     <p className="text-sm font-bold mb-4">אישור הסטודיו / Studio Approval</p>
+                     <div className="border-b border-slate-900 pb-2 mb-2 h-16 flex items-end justify-end">
+                         <span className="font-serif italic text-lg">Yuval Studio</span>
+                     </div>
+                     <p className="text-xs text-slate-500">Authorized Signature</p>
+                 </div>
+            </div>
+            
+            <div className="absolute bottom-10 left-0 right-0 text-center text-[10px] text-slate-400">
+                 Document generated on {new Date().toLocaleString()} | ID: {data.id}
+            </div>
+        </div>
+    );
+};
+
 // --- Main Admin Page ---
 
 const Admin: React.FC = () => {
@@ -1043,6 +1139,9 @@ const Admin: React.FC = () => {
 
   const [apptToCancel, setApptToCancel] = useState<Appointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+
+  // PDF Generation State
+  const [pdfData, setPdfData] = useState<Appointment | null>(null);
 
   const loadData = async () => {
      const [apptsData, servicesData, statsData, galleryData, settingsData] = await Promise.all([
@@ -1142,6 +1241,30 @@ const Admin: React.FC = () => {
       setFilteredAppointmentId(null);
   }
 
+  const handleDownloadPdf = async (apt: Appointment) => {
+      setPdfData(apt);
+      // Allow DOM to render the hidden template
+      setTimeout(async () => {
+          const input = document.getElementById('pdf-template');
+          if (input) {
+              try {
+                  const canvas = await html2canvas(input, { scale: 2 });
+                  const imgData = canvas.toDataURL('image/png');
+                  const pdf = new jsPDF('p', 'mm', 'a4');
+                  const pdfWidth = pdf.internal.pageSize.getWidth();
+                  const pdfHeight = pdf.internal.pageSize.getHeight();
+                  
+                  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                  pdf.save(`Consent_${apt.client_name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+              } catch (err) {
+                  console.error("PDF Generation failed", err);
+                  alert("שגיאה ביצירת ה-PDF");
+              }
+          }
+          setPdfData(null);
+      }, 100);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 pt-20">
@@ -1234,6 +1357,7 @@ const Admin: React.FC = () => {
                             onStatusUpdate={handleStatusUpdate}
                             onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }}
                             studioAddress={settings.studio_details?.address}
+                            onDownloadPdf={handleDownloadPdf}
                         />
                     )}
                     {activeTab === 'appointments' && (
@@ -1244,6 +1368,7 @@ const Admin: React.FC = () => {
                             filterId={filteredAppointmentId}
                             onClearFilter={handleClearFilter}
                             studioAddress={settings.studio_details?.address}
+                            onDownloadPdf={handleDownloadPdf}
                         />
                     )}
                     {activeTab === 'services' && (
@@ -1280,6 +1405,11 @@ const Admin: React.FC = () => {
                     <p className="text-xs text-slate-500 mt-2">הסיבה תופיע בהודעת הוואטסאפ שתישלח ללקוח</p>
                 </div>
             </ConfirmationModal>
+
+            {/* Hidden Container for Generating PDF */}
+            <div className="fixed top-0 left-0 -z-50 overflow-hidden h-0 w-0">
+                {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
+            </div>
         </div>
     </div>
   );
