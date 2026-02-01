@@ -230,6 +230,7 @@ export const api = {
       guest_email: appt.client_email,
       guest_phone: appt.client_phone,
       notes: appt.notes,
+      signature: appt.signature,
       status: 'pending' // Default to pending
     };
 
@@ -244,7 +245,8 @@ export const api = {
       service_id: data.service_id,
       start_time: data.start_time,
       status: data.status as Appointment['status'],
-      notes: data.notes
+      notes: data.notes,
+      signature: data.signature
     };
   },
 
@@ -271,7 +273,8 @@ export const api = {
         service_price: item.services?.price,
         start_time: item.start_time,
         status: item.status,
-        notes: item.notes
+        notes: item.notes,
+        signature: item.signature
       }));
     } catch (err) {
       console.error(err);

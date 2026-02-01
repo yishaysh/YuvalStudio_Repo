@@ -40,6 +40,7 @@ create table if not exists public.appointments (
   end_time timestamp with time zone not null,
   status text default 'pending' check (status in ('pending', 'confirmed', 'cancelled', 'completed')),
   notes text,
+  signature text, -- Added signature column
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
