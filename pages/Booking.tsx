@@ -32,43 +32,75 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
         ctx.strokeStyle = '#d4b585';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
     }, []);
 
-    const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-        setIsDrawing(true);
-        draw(e);
+    // Helper to calculate correct coordinates accounting for CSS resizing
+    const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return { x: 0, y: 0 };
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        let clientX = 0;
+        let clientY = 0;
+
+        if ('touches' in e) {
+             clientX = e.touches[0].clientX;
+             clientY = e.touches[0].clientY;
+        } else {
+             clientX = (e as React.MouseEvent).clientX;
+             clientY = (e as React.MouseEvent).clientY;
+        }
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
     };
 
-    const stopDrawing = () => {
-        setIsDrawing(false);
-        const canvas = canvasRef.current;
-        if (canvas) {
-            onSave(canvas.toDataURL());
+    const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+        // Prevent default browser actions (like scrolling) if it's a touch event
+        if (e.type === 'touchstart') {
+           // e.preventDefault(); // Note: Managed via CSS touch-action: none usually, but good to know
+        }
+
+        setIsDrawing(true);
+        const { x, y } = getCoordinates(e);
+        
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
         }
     };
 
     const draw = (e: React.MouseEvent | React.TouchEvent) => {
         if (!isDrawing) return;
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        const rect = canvas.getBoundingClientRect();
-        let x, y;
-
-        if ('touches' in e) {
-            x = e.touches[0].clientX - rect.left;
-            y = e.touches[0].clientY - rect.top;
-        } else {
-            x = e.clientX - rect.left;
-            y = e.clientY - rect.top;
+        
+        const { x, y } = getCoordinates(e);
+        const ctx = canvasRef.current?.getContext('2d');
+        
+        if (ctx) {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            // Start a new path segment to ensure smooth curves and no "connecting lines" issues
+            ctx.beginPath();
+            ctx.moveTo(x, y);
         }
+    };
 
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
+    const stopDrawing = () => {
+        if (isDrawing) {
+            setIsDrawing(false);
+            const canvas = canvasRef.current;
+            if (canvas) {
+                onSave(canvas.toDataURL());
+            }
+        }
     };
 
     const clearCanvas = () => {
@@ -86,18 +118,21 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
             <div className="relative border border-white/10 bg-brand-dark/50 rounded-xl overflow-hidden touch-none">
                 <canvas
                     ref={canvasRef}
-                    width={400}
-                    height={150}
+                    width={600} // Increased internal resolution for better quality
+                    height={300} // Increased internal resolution
                     onMouseDown={startDrawing}
                     onMouseUp={stopDrawing}
                     onMouseMove={draw}
+                    onMouseLeave={stopDrawing}
                     onTouchStart={startDrawing}
                     onTouchEnd={stopDrawing}
                     onTouchMove={draw}
-                    className="w-full h-[150px] cursor-crosshair"
+                    className="w-full h-[150px] cursor-crosshair touch-none"
+                    style={{ touchAction: 'none' }} // Critical for mobile to prevent scrolling while signing
                 />
                 <button 
                     onClick={clearCanvas}
+                    type="button"
                     className="absolute top-2 left-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                     title="נקה חתימה"
                 >
