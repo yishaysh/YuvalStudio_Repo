@@ -186,16 +186,19 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                             </button>
                                         )}
 
-                                        {/* PDF Button - Only if signature exists (optional logic) */}
-                                        {apt.signature && (
-                                            <button 
-                                                onClick={() => onDownloadPdf(apt)} 
-                                                className="p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-l-lg transition-colors" 
-                                                title="הורד הצהרת בריאות (PDF)"
-                                            >
-                                                <FileText className="w-4 h-4" />
-                                            </button>
-                                        )}
+                                        {/* PDF Button - Always visible, disabled if no signature */}
+                                        <button 
+                                            onClick={() => apt.signature && onDownloadPdf(apt)} 
+                                            disabled={!apt.signature}
+                                            className={`p-2 transition-colors rounded-l-lg border-l border-white/5 ${
+                                                apt.signature 
+                                                    ? 'text-slate-400 hover:bg-white/10 hover:text-white' 
+                                                    : 'text-slate-700 cursor-not-allowed opacity-50'
+                                            }`} 
+                                            title={apt.signature ? "הורד הצהרת בריאות (PDF)" : "אין חתימה זמינה להורדה"}
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                        </button>
                                     </div>
 
                                     {apt.status === 'pending' && (
