@@ -228,8 +228,13 @@ const Booking: React.FC = () => {
       { id: 'Body', label: 'גוף' },
   ];
 
+  // Logic to determine if the bottom bar should be visible
+  const showBottomBar = 
+    (step === BookingStep.SELECT_SERVICE && selectedService) || // Show in step 1 only if selected
+    (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); // Show in steps 2-4
+
   return (
-    <div className="min-h-screen bg-brand-dark pt-24 pb-24 lg:pb-12">
+    <div className="min-h-screen bg-brand-dark pt-24 pb-32 lg:pb-12">
         <div className="container mx-auto px-4 lg:px-8">
             <div className="flex flex-col lg:flex-row gap-8 relative items-start">
                 
@@ -261,7 +266,7 @@ const Booking: React.FC = () => {
                                         <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`px-6 py-2 rounded-full text-sm transition-all whitespace-nowrap border ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
                                     ))}
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20 lg:pb-0">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {filteredServices.map((service) => {
                                         const meta = getMeta(service.category);
                                         const isSelected = selectedService?.id === service.id;
@@ -405,39 +410,6 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
                     </AnimatePresence>
-
-                    {/* Navigation Buttons */}
-                    {step < BookingStep.CONFIRMATION && (
-                        <div className="mt-8 flex items-center gap-4">
-                            {step > 1 && (
-                                <button onClick={() => setStep(step - 1)} className="px-6 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
-                                    <ArrowRight className="w-4 h-4" /> חזרה
-                                </button>
-                            )}
-                            <Button 
-                                onClick={() => {
-                                    if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.SELECT_DATE);
-                                    else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
-                                    else if(step === BookingStep.DETAILS) setStep(BookingStep.CONSENT);
-                                    else if(step === BookingStep.CONSENT) handleBook();
-                                }}
-                                disabled={
-                                    (step === BookingStep.SELECT_SERVICE && !selectedService) ||
-                                    (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
-                                    (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
-                                    (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||
-                                    isSubmitting
-                                }
-                                isLoading={isSubmitting}
-                                className="flex-1 md:flex-none md:min-w-[200px]"
-                            >
-                                <div className="flex items-center gap-2">
-                                    {step === BookingStep.CONSENT ? 'אשר וקבע תור' : 'המשך'}
-                                    {step < BookingStep.CONSENT && <ArrowLeft className="w-4 h-4" />}
-                                </div>
-                            </Button>
-                        </div>
-                    )}
                 </div>
 
                 {/* RIGHT SIDE: TICKET (Hidden on Consent Step for clarity on mobile) */}
@@ -476,6 +448,50 @@ const Booking: React.FC = () => {
                 </div>
             </div>
         </div>
+
+        {/* FLOATING ACTION BAR FOR NAVIGATION */}
+        <AnimatePresence>
+            {showBottomBar && (
+                <m.div 
+                    initial={{ y: 100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 100, opacity: 0 }}
+                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                    className="fixed bottom-0 left-0 right-0 p-4 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]"
+                >
+                    <div className="container max-w-4xl flex items-center gap-4 w-full">
+                        {step > 1 && (
+                            <button onClick={() => setStep(step - 1)} className="px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                                <ArrowRight className="w-5 h-5" />
+                                <span className="hidden sm:inline">חזרה</span>
+                            </button>
+                        )}
+                        <Button 
+                            onClick={() => {
+                                if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.SELECT_DATE);
+                                else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
+                                else if(step === BookingStep.DETAILS) setStep(BookingStep.CONSENT);
+                                else if(step === BookingStep.CONSENT) handleBook();
+                            }}
+                            disabled={
+                                (step === BookingStep.SELECT_SERVICE && !selectedService) ||
+                                (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
+                                (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
+                                (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||
+                                isSubmitting
+                            }
+                            isLoading={isSubmitting}
+                            className="flex-1 py-4 text-lg shadow-xl shadow-brand-primary/20"
+                        >
+                            <div className="flex items-center justify-center gap-2">
+                                {step === BookingStep.CONSENT ? 'אשר וקבע תור' : 'המשך לשלב הבא'}
+                                {step < BookingStep.CONSENT && <ArrowLeft className="w-5 h-5" />}
+                            </div>
+                        </Button>
+                    </div>
+                </m.div>
+            )}
+        </AnimatePresence>
     </div>
   );
 };
