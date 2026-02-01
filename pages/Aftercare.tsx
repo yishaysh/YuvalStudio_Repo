@@ -42,9 +42,10 @@ const AftercarePage: React.FC = () => {
         {steps.map((step, i) => (
           <m.div
             key={i}
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -10 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.1 }}
+            transition={{ delay: i * 0.05, duration: 0.4 }}
+            viewport={{ once: true }}
           >
             <Card className="flex flex-col md:flex-row gap-6 items-start border-white/5 hover:border-brand-primary/20 transition-colors">
               <div className="w-12 h-12 bg-brand-surface rounded-full flex items-center justify-center text-brand-primary shrink-0">

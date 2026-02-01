@@ -59,9 +59,10 @@ const JewelryPage: React.FC = () => {
             {images.map((src, i) => (
               <m.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: "100px" }}
+                transition={{ duration: 0.4 }}
                 className="break-inside-avoid rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group"
                 onClick={() => setSelectedIndex(i)}
                 whileHover={{ y: -5 }}
@@ -70,7 +71,8 @@ const JewelryPage: React.FC = () => {
                 <img 
                   src={src} 
                   alt={`Jewelry ${i}`} 
-                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700" 
+                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                  loading="lazy"
                 />
               </m.div>
             ))}
@@ -89,6 +91,7 @@ const JewelryPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={() => setSelectedIndex(null)}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md"
           >
@@ -142,6 +145,12 @@ const JewelryPage: React.FC = () => {
             
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-slate-500 text-sm font-medium tracking-widest bg-black/20 px-4 py-1 rounded-full backdrop-blur-sm">
                 {selectedIndex + 1} / {images.length}
+            </div>
+
+            {/* Hidden Preloader for next/prev images to ensure instant swipe */}
+            <div className="hidden">
+               {images[(selectedIndex + 1) % images.length] && <img src={images[(selectedIndex + 1) % images.length]} alt="preload-next" />}
+               {images[(selectedIndex - 1 + images.length) % images.length] && <img src={images[(selectedIndex - 1 + images.length) % images.length]} alt="preload-prev" />}
             </div>
           </m.div>
         )}

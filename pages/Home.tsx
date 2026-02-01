@@ -57,7 +57,7 @@ const Home: React.FC = () => {
           <m.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: "easeOut" }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             <StudioLogo className="w-32 md:w-40 h-auto mx-auto mb-10 text-brand-primary drop-shadow-[0_0_15px_rgba(212,181,133,0.3)]" />
 
@@ -104,7 +104,7 @@ const Home: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.2 }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
             >
               <Card className="h-full text-center hover:bg-brand-surface/80 transition-colors group border-transparent hover:border-brand-primary/20">
                 <div className="w-12 h-12 bg-brand-dark rounded-2xl flex items-center justify-center mx-auto mb-6 text-brand-primary group-hover:scale-110 transition-transform duration-500">

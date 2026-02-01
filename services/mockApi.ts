@@ -7,16 +7,26 @@ export interface TimeSlot {
     available: boolean;
 }
 
+// --- In-Memory Cache ---
+let cachedServices: Service[] | null = null;
+let cachedGallery: any[] | null = null;
+let cachedSettings: StudioSettings | null = null;
+
 export const api = {
   // --- Settings ---
   getSettings: async (): Promise<StudioSettings> => {
+      if (cachedSettings) return cachedSettings;
+
       const defaultSettings: StudioSettings = { 
         working_hours: DEFAULT_WORKING_HOURS,
         studio_details: DEFAULT_STUDIO_DETAILS,
         monthly_goals: DEFAULT_MONTHLY_GOALS
       };
       
-      if (!supabase) return defaultSettings;
+      if (!supabase) {
+          cachedSettings = defaultSettings;
+          return defaultSettings;
+      }
 
       try {
           // Fetch settings keys
@@ -25,7 +35,10 @@ export const api = {
             .select('*')
             .in('key', ['working_hours', 'studio_details', 'monthly_goals']);
 
-          if (error || !data) return defaultSettings;
+          if (error || !data) {
+              cachedSettings = defaultSettings;
+              return defaultSettings;
+          }
 
           const newSettings = { ...defaultSettings };
           
@@ -44,6 +57,7 @@ export const api = {
             }
           });
           
+          cachedSettings = newSettings;
           return newSettings;
       } catch (e) {
           console.error(e);
@@ -63,12 +77,15 @@ export const api = {
       const { error } = await supabase
         .from('settings')
         .upsert(updates, { onConflict: 'key' });
-        
+      
+      if (!error) cachedSettings = settings;
       return !error;
   },
 
   // --- Services ---
   getServices: async (): Promise<Service[]> => {
+    if (cachedServices) return cachedServices;
+
     if (!supabase) return SERVICES;
     try {
       const { data, error } = await supabase
@@ -77,7 +94,9 @@ export const api = {
         .eq('is_active', true)
         .order('price', { ascending: true });
       if (error) throw error;
-      return data || SERVICES;
+      
+      cachedServices = data || SERVICES;
+      return cachedServices;
     } catch (err) {
       console.error('Error fetching services:', err);
       return SERVICES;
@@ -88,6 +107,8 @@ export const api = {
     if (!supabase) return null;
     const { data, error } = await supabase.from('services').insert([service]).select().single();
     if (error) { console.error(error); return null; }
+    
+    cachedServices = null; // Invalidate cache
     return data;
   },
 
@@ -95,23 +116,31 @@ export const api = {
     if (!supabase) return null;
     const { data, error } = await supabase.from('services').update(updates).eq('id', id).select().single();
     if (error) { console.error(error); return null; }
+    
+    cachedServices = null; // Invalidate cache
     return data;
   },
 
   deleteService: async (id: string): Promise<boolean> => {
     if (!supabase) return false;
     const { error } = await supabase.from('services').update({ is_active: false }).eq('id', id);
+    
+    if (!error) cachedServices = null; // Invalidate cache
     return !error;
   },
 
   // --- Appointments ---
   getAvailability: async (date: Date): Promise<TimeSlot[]> => {
-    // 1. Fetch Settings
+    // 1. Fetch Settings (Use cache if available)
     let workingHours = DEFAULT_WORKING_HOURS;
     if (supabase) {
-        const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
-        if (data?.value && data.value['0'] && data.value['0'].ranges) { 
-            workingHours = data.value;
+        if (cachedSettings) {
+            workingHours = cachedSettings.working_hours;
+        } else {
+            const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+            if (data?.value && data.value['0'] && data.value['0'].ranges) { 
+                workingHours = data.value;
+            }
         }
     }
 
@@ -296,19 +325,26 @@ export const api = {
 
   // --- Gallery ---
   getGallery: async () => {
+    if (cachedGallery) return cachedGallery;
+
     if(!supabase) return [];
     const { data } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
-    return data || [];
+    
+    cachedGallery = data || [];
+    return cachedGallery;
   },
 
   addToGallery: async (imageUrl: string) => {
       if(!supabase) return;
       await supabase.from('gallery').insert([{ image_url: imageUrl }]);
+      cachedGallery = null; // Invalidate cache
   },
 
   deleteFromGallery: async (id: string) => {
       if(!supabase) return false;
       const { error } = await supabase.from('gallery').delete().eq('id', id);
+      
+      if (!error) cachedGallery = null; // Invalidate cache
       return !error;
   },
 

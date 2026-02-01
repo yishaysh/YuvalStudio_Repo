@@ -21,6 +21,7 @@ const ServicesPage: React.FC = () => {
           <m.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
             <h1 className="text-5xl font-serif text-white mb-6">השירותים שלנו</h1>
             <p className="text-slate-400 max-w-2xl mx-auto text-lg font-light">
@@ -37,8 +38,8 @@ const ServicesPage: React.FC = () => {
               key={service.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
+              viewport={{ once: true, margin: "50px" }}
+              transition={{ delay: i * 0.05, duration: 0.4 }}
             >
               <Card className="h-full flex flex-col group hover:border-brand-primary/30 transition-colors">
                 <div className="aspect-square w-full mb-6 overflow-hidden rounded-lg bg-brand-dark/50">
@@ -46,6 +47,7 @@ const ServicesPage: React.FC = () => {
                     src={service.image_url} 
                     alt={service.name} 
                     className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                    loading="lazy"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://picsum.photos/400/400?grayscale';
                     }}
