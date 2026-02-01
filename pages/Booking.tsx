@@ -353,9 +353,25 @@ const Booking: React.FC = () => {
                                 <Card className="border-none bg-white/5 space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <Input label="שם מלא" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                        <Input label="טלפון" type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                                        <Input 
+                                            label="טלפון" 
+                                            type="tel" 
+                                            inputMode="numeric"
+                                            dir="ltr"
+                                            className="text-right"
+                                            value={formData.phone} 
+                                            onChange={e => setFormData({...formData, phone: e.target.value})} 
+                                        />
                                     </div>
-                                    <Input label="אימייל" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                                    <Input 
+                                        label="אימייל" 
+                                        type="email" 
+                                        inputMode="email"
+                                        dir="ltr"
+                                        className="text-right"
+                                        value={formData.email} 
+                                        onChange={e => setFormData({...formData, email: e.target.value})} 
+                                    />
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-slate-400 ms-1">הערות נוספות</label>
                                         <textarea className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[100px]" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
