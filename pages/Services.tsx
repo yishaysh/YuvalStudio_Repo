@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SectionHeading, Card, Button } from '../components/ui';
-import { SERVICES } from '../constants';
+import { api } from '../services/mockApi';
+import { Service } from '../types';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const m = motion as any;
 
 const ServicesPage: React.FC = () => {
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    api.getServices().then(setServices);
+  }, []);
+
   return (
     <div className="pt-24 pb-20">
       <section className="relative py-20 bg-brand-surface/30 mb-20">
@@ -25,7 +32,7 @@ const ServicesPage: React.FC = () => {
 
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {SERVICES.map((service, i) => (
+          {services.map((service, i) => (
             <m.div
               key={service.id}
               initial={{ opacity: 0, y: 20 }}
@@ -34,11 +41,14 @@ const ServicesPage: React.FC = () => {
               transition={{ delay: i * 0.1 }}
             >
               <Card className="h-full flex flex-col group hover:border-brand-primary/30 transition-colors">
-                <div className="aspect-square w-full mb-6 overflow-hidden rounded-lg">
+                <div className="aspect-square w-full mb-6 overflow-hidden rounded-lg bg-brand-dark/50">
                   <img 
                     src={service.image_url} 
                     alt={service.name} 
                     className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://picsum.photos/400/400?grayscale';
+                    }}
                   />
                 </div>
                 <div className="flex justify-between items-start mb-4">
