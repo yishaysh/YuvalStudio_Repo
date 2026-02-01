@@ -23,6 +23,7 @@ create table if not exists public.services (
   duration_minutes integer not null,
   category text check (category in ('Ear', 'Face', 'Body', 'Jewelry')),
   image_url text,
+  pain_level integer default 1 check (pain_level >= 0 and pain_level <= 10),
   is_active boolean default true,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -129,20 +130,20 @@ with check ( bucket_id in ('service-images', 'gallery-images') );
 -- 6. SEED DATA
 
 -- Initial Services
-INSERT INTO public.services (name, description, price, duration_minutes, category, image_url)
-SELECT 'עגיל בתנוך (זוג)', 'ניקוב קלאסי בתנוך עם עגילי טיטניום. זמן החלמה: 6-8 שבועות.', 60, 30, 'Ear', 'https://picsum.photos/400/400?grayscale'
+INSERT INTO public.services (name, description, price, duration_minutes, category, image_url, pain_level)
+SELECT 'עגיל בתנוך (זוג)', 'ניקוב קלאסי בתנוך עם עגילי טיטניום. זמן החלמה: 6-8 שבועות.', 60, 30, 'Ear', 'https://picsum.photos/400/400?grayscale', 2
 WHERE NOT EXISTS (SELECT 1 FROM public.services WHERE name = 'עגיל בתנוך (זוג)');
 
-INSERT INTO public.services (name, description, price, duration_minutes, category, image_url)
-SELECT 'הליקס / סחוס', 'ניקוב בחלק העליון של האוזן. טכניקת מחט מדויקת. זמן החלמה: 3-6 חודשים.', 45, 30, 'Ear', 'https://picsum.photos/401/401?grayscale'
+INSERT INTO public.services (name, description, price, duration_minutes, category, image_url, pain_level)
+SELECT 'הליקס / סחוס', 'ניקוב בחלק העליון של האוזן. טכניקת מחט מדויקת. זמן החלמה: 3-6 חודשים.', 45, 30, 'Ear', 'https://picsum.photos/401/401?grayscale', 4
 WHERE NOT EXISTS (SELECT 1 FROM public.services WHERE name = 'הליקס / סחוס');
 
-INSERT INTO public.services (name, description, price, duration_minutes, category, image_url)
-SELECT 'נזם', 'מיקום מדויק עם יהלום או זהב. זמן החלמה: 2-4 חודשים.', 55, 30, 'Face', 'https://picsum.photos/402/402?grayscale'
+INSERT INTO public.services (name, description, price, duration_minutes, category, image_url, pain_level)
+SELECT 'נזם', 'מיקום מדויק עם יהלום או זהב. זמן החלמה: 2-4 חודשים.', 55, 30, 'Face', 'https://picsum.photos/402/402?grayscale', 5
 WHERE NOT EXISTS (SELECT 1 FROM public.services WHERE name = 'נזם');
 
-INSERT INTO public.services (name, description, price, duration_minutes, category, image_url)
-SELECT 'ספטום קליקר', 'פירסינג ספטום מיושר בצורה מושלמת. אפשרויות שדרוג תכשיט.', 70, 45, 'Face', 'https://picsum.photos/403/403?grayscale'
+INSERT INTO public.services (name, description, price, duration_minutes, category, image_url, pain_level)
+SELECT 'ספטום קליקר', 'פירסינג ספטום מיושר בצורה מושלמת. אפשרויות שדרוג תכשיט.', 70, 45, 'Face', 'https://picsum.photos/403/403?grayscale', 6
 WHERE NOT EXISTS (SELECT 1 FROM public.services WHERE name = 'ספטום קליקר');
 
 -- Initial Settings (Updated to support daily schedule structure)

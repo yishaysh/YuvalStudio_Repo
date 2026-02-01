@@ -9,7 +9,8 @@ export const SERVICES: Service[] = [
     price: 60,
     duration_minutes: 30,
     category: 'Ear',
-    image_url: 'https://picsum.photos/400/400?grayscale'
+    image_url: 'https://picsum.photos/400/400?grayscale',
+    pain_level: 2
   },
   {
     id: '2',
@@ -18,7 +19,8 @@ export const SERVICES: Service[] = [
     price: 45,
     duration_minutes: 30,
     category: 'Ear',
-    image_url: 'https://picsum.photos/401/401?grayscale'
+    image_url: 'https://picsum.photos/401/401?grayscale',
+    pain_level: 4
   },
   {
     id: '3',
@@ -27,7 +29,8 @@ export const SERVICES: Service[] = [
     price: 55,
     duration_minutes: 30,
     category: 'Face',
-    image_url: 'https://picsum.photos/402/402?grayscale'
+    image_url: 'https://picsum.photos/402/402?grayscale',
+    pain_level: 5
   },
   {
     id: '4',
@@ -36,7 +39,8 @@ export const SERVICES: Service[] = [
     price: 70,
     duration_minutes: 45,
     category: 'Face',
-    image_url: 'https://picsum.photos/403/403?grayscale'
+    image_url: 'https://picsum.photos/403/403?grayscale',
+    pain_level: 6
   },
   {
     id: '5',
@@ -45,7 +49,8 @@ export const SERVICES: Service[] = [
     price: 85,
     duration_minutes: 60,
     category: 'Ear',
-    image_url: 'https://picsum.photos/404/404?grayscale'
+    image_url: 'https://picsum.photos/404/404?grayscale',
+    pain_level: 7
   },
   {
     id: '6',
@@ -54,7 +59,8 @@ export const SERVICES: Service[] = [
     price: 65,
     duration_minutes: 45,
     category: 'Body',
-    image_url: 'https://picsum.photos/405/405?grayscale'
+    image_url: 'https://picsum.photos/405/405?grayscale',
+    pain_level: 4
   }
 ];
 

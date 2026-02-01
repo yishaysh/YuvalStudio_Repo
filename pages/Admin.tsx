@@ -522,11 +522,29 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
 // 4. SERVICES TAB
 const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [currentService, setCurrentService] = useState<Partial<Service>>({ category: 'Ear' });
+    const [currentService, setCurrentService] = useState<Partial<Service>>({ category: 'Ear', pain_level: 1 });
     const [uploading, setUploading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleSave = async () => {
+    // Auto-save effect for existing services
+    useEffect(() => {
+        if (currentService.id && isEditing) {
+            setSaving(true);
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            
+            debounceRef.current = setTimeout(async () => {
+                await onUpdateService(currentService.id, currentService);
+                setSaving(false);
+            }, 1000);
+        }
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [currentService]);
+
+    const handleCreate = async () => {
         if (!currentService.name || !currentService.price) return;
         
         let imageUrl = currentService.image_url;
@@ -538,28 +556,46 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
         }
 
         const serviceData = { ...currentService, image_url: imageUrl };
-
-        if (serviceData.id) {
-            onUpdateService(serviceData.id, serviceData);
-        } else {
-            onAddService(serviceData);
-        }
+        await onAddService(serviceData);
         setIsEditing(false);
-        setCurrentService({ category: 'Ear' });
+        setCurrentService({ category: 'Ear', pain_level: 1 });
+    };
+    
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            setUploading(true);
+            const url = await api.uploadImage(e.target.files[0], 'service-images');
+            setUploading(false);
+            if (url) {
+                setCurrentService(prev => ({ ...prev, image_url: url }));
+            }
+        }
     };
 
     return (
         <div>
             <div className="flex justify-between mb-6">
                 <h3 className="text-xl font-medium text-white">רשימת טיפולים</h3>
-                <Button onClick={() => { setCurrentService({ category: 'Ear' }); setIsEditing(true); }} className="text-sm py-2 px-4">
+                <Button onClick={() => { setCurrentService({ category: 'Ear', pain_level: 1 }); setIsEditing(true); }} className="text-sm py-2 px-4">
                     <Plus className="w-4 h-4" /> הוסף חדש
                 </Button>
             </div>
 
             {isEditing && (
                 <Card className="mb-8 border-brand-primary/50 bg-brand-surface/80">
-                    <h4 className="text-white mb-4">{currentService.id ? 'עריכת שירות' : 'שירות חדש'}</h4>
+                    <div className="flex justify-between items-center mb-4">
+                         <h4 className="text-white">{currentService.id ? 'עריכת שירות' : 'שירות חדש'}</h4>
+                         {currentService.id && (
+                             <div className="flex items-center gap-2">
+                                {saving ? (
+                                    <span className="text-xs text-brand-primary flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin"/> שומר...</span>
+                                ) : (
+                                    <span className="text-xs text-slate-500 flex items-center gap-1"><Check className="w-3 h-3"/> נשמר</span>
+                                )}
+                             </div>
+                         )}
+                    </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <Input label="שם השירות" value={currentService.name || ''} onChange={e => setCurrentService({...currentService, name: e.target.value})} />
                         <Input label="מחיר (₪)" type="number" value={currentService.price || ''} onChange={e => setCurrentService({...currentService, price: parseFloat(e.target.value)})} />
@@ -579,14 +615,38 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
                              </select>
                         </div>
                     </div>
+                    
+                    <div className="mb-4">
+                         <label className="text-sm font-medium text-slate-400 ms-1 mb-2 block">
+                             רמת כאב: {currentService.pain_level || 1}
+                         </label>
+                         <input 
+                            type="range" 
+                            min="1" 
+                            max="10" 
+                            value={currentService.pain_level || 1} 
+                            onChange={e => setCurrentService({...currentService, pain_level: parseInt(e.target.value)})}
+                            className="w-full accent-brand-primary h-2 bg-brand-dark/50 rounded-lg appearance-none cursor-pointer"
+                         />
+                         <div className="flex justify-between text-xs text-slate-500 mt-1 px-1">
+                             <span>קל</span>
+                             <span>בינוני</span>
+                             <span>כואב</span>
+                         </div>
+                    </div>
+
                     <div className="mb-4">
                          <label className="text-sm font-medium text-slate-400 ms-1 mb-2 block">תמונה</label>
-                         <input type="file" ref={fileInputRef} className="text-slate-400 text-sm" accept="image/*" />
+                         <input type="file" ref={fileInputRef} onChange={handleImageChange} className="text-slate-400 text-sm" accept="image/*" />
+                         {uploading && <div className="text-xs text-brand-primary mt-1">מעלה תמונה...</div>}
                          {currentService.image_url && <img src={currentService.image_url} alt="preview" className="h-20 w-20 object-cover mt-2 rounded-lg border border-white/10" />}
                     </div>
+
                     <div className="flex gap-2 justify-end">
-                        <Button variant="ghost" onClick={() => setIsEditing(false)}>ביטול</Button>
-                        <Button onClick={handleSave} isLoading={uploading}>שמור שינויים</Button>
+                        <Button variant="ghost" onClick={() => setIsEditing(false)}>סגור</Button>
+                        {!currentService.id && (
+                            <Button onClick={handleCreate} isLoading={uploading}>צור שירות</Button>
+                        )}
                     </div>
                 </Card>
             )}
@@ -605,7 +665,11 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
                             <div>
                                 <h4 className="font-medium text-white">{service.name}</h4>
                                 <div className="text-brand-primary font-serif">₪{service.price}</div>
-                                <div className="text-xs text-slate-500">{service.duration_minutes} דקות</div>
+                                <div className="text-xs text-slate-500 flex gap-2">
+                                    <span>{service.duration_minutes} דק'</span>
+                                    <span>•</span>
+                                    <span>כאב: {service.pain_level || 1}/10</span>
+                                </div>
                             </div>
                         </div>
                     </Card>
@@ -1041,7 +1105,7 @@ const Admin: React.FC = () => {
 
   const handleUpdateService = async (id: string, updates: any) => {
       await api.updateService(id, updates);
-      loadData();
+      loadData(); // Reload data to ensure everything is synced
   }
 
   const handleDeleteService = async (id: string) => {

@@ -9,14 +9,14 @@ import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
 const m = motion as any;
 
 // --- Local Data Enhancements ---
-const SERVICE_META: Record<string, { pain: number; healing: string }> = {
-    'Ear': { pain: 3, healing: '4-8 שבועות' },
-    'Face': { pain: 5, healing: '2-4 חודשים' },
-    'Body': { pain: 4, healing: '3-6 חודשים' },
-    'Jewelry': { pain: 0, healing: '-' }
+const SERVICE_META: Record<string, { healing: string }> = {
+    'Ear': { healing: '4-8 שבועות' },
+    'Face': { healing: '2-4 חודשים' },
+    'Body': { healing: '3-6 חודשים' },
+    'Jewelry': { healing: '-' }
 };
 
-const getMeta = (category: string) => SERVICE_META[category] || { pain: 2, healing: 'משתנה' };
+const getMeta = (category: string) => SERVICE_META[category] || { healing: 'משתנה' };
 
 // --- Signature Pad Component ---
 const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => void }> = ({ onSave, onClear }) => {
@@ -210,9 +210,14 @@ const Booking: React.FC = () => {
 
   const PainLevel = ({ level }: { level: number }) => (
       <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className={`w-1.5 h-4 rounded-full transition-all ${i <= level ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} />
-          ))}
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => {
+              // We map 1-10 to 5 dots for cleaner UI, or use 10 small ones.
+              // Let's use 5 bars, but calculate fill based on 10.
+              const isActive = i <= level;
+              return (
+                  <div key={i} className={`w-1 h-3 rounded-full transition-all ${isActive ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} />
+              )
+          })}
       </div>
   );
 
@@ -278,8 +283,8 @@ const Booking: React.FC = () => {
                                                                 <div className="flex items-center gap-1.5"><Droplets className="w-3 h-3" /> החלמה: {meta.healing}</div>
                                                             </div>
                                                             <div className="flex flex-col items-end gap-1">
-                                                                <span className="text-[10px] text-slate-500 uppercase tracking-widest">רמת כאב</span>
-                                                                <PainLevel level={meta.pain} />
+                                                                <span className="text-[10px] text-slate-500 uppercase tracking-widest">רמת כאב ({service.pain_level || 1})</span>
+                                                                <PainLevel level={service.pain_level || 1} />
                                                             </div>
                                                         </div>
                                                     </div>

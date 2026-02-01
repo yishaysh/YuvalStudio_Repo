@@ -7,6 +7,7 @@ export interface Service {
   duration_minutes: number;
   category: 'Ear' | 'Face' | 'Body' | 'Jewelry';
   image_url: string;
+  pain_level: number; // 1-10
 }
 
 export interface Appointment {
