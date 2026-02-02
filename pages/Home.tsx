@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Feather, Shield } from 'lucide-react';
+import { ArrowLeft, Sparkles, Feather, Shield, Ticket, Palette } from 'lucide-react';
 import { Button, SectionHeading, Card } from '../components/ui';
 import { SmartImage } from '../components/SmartImage';
+import { api } from '../services/mockApi';
+import { StudioSettings } from '../types';
 
 const m = motion as any;
 
@@ -24,6 +26,14 @@ const StudioLogo = ({ className }: { className?: string }) => (
 );
 
 const Home: React.FC = () => {
+    const [settings, setSettings] = useState<StudioSettings | null>(null);
+
+    useEffect(() => {
+        api.getSettings().then(setSettings);
+    }, []);
+
+    const features = settings?.features || { enable_ear_stacker: true, enable_roulette: true };
+
   return (
     <div className="min-h-screen bg-brand-dark text-white overflow-x-hidden font-sans">
       {/* Hero Section */}
@@ -77,6 +87,42 @@ const Home: React.FC = () => {
           </m.div>
         </div>
       </section>
+
+      {/* NEW FEATURE CARDS */}
+      {(features.enable_ear_stacker || features.enable_roulette) && (
+          <section className="py-12 container mx-auto px-6 relative z-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                  {features.enable_ear_stacker && (
+                      <Link to="/stacker">
+                          <m.div whileHover={{ scale: 1.02 }} className="bg-brand-surface/40 backdrop-blur-sm border border-brand-primary/20 rounded-2xl p-6 flex items-center gap-6 hover:bg-brand-surface/60 transition-colors shadow-lg group">
+                               <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary group-hover:scale-110 transition-transform">
+                                   <Palette className="w-8 h-8" />
+                               </div>
+                               <div>
+                                   <h3 className="text-xl font-serif text-white mb-1">Ear Architect</h3>
+                                   <p className="text-slate-400 text-sm">עצבי את האוזן שלך באופן וירטואלי</p>
+                               </div>
+                               <ArrowLeft className="mr-auto text-slate-500 group-hover:text-white transition-colors" />
+                          </m.div>
+                      </Link>
+                  )}
+                  {features.enable_roulette && (
+                      <Link to="/roulette">
+                          <m.div whileHover={{ scale: 1.02 }} className="bg-brand-surface/40 backdrop-blur-sm border border-brand-primary/20 rounded-2xl p-6 flex items-center gap-6 hover:bg-brand-surface/60 transition-colors shadow-lg group">
+                               <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary group-hover:scale-110 transition-transform">
+                                   <Ticket className="w-8 h-8" />
+                               </div>
+                               <div>
+                                   <h3 className="text-xl font-serif text-white mb-1">Piercing Roulette</h3>
+                                   <p className="text-slate-400 text-sm">סובבי את הגלגל וזכי בהטבות</p>
+                               </div>
+                               <ArrowLeft className="mr-auto text-slate-500 group-hover:text-white transition-colors" />
+                          </m.div>
+                      </Link>
+                  )}
+              </div>
+          </section>
+      )}
 
       {/* Features Grid */}
       <section className="py-24 container mx-auto px-6 relative">

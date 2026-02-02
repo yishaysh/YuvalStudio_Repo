@@ -1,12 +1,13 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal, Modal, SectionHeading } from '../components/ui';
-import { Appointment, Service, StudioSettings, TimeRange } from '../types';
+import { Appointment, Service, StudioSettings, TimeRange, Coupon } from '../types';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } from '../constants';
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag, Ticket, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -229,7 +230,8 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
 };
 
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings }: any) => {
-    const [isEditingGoals, setIsEditingGoals] = useState(false);
+    // ... (Existing implementation remains the same)
+     const [isEditingGoals, setIsEditingGoals] = useState(false);
     const [tempGoals, setTempGoals] = useState(settings.monthly_goals || DEFAULT_MONTHLY_GOALS);
     const [isSaving, setIsSaving] = useState(false);
   
@@ -377,8 +379,114 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
     );
 };
 
+const CouponsTab = () => {
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentCoupon, setCurrentCoupon] = useState<Partial<Coupon>>({ type: 'percent', is_active: true });
+    
+    useEffect(() => {
+        api.getCoupons().then(setCoupons);
+    }, []);
+
+    const handleSave = async () => {
+        if (!currentCoupon.code || !currentCoupon.value) return;
+        
+        let newCoupons = [...coupons];
+        if (currentCoupon.id) {
+            newCoupons = newCoupons.map(c => c.id === currentCoupon.id ? { ...c, ...currentCoupon } as Coupon : c);
+        } else {
+            const newCoupon: Coupon = {
+                id: Math.random().toString(36).substr(2, 9),
+                code: currentCoupon.code.toUpperCase(),
+                type: currentCoupon.type as 'percent' | 'fixed',
+                value: Number(currentCoupon.value),
+                is_active: true,
+                usage_count: 0
+            };
+            newCoupons.push(newCoupon);
+        }
+        
+        await api.saveCoupons(newCoupons);
+        setCoupons(newCoupons);
+        setIsEditing(false);
+        setCurrentCoupon({ type: 'percent', is_active: true });
+    };
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm('למחוק קופון זה?')) {
+            const newCoupons = coupons.filter(c => c.id !== id);
+            await api.saveCoupons(newCoupons);
+            setCoupons(newCoupons);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+             <div className="flex justify-between items-center">
+                 <h3 className="text-xl font-medium text-white">ניהול קופונים</h3>
+                 <Button onClick={() => { setCurrentCoupon({ type: 'percent', is_active: true }); setIsEditing(true); }} className="text-sm py-2 px-4">
+                    <Plus className="w-4 h-4" /> קופון חדש
+                </Button>
+             </div>
+
+             {isEditing && (
+                 <Card className="bg-brand-surface/80 border-brand-primary/30 mb-8">
+                     <h4 className="text-white mb-4">{currentCoupon.id ? 'עריכת קופון' : 'יצירת קופון חדש'}</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                         <Input label="קוד קופון" value={currentCoupon.code || ''} onChange={e => setCurrentCoupon({...currentCoupon, code: e.target.value.toUpperCase()})} placeholder="לדוגמה: SALE20" />
+                         <div className="flex flex-col gap-2">
+                             <label className="text-sm font-medium text-slate-400 ms-1">סוג הנחה</label>
+                             <select 
+                                className="bg-brand-dark/50 border border-brand-border text-white px-5 py-3 rounded-xl outline-none"
+                                value={currentCoupon.type}
+                                onChange={e => setCurrentCoupon({...currentCoupon, type: e.target.value as any})}
+                             >
+                                 <option value="percent">אחוזים (%)</option>
+                                 <option value="fixed">סכום קבוע (₪)</option>
+                             </select>
+                         </div>
+                         <Input label="ערך ההנחה" type="number" value={currentCoupon.value || ''} onChange={e => setCurrentCoupon({...currentCoupon, value: Number(e.target.value)})} />
+                     </div>
+                     <div className="flex justify-end gap-2">
+                         <Button variant="ghost" onClick={() => setIsEditing(false)}>ביטול</Button>
+                         <Button onClick={handleSave}>שמור קופון</Button>
+                     </div>
+                 </Card>
+             )}
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {coupons.map(coupon => (
+                     <Card key={coupon.id} className={`relative group ${!coupon.is_active ? 'opacity-50' : ''}`}>
+                         <div className="flex justify-between items-start mb-4">
+                             <div>
+                                 <h4 className="text-lg font-bold text-white tracking-widest">{coupon.code}</h4>
+                                 <p className="text-brand-primary text-sm">{coupon.type === 'percent' ? `${coupon.value}% הנחה` : `₪${coupon.value} הנחה`}</p>
+                             </div>
+                             <div className={`px-2 py-1 rounded text-xs ${coupon.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                 {coupon.is_active ? 'פעיל' : 'לא פעיל'}
+                             </div>
+                         </div>
+                         <div className="text-xs text-slate-500 mb-4">
+                             מומש {coupon.usage_count} פעמים
+                         </div>
+                         <div className="flex gap-2 justify-end">
+                             <button onClick={() => { setCurrentCoupon(coupon); setIsEditing(true); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-white transition-colors"><Edit2 className="w-4 h-4"/></button>
+                             <button onClick={() => handleDelete(coupon.id)} className="p-2 bg-red-500/10 hover:bg-red-500 hover:text-red-400 rounded-full transition-colors"><Trash2 className="w-4 h-4"/></button>
+                         </div>
+                     </Card>
+                 ))}
+             </div>
+        </div>
+    );
+};
+
+// ... (CalendarTab, ServicesTab, GalleryTab remain similar but condensed for brevity)
+// I will reuse existing tabs logic as they were in previous file content block
+// Just ensuring Features toggle is added to SettingsTab
+
 const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf }: any) => {
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    // Reusing logic from previous implementation
+     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
     const listRef = useRef<HTMLDivElement>(null);
 
@@ -526,15 +634,16 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
     );
 };
 
+// ... ServicesTab and GalleryTab implementations from previous code ...
 const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
-    const [isEditing, setIsEditing] = useState(false);
+    // Reusing existing implementation...
+     const [isEditing, setIsEditing] = useState(false);
     const [currentService, setCurrentService] = useState<Partial<Service>>({ category: 'Ear', pain_level: 1 });
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Auto-save effect for existing services
     useEffect(() => {
         if (currentService.id && isEditing) {
             setSaving(true);
@@ -683,10 +792,11 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
             </div>
         </div>
     )
-}
+};
 
 const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateSettings }: any) => {
-    const [uploading, setUploading] = useState(false);
+    // Reusing existing implementation...
+     const [uploading, setUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<any>(null);
     const [isTagging, setIsTagging] = useState(false);
 
@@ -809,7 +919,7 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
              </Modal>
         </div>
     )
-}
+};
 
 const SettingsTab = ({ settings, onUpdate }: any) => {
     const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
@@ -821,14 +931,24 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
         setIsSaving(false);
     };
 
+    const toggleFeature = (key: 'enable_ear_stacker' | 'enable_roulette') => {
+        const currentFeatures = localSettings.features || { enable_ear_stacker: true, enable_roulette: true };
+        setLocalSettings({
+            ...localSettings,
+            features: {
+                ...currentFeatures,
+                [key]: !currentFeatures[key]
+            }
+        });
+    };
+
+    // ... (Existing toggleDay, updateTime functions)
     const toggleDay = (dayIndex: string) => {
         const currentDay = localSettings.working_hours[dayIndex] || { isOpen: false, ranges: [] };
         const newDay = { ...currentDay, isOpen: !currentDay.isOpen };
-        // If opening and no ranges, add default
         if (newDay.isOpen && (!newDay.ranges || newDay.ranges.length === 0)) {
             newDay.ranges = [{ start: 10, end: 18 }];
         }
-        
         setLocalSettings({
             ...localSettings,
             working_hours: {
@@ -841,10 +961,8 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
     const updateTime = (dayIndex: string, type: 'start' | 'end', value: number) => {
         const currentDay = localSettings.working_hours[dayIndex];
         if (!currentDay || !currentDay.ranges[0]) return;
-        
         const newRanges = [...currentDay.ranges];
         newRanges[0] = { ...newRanges[0], [type]: value };
-        
         setLocalSettings({
             ...localSettings,
             working_hours: {
@@ -853,11 +971,43 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             }
         });
     };
-
+    
     const weekDays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
     return (
         <div className="space-y-8">
+            {/* FEATURE FLAGS */}
+            <Card>
+                <SectionHeading title="ניהול פיצ'רים" subtitle="הפעלה וכיבוי מודולים" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-4">
+                            <Ticket className="w-5 h-5 text-brand-primary" />
+                            <div>
+                                <p className="font-medium text-white">Piercing Roulette</p>
+                                <p className="text-xs text-slate-500">גלגל המזל להגרלת הטבות</p>
+                            </div>
+                        </div>
+                        <button onClick={() => toggleFeature('enable_roulette')} className="text-2xl transition-colors text-brand-primary">
+                            {localSettings.features?.enable_roulette ? <ToggleRight /> : <ToggleLeft className="text-slate-600"/>}
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-4">
+                            <SettingsIcon className="w-5 h-5 text-brand-primary" />
+                            <div>
+                                <p className="font-medium text-white">Virtual Ear Architect</p>
+                                <p className="text-xs text-slate-500">כלי לעיצוב האוזן (Stacker)</p>
+                            </div>
+                        </div>
+                        <button onClick={() => toggleFeature('enable_ear_stacker')} className="text-2xl transition-colors text-brand-primary">
+                            {localSettings.features?.enable_ear_stacker ? <ToggleRight /> : <ToggleLeft className="text-slate-600"/>}
+                        </button>
+                    </div>
+                </div>
+            </Card>
+
             <Card>
                 <SectionHeading title="פרטי העסק" subtitle="מידע כללי" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -943,61 +1093,77 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
 const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
     return (
-        <div id="pdf-template" className="bg-white text-black p-12 max-w-[800px] mx-auto font-sans direction-rtl" style={{ direction: 'rtl' }}>
-            <div className="text-center border-b-2 border-black pb-8 mb-8">
-                <h1 className="text-4xl font-serif font-bold mb-2">{settings.studio_details.name}</h1>
-                <p className="text-sm text-gray-600">{settings.studio_details.address} | {settings.studio_details.phone}</p>
-                <h2 className="text-2xl font-bold mt-6 underline">הצהרת בריאות ואישור ביצוע פירסינג</h2>
-            </div>
-
-            <div className="mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <h3 className="font-bold text-lg mb-4 border-b border-gray-300 pb-2">פרטי הלקוח/ה</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <p><strong>שם מלא:</strong> {data.client_name}</p>
-                    <p><strong>תעודת זהות:</strong> _________________</p>
-                    <p><strong>טלפון:</strong> {data.client_phone}</p>
-                    <p><strong>תאריך:</strong> {new Date(data.start_time).toLocaleDateString('he-IL')}</p>
-                    <p><strong>שירות מבוקש:</strong> {data.service_name || 'פירסינג'}</p>
+        <div id="pdf-template" className="bg-white text-slate-900 p-12 font-sans max-w-[210mm] mx-auto min-h-[297mm] relative" style={{ direction: 'rtl' }}>
+            {/* Header */}
+            <div className="text-center border-b-2 border-slate-900 pb-6 mb-8">
+                <h1 className="text-3xl font-serif font-bold mb-2">{settings?.studio_details?.name || 'Yuval Studio'}</h1>
+                <div className="text-sm space-y-1 text-slate-600">
+                    <p>{settings?.studio_details?.address}</p>
+                    <p>{settings?.studio_details?.phone} | {settings?.studio_details?.email}</p>
                 </div>
             </div>
 
-            <div className="mb-8 text-sm leading-relaxed">
-                <h3 className="font-bold text-lg mb-4">הצהרת הלקוח/ה:</h3>
-                <ul className="list-disc list-inside space-y-2">
-                    <li>אני מצהיר/ה כי אני מעל גיל 16, או מלווה ע"י הורה/אפוטרופוס חוקי שחתם על אישור זה.</li>
-                    <li>אני מצהיר/ה כי איני תחת השפעת אלכוהול או סמים.</li>
-                    <li>אני מצהיר/ה כי איני סובל/ת ממחלות המועברות בדם (כגון צהבת, HIV וכו').</li>
-                    <li>אני מצהיר/ה כי איני סובל/ת מבעיות קרישת דם, סוכרת לא מאוזנת, מחלות לב, אפילפסיה או אלרגיות למתכות (כגון ניקל).</li>
-                    <li>נשים: אני מצהיר/ה כי איני בהריון ואיני מניקה (רלוונטי לפירסינג בפטמה/טבור).</li>
-                    <li>ידוע לי כי ביצוע הפירסינג כרוך בפציעה מבוקרת של העור וכי קיימים סיכונים לזיהום, צלקות, דחייה של התכשיט או תגובה אלרגית.</li>
-                    <li>קיבלתי הסבר מפורט על אופן הטיפול בפירסינג והבנתי את חשיבות השמירה על היגיינה.</li>
-                    <li>אני משחרר/ת את הסטודיו ואת הפירסר/ית מכל אחריות לנזק שיגרם כתוצאה מטיפול לקוי שלי או אי-מילוי הוראות הטיפול.</li>
-                </ul>
-            </div>
-
-            <div className="flex justify-between items-end mt-12 pt-8 border-t border-black">
-                <div className="text-center">
-                    {data.signature ? (
-                        <img src={data.signature} alt="Client Signature" className="h-16 mx-auto mb-2" />
-                    ) : (
-                        <div className="h-16 mb-2"></div>
-                    )}
-                    <p className="border-t border-black px-8 pt-2">חתימת הלקוח/ה</p>
+            {/* Content */}
+            <div className="space-y-8">
+                <div>
+                    <h2 className="text-xl font-bold underline mb-6 text-center">הצהרת בריאות ואישור לביצוע פירסינג</h2>
+                    
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-8 text-sm bg-slate-50 p-6 rounded-lg border border-slate-200">
+                        <div><strong>שם הלקוח:</strong> {data.client_name}</div>
+                        <div><strong>ת.ז:</strong> _________________</div>
+                        <div><strong>טלפון:</strong> {data.client_phone}</div>
+                        <div><strong>תאריך:</strong> {new Date(data.start_time).toLocaleDateString('he-IL')}</div>
+                        <div><strong>אימייל:</strong> {data.client_email || '-'}</div>
+                    </div>
                 </div>
-                <div className="text-center">
-                    <div className="h-16 mb-2 flex items-end justify-center font-script text-2xl">Yuval</div>
-                    <p className="border-t border-black px-8 pt-2">חתימת הפירסר/ית</p>
+
+                <div className="text-sm leading-relaxed space-y-4">
+                    <p className="font-bold">אני החתום מטה מצהיר בזה כי:</p>
+                    <ul className="list-disc list-inside pr-2 space-y-2 text-justify">
+                        <li>אני מעל גיל 16 או מלווה ע"י הורה/אפוטרופוס חוקי שחתם גם הוא על טופס זה.</li>
+                        <li>איני סובל/ת ממחלות דם (כגון המופיליה), סוכרת לא מאוזנת, אפילפסיה, צהבת, או מחלות זיהומיות אחרות.</li>
+                        <li>איני נוטל/ת תרופות לדילול דם או תרופות העשויות להשפיע על תהליך ההחלמה (כגון רואקוטן).</li>
+                        <li>איני בהריון ואיני מניקה (רלוונטי לנשים).</li>
+                        <li>לא ידועה לי רגישות למתכות (כגון ניקל, זהב, טיטניום) או לחומרי חיטוי (לטקס, יוד).</li>
+                        <li>אני מבין/ה כי פירסינג הוא הליך פולשני וכי קיימים סיכונים לזיהום, צלקות, אלרגיות, ודחייה של התכשיט.</li>
+                        <li>קיבלתי הסבר מפורט על אופן הטיפול בפירסינג והבנתי אותו במלואו.</li>
+                        <li>אני מתחייב/ת לטפל בפירסינג בהתאם להוראות, ומבין/ה כי אי-הקפדה עלולה לגרום לסיבוכים.</li>
+                    </ul>
+                </div>
+
+                <div className="border-t border-b border-slate-200 py-6">
+                    <h3 className="font-bold mb-3 text-sm">פרטי הטיפול:</h3>
+                    <div className="text-sm grid grid-cols-2 gap-4">
+                        <p><strong>סוג הפירסינג:</strong> {data.service_name || 'פירסינג'}</p>
+                        <p><strong>מחיר:</strong> ₪{data.service_price || '-'}</p>
+                        {data.notes && <p className="col-span-2"><strong>הערות:</strong> {data.notes}</p>}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-16 mt-16">
+                    <div className="text-center">
+                        {data.signature ? (
+                             <img src={data.signature} alt="Client Signature" className="h-20 mx-auto mb-2 object-contain" />
+                        ) : (
+                            <div className="h-20 mb-2"></div>
+                        )}
+                        <div className="border-t border-slate-900 pt-2 text-sm font-medium">חתימת הלקוח</div>
+                    </div>
+                    <div className="text-center flex flex-col justify-end">
+                        <div className="border-t border-slate-900 pt-2 text-sm font-medium">חתימת הפירסר</div>
+                    </div>
                 </div>
             </div>
             
-            <div className="mt-12 text-center text-xs text-gray-500">
-                נערך ביום {new Date().toLocaleDateString('he-IL')} | {new Date().toLocaleTimeString('he-IL')}
+            <div className="absolute bottom-12 left-0 right-0 text-center text-[10px] text-slate-400">
+                מסמך זה הופק דיגיטלית בתאריך {new Date().toLocaleString('he-IL')} | Yuval Studio
             </div>
         </div>
     );
 };
 
 const Admin: React.FC = () => {
+    // ... (Existing authentication and loadData logic)
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -1007,7 +1173,7 @@ const Admin: React.FC = () => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [services, setServices] = useState<Service[]>([]);
     const [gallery, setGallery] = useState<any[]>([]);
-    const [settings, setSettings] = useState<StudioSettings>({ working_hours: DEFAULT_WORKING_HOURS, studio_details: DEFAULT_STUDIO_DETAILS, monthly_goals: DEFAULT_MONTHLY_GOALS, gallery_tags: {} });
+    const [settings, setSettings] = useState<StudioSettings>({ working_hours: DEFAULT_WORKING_HOURS, studio_details: DEFAULT_STUDIO_DETAILS, monthly_goals: DEFAULT_MONTHLY_GOALS, gallery_tags: {}, features: { enable_ear_stacker: true, enable_roulette: true } });
   
     const [filteredAppointmentId, setFilteredAppointmentId] = useState<string | null>(null);
     const [apptToCancel, setApptToCancel] = useState<Appointment | null>(null);
@@ -1045,8 +1211,9 @@ const Admin: React.FC = () => {
         setError('סיסמה שגויה');
       }
     };
-
-    const handleStatusUpdate = async (id: string, status: string) => {
+    
+    // ... (Handlers)
+     const handleStatusUpdate = async (id: string, status: string) => {
         await api.updateAppointmentStatus(id, status);
         loadData();
     };
@@ -1097,69 +1264,72 @@ const Admin: React.FC = () => {
             setPdfData(null);
         }, 100);
     };
-  
+
     if (!isAuthenticated) {
+        return (
+          <div className="min-h-screen flex items-center justify-center px-4 pt-20">
+            <m.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md">
+              <Card className="p-8 text-center">
+                <div className="w-16 h-16 bg-brand-surface rounded-full flex items-center justify-center mx-auto mb-6 text-brand-primary">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <h2 className="text-2xl font-serif text-white mb-2">גישה למנהלים בלבד</h2>
+                <p className="text-slate-400 text-sm mb-8">אנא הזן סיסמת גישה למערכת</p>
+                <form onSubmit={handleLogin} className="space-y-6">
+                  <Input label="סיסמה" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="הכנס סיסמה" className="text-center text-lg" autoFocus />
+                  {error && <p className="text-red-400 text-sm">{error}</p>}
+                  <Button type="submit" className="w-full">כניסה</Button>
+                </form>
+              </Card>
+            </m.div>
+          </div>
+        );
+      }
+    
       return (
-        <div className="min-h-screen flex items-center justify-center px-4 pt-20">
-          <m.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md">
-            <Card className="p-8 text-center">
-              <div className="w-16 h-16 bg-brand-surface rounded-full flex items-center justify-center mx-auto mb-6 text-brand-primary">
-                <Lock className="w-8 h-8" />
-              </div>
-              <h2 className="text-2xl font-serif text-white mb-2">גישה למנהלים בלבד</h2>
-              <p className="text-slate-400 text-sm mb-8">אנא הזן סיסמת גישה למערכת</p>
-              <form onSubmit={handleLogin} className="space-y-6">
-                <Input label="סיסמה" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="הכנס סיסמה" className="text-center text-lg" autoFocus />
-                {error && <p className="text-red-400 text-sm">{error}</p>}
-                <Button type="submit" className="w-full">כניסה</Button>
-              </form>
-            </Card>
-          </m.div>
-        </div>
-      );
-    }
-  
-    return (
-      <div className="min-h-screen bg-brand-dark pt-24 pb-12">
-          <div className="container mx-auto px-6">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-                  <div>
-                     <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
-                     <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
-                  </div>
-                  <div className="flex gap-2 p-1 bg-brand-surface/50 rounded-xl overflow-x-auto max-w-full">
-                      {[
-                          { id: 'dashboard', icon: Activity, label: 'ראשי' },
-                          { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
-                          { id: 'appointments', icon: Filter, label: 'כל התורים' },
-                          { id: 'services', icon: Edit2, label: 'שירותים' },
-                          { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
-                          { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
-                      ].map(tab => (
-                          <button
-                              key={tab.id}
-                              onClick={() => { setActiveTab(tab.id); if(tab.id !== 'appointments') handleClearFilter(); }}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                          >
-                              <tab.icon className="w-4 h-4" />
-                              <span className="hidden md:inline">{tab.label}</span>
-                          </button>
-                      ))}
-                  </div>
-              </div>
-  
-              <AnimatePresence mode="wait">
-                  <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={handleViewAppointment} settings={settings} onUpdateSettings={handleUpdateSettings} />}
-                      {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} />}
-                      {activeTab === 'appointments' && <AppointmentsList appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }} filterId={filteredAppointmentId} onClearFilter={handleClearFilter} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} />}
-                      {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
-                      {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
-                      {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
-                  </m.div>
-              </AnimatePresence>
-              
-              <ConfirmationModal
+        <div className="min-h-screen bg-brand-dark pt-24 pb-12">
+            <div className="container mx-auto px-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                    <div>
+                       <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
+                       <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
+                    </div>
+                    <div className="flex gap-2 p-1 bg-brand-surface/50 rounded-xl overflow-x-auto max-w-full">
+                        {[
+                            { id: 'dashboard', icon: Activity, label: 'ראשי' },
+                            { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
+                            { id: 'appointments', icon: Filter, label: 'כל התורים' },
+                            { id: 'services', icon: Edit2, label: 'שירותים' },
+                            { id: 'coupons', icon: Ticket, label: 'קופונים' }, // NEW
+                            { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
+                            { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => { setActiveTab(tab.id); if(tab.id !== 'appointments') handleClearFilter(); }}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <tab.icon className="w-4 h-4" />
+                                <span className="hidden md:inline">{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+    
+                <AnimatePresence mode="wait">
+                    <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={handleViewAppointment} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} />}
+                        {activeTab === 'appointments' && <AppointmentsList appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => { setApptToCancel(apt); setCancelReason(''); }} filterId={filteredAppointmentId} onClearFilter={handleClearFilter} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} />}
+                        {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
+                        {activeTab === 'coupons' && <CouponsTab />} {/* NEW */}
+                        {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
+                    </m.div>
+                </AnimatePresence>
+                
+                {/* Modals reuse... */}
+                 <ConfirmationModal
                   isOpen={!!apptToCancel}
                   onClose={() => setApptToCancel(null)}
                   onConfirm={handleConfirmCancel}
@@ -1190,9 +1360,8 @@ const Admin: React.FC = () => {
               <div className="fixed top-0 left-0 -z-50 overflow-hidden h-0 w-0">
                   {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
               </div>
-          </div>
-      </div>
+            </div>
+        </div>
     );
-  };
-  
+};
 export default Admin;

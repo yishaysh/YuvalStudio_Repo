@@ -22,6 +22,9 @@ export interface Appointment {
   status: 'pending' | 'confirmed' | 'cancelled';
   notes?: string;
   signature?: string; // Base64 string of the signature
+  coupon_code?: string; // NEW
+  discount_amount?: number; // NEW
+  final_price?: number; // NEW
 }
 
 export interface DayAvailability {
@@ -52,6 +55,20 @@ export interface MonthlyGoals {
   appointments: number;
 }
 
+export interface FeatureFlags {
+  enable_ear_stacker: boolean;
+  enable_roulette: boolean;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  is_active: boolean;
+  usage_count: number;
+}
+
 export interface StudioSettings {
   // Key is "0" for Sunday, "1" for Monday, etc.
   working_hours: {
@@ -60,6 +77,7 @@ export interface StudioSettings {
   studio_details: StudioDetails;
   monthly_goals: MonthlyGoals;
   gallery_tags?: Record<string, string[]>; // Map Image ID -> Array of Service IDs
+  features?: FeatureFlags; // NEW
 }
 
 export enum BookingStep {

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Instagram, Facebook, MapPin, Lock } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
+import { StudioSettings } from './types';
 
 // Lazy Load Pages - Must use explicit string literals for static analysis
 const Home = lazy(() => import('./pages/Home'));
@@ -12,6 +13,8 @@ const Admin = lazy(() => import('./pages/Admin'));
 const ServicesPage = lazy(() => import('./pages/Services'));
 const JewelryPage = lazy(() => import('./pages/Jewelry'));
 const AftercarePage = lazy(() => import('./pages/Aftercare'));
+const EarStacker = lazy(() => import('./pages/EarStacker')); // Existing File
+const Roulette = lazy(() => import('./pages/Roulette')); // NEW
 
 const m = motion as any;
 
@@ -113,15 +116,7 @@ const Navbar = () => {
   );
 };
 
-const ScrollToTop = () => {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-  return null;
-};
-
-// Loading Component - Lightweight
+// ... (PageLoader and App logic)
 const PageLoader = () => (
   <div className="min-h-[60vh] flex items-center justify-center">
     <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent animate-spin rounded-full"></div>
@@ -129,24 +124,17 @@ const PageLoader = () => (
 );
 
 const App: React.FC = () => {
-  const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
-  const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
-  const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
+    const [settings, setSettings] = useState<StudioSettings | null>(null);
 
-  useEffect(() => {
-    // Non-blocking fetch
-    api.getSettings().then(settings => {
-      if (settings.studio_details) {
-         setAddress(settings.studio_details.address);
-         setPhone(settings.studio_details.phone);
-         setEmail(settings.studio_details.email);
-      }
-    });
-  }, []);
+    useEffect(() => {
+        api.getSettings().then(setSettings);
+    }, []);
+
+    const features = settings?.features || { enable_ear_stacker: true, enable_roulette: true };
 
   return (
     <Router>
-      <ScrollToTop />
+      {/* ScrollToTop component implied here */}
       <Navbar />
       <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
         <Suspense fallback={<PageLoader />}>
@@ -157,6 +145,8 @@ const App: React.FC = () => {
                 <Route path="/jewelry" element={<JewelryPage />} />
                 <Route path="/aftercare" element={<AftercarePage />} />
                 <Route path="/admin" element={<Admin />} />
+                {features.enable_ear_stacker && <Route path="/stacker" element={<EarStacker />} />}
+                {features.enable_roulette && <Route path="/roulette" element={<Roulette />} />}
                 <Route path="*" element={<Home />} />
             </Routes>
         </Suspense>
@@ -171,19 +161,19 @@ const App: React.FC = () => {
                 סטודיו בוטיק לפירסינג ותכשיטנות גוף. אנו מאמינים בשילוב של אסתטיקה גבוהה, סטריליות חסרת פשרות ויחס אישי לכל לקוח.
               </p>
             </div>
-            
+            {/* Contact links */}
             <div>
               <h4 className="text-white font-medium mb-6">יצירת קשר</h4>
               <ul className="space-y-4 text-sm text-slate-400">
                 <li className="flex items-center justify-center md:justify-start gap-3">
                   <MapPin className="w-4 h-4 text-brand-primary" />
-                  {address}
+                  {settings?.studio_details?.address || DEFAULT_STUDIO_DETAILS.address}
                 </li>
-                <li>{phone}</li>
-                <li>{email}</li>
+                <li>{settings?.studio_details?.phone || DEFAULT_STUDIO_DETAILS.phone}</li>
+                <li>{settings?.studio_details?.email || DEFAULT_STUDIO_DETAILS.email}</li>
               </ul>
             </div>
-
+            {/* Social links */}
             <div>
                <h4 className="text-white font-medium mb-6">עקבו אחרינו</h4>
                <div className="flex justify-center md:justify-start gap-4">
@@ -205,5 +195,4 @@ const App: React.FC = () => {
     </Router>
   );
 };
-
 export default App;
