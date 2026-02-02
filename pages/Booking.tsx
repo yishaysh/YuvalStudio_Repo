@@ -428,7 +428,14 @@ const Booking: React.FC = () => {
                                             {availableSlots.length > 0 ? availableSlots.map((slot, i) => {
                                                 const valid = isSlotValid(i);
                                                 return (
-                                                    <button key={i} disabled={!valid} onClick={() => setSelectedSlot(slot.time)} className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}>{slot.time}</button>
+                                                    <button 
+                                                        key={i} 
+                                                        disabled={!valid} 
+                                                        onClick={() => setSelectedSlot(selectedSlot === slot.time ? null : slot.time)} 
+                                                        className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}
+                                                    >
+                                                        {slot.time}
+                                                    </button>
                                                 )
                                             }) : (
                                                 <div className="col-span-full text-center text-slate-500 py-8">אין תורים פנויים לתאריך זה.</div>

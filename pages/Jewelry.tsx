@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/mockApi';
-import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Share2, Sparkles, Calendar } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Share2, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { Service } from '../types';
@@ -11,6 +11,11 @@ const m = motion as any;
 const JewelryPage: React.FC = () => {
   const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  
+  // Selection Dialog State
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,14 +30,27 @@ const JewelryPage: React.FC = () => {
     loadGallery();
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedIndex !== null) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+      setIsSelectionMode(false); // Reset selection mode when closing main modal
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [selectedIndex]);
+
   const handleNext = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     setSelectedIndex((prev) => prev === null ? null : (prev + 1) % galleryItems.length);
+    setIsSelectionMode(false);
   }, [galleryItems.length]);
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     setSelectedIndex((prev) => prev === null ? null : (prev - 1 + galleryItems.length) % galleryItems.length);
+    setIsSelectionMode(false);
   }, [galleryItems.length]);
 
   useEffect(() => {
@@ -40,21 +58,41 @@ const JewelryPage: React.FC = () => {
       if (selectedIndex === null) return;
       if (e.key === 'ArrowLeft') handleNext();
       if (e.key === 'ArrowRight') handlePrev();
-      if (e.key === 'Escape') setSelectedIndex(null);
+      if (e.key === 'Escape') {
+          if (isSelectionMode) setIsSelectionMode(false);
+          else setSelectedIndex(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIndex, handleNext, handlePrev]);
+  }, [selectedIndex, handleNext, handlePrev, isSelectionMode]);
 
   // Get look details for current index
   const currentItem = selectedIndex !== null ? galleryItems[selectedIndex] : null;
   const taggedServices: Service[] = currentItem?.taggedServices || [];
-  const totalPrice = taggedServices.reduce((acc, item) => acc + item.price, 0);
-
-  const handleBuyLook = () => {
-      if (!taggedServices.length) return;
-      navigate('/booking', { state: { preSelectedServices: taggedServices } });
+  
+  // Initialize selected services when opening selection mode
+  const handleOpenSelection = () => {
+      setSelectedServices(taggedServices); // Select all by default
+      setIsSelectionMode(true);
   };
+
+  const toggleServiceSelection = (service: Service) => {
+      if (selectedServices.find(s => s.id === service.id)) {
+          setSelectedServices(selectedServices.filter(s => s.id !== service.id));
+      } else {
+          setSelectedServices([...selectedServices, service]);
+      }
+  };
+
+  const handleFinalBooking = () => {
+      if (!selectedServices.length) return;
+      navigate('/booking', { state: { preSelectedServices: selectedServices } });
+  };
+
+  // Calculations for display
+  const totalPrice = taggedServices.reduce((acc, item) => acc + item.price, 0);
+  const selectedPrice = selectedServices.reduce((acc, item) => acc + item.price, 0);
 
   return (
     <div className="pt-24 pb-20">
@@ -79,7 +117,7 @@ const JewelryPage: React.FC = () => {
               >
                 {/* Overlay indicating it has tags */}
                 {item.taggedServices?.length > 0 && (
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-end p-4">
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-end justify-end p-4">
                         <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                             <p className="font-serif text-sm flex items-center gap-2"><Sparkles className="w-3 h-3 text-brand-primary" /> Get The Look</p>
                         </div>
@@ -149,55 +187,124 @@ const JewelryPage: React.FC = () => {
                 </div>
 
                 {/* Right Side: "Get The Look" Details */}
-                <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col h-[60vh] md:h-auto">
-                    <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
-                        <div className="mb-6 pb-6 border-b border-white/10">
-                            <h2 className="text-3xl font-serif text-white mb-2">Get The Look</h2>
-                            <p className="text-slate-400 text-sm">הפריטים המופיעים בתמונה זו</p>
-                        </div>
+                <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col h-[60vh] md:h-auto relative overflow-hidden">
+                    
+                    {/* Default View */}
+                    <AnimatePresence mode="wait">
+                        {!isSelectionMode ? (
+                            <m.div 
+                                key="details"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="flex flex-col h-full"
+                            >
+                                <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
+                                    <div className="mb-6 pb-6 border-b border-white/10">
+                                        <h2 className="text-3xl font-serif text-white mb-2">Get The Look</h2>
+                                        <p className="text-slate-400 text-sm">הפריטים המופיעים בתמונה זו</p>
+                                    </div>
 
-                        {taggedServices.length > 0 ? (
-                            <div className="space-y-4">
-                                {taggedServices.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 hover:border-brand-primary/30 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                                                <Tag className="w-4 h-4" />
-                                            </div>
-                                            <div>
-                                                <p className="text-slate-200 font-medium text-sm">{item.name}</p>
-                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">{item.category}</p>
+                                    {taggedServices.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {taggedServices.map((item, idx) => (
+                                                <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 hover:border-brand-primary/30 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                                                            <Tag className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-slate-200 font-medium text-sm">{item.name}</p>
+                                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{item.category}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-white font-serif">₪{item.price}</span>
+                                                </div>
+                                            ))}
+
+                                            <div className="mt-8 p-4 bg-brand-surface rounded-xl border border-brand-primary/20">
+                                                <div className="flex justify-between items-end mb-1">
+                                                    <span className="text-slate-400">סה"כ לוק משוער</span>
+                                                    <span className="text-2xl font-serif text-brand-primary">₪{totalPrice}</span>
+                                                </div>
+                                                <p className="text-[10px] text-slate-500">* המחיר כולל תכשיט וביצוע</p>
                                             </div>
                                         </div>
-                                        <span className="text-white font-serif">₪{item.price}</span>
-                                    </div>
-                                ))}
-
-                                <div className="mt-8 p-4 bg-brand-surface rounded-xl border border-brand-primary/20">
-                                    <div className="flex justify-between items-end mb-1">
-                                        <span className="text-slate-400">סה"כ לוק משוער</span>
-                                        <span className="text-2xl font-serif text-brand-primary">₪{totalPrice}</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500">* המחיר כולל תכשיט וביצוע</p>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-40 text-slate-500">
+                                            <ShoppingBag className="w-8 h-8 mb-2 opacity-50" />
+                                            <p>לא תויגו מוצרים לתמונה זו עדיין</p>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-40 text-slate-500">
-                                <ShoppingBag className="w-8 h-8 mb-2 opacity-50" />
-                                <p>לא תויגו מוצרים לתמונה זו עדיין</p>
-                            </div>
-                        )}
-                    </div>
 
-                    {/* Action Bar */}
-                    <div className="p-6 border-t border-white/10 bg-brand-surface/95 backdrop-blur-sm z-10 mt-auto">
-                        <Button onClick={handleBuyLook} className="w-full py-4 text-lg mb-2 shadow-xl shadow-brand-primary/20" disabled={taggedServices.length === 0}>
-                            <span className="flex items-center justify-center gap-2">
-                                אני רוצה את הלוק הזה <Calendar className="w-4 h-4" />
-                            </span>
-                        </Button>
-                        <p className="text-center text-[10px] text-slate-500">לחיצה תעביר אותך לקביעת תור עם הפריטים שנבחרו</p>
-                    </div>
+                                {/* Action Bar */}
+                                <div className="p-6 border-t border-white/10 bg-brand-surface/95 backdrop-blur-sm z-10 mt-auto">
+                                    <Button onClick={handleOpenSelection} className="w-full py-4 text-lg mb-2 shadow-xl shadow-brand-primary/20" disabled={taggedServices.length === 0}>
+                                        <span className="flex items-center justify-center gap-2">
+                                            אני רוצה את הלוק הזה <Calendar className="w-4 h-4" />
+                                        </span>
+                                    </Button>
+                                    <p className="text-center text-[10px] text-slate-500">לחיצה תעביר לבחירת הפריטים הרצויים</p>
+                                </div>
+                            </m.div>
+                        ) : (
+                            /* Selection View */
+                            <m.div 
+                                key="selection"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="flex flex-col h-full bg-brand-dark"
+                            >
+                                <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-2xl font-serif text-white">הרכבת הלוק</h2>
+                                        <p className="text-slate-400 text-xs">בחר את הפריטים שתרצה לבצע</p>
+                                    </div>
+                                    <button onClick={() => setIsSelectionMode(false)} className="text-slate-400 hover:text-white">
+                                        <X className="w-5 h-5"/>
+                                    </button>
+                                </div>
+
+                                <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+                                    <div className="space-y-3">
+                                        {taggedServices.map((item) => {
+                                            const isSelected = selectedServices.some(s => s.id === item.id);
+                                            return (
+                                                <div 
+                                                    key={item.id} 
+                                                    onClick={() => toggleServiceSelection(item)}
+                                                    className={`flex justify-between items-center p-4 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`transition-colors ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}>
+                                                            {isSelected ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                                                        </div>
+                                                        <div>
+                                                            <p className={`font-medium text-sm ${isSelected ? 'text-white' : 'text-slate-400'}`}>{item.name}</p>
+                                                            <p className="text-[10px] text-slate-500">{item.category}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={isSelected ? 'text-brand-primary font-bold' : 'text-slate-500'}>₪{item.price}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="p-6 border-t border-white/10 bg-brand-surface/95 backdrop-blur-sm z-10">
+                                    <div className="flex justify-between items-end mb-4 px-1">
+                                        <span className="text-slate-400 text-sm">סה"כ נבחר</span>
+                                        <span className="text-2xl font-serif text-white">₪{selectedPrice}</span>
+                                    </div>
+                                    <Button onClick={handleFinalBooking} className="w-full py-4 text-lg shadow-xl" disabled={selectedServices.length === 0}>
+                                        המשך לקביעת תור ({selectedServices.length} פריטים)
+                                    </Button>
+                                </div>
+                            </m.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
           </m.div>
