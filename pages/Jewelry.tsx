@@ -1,57 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/mockApi';
-import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Share2, Sparkles } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Share2, Sparkles, Calendar } from 'lucide-react';
 import { Button } from '../components/ui';
-import { DEFAULT_STUDIO_DETAILS } from '../constants';
+import { useNavigate } from 'react-router-dom';
+import { Service } from '../types';
 
 const m = motion as any;
 
-// --- Mock Data for "Get The Look" ---
-// In a real app, this would come from the database relationship between Gallery items and Products
-const MOCK_LOOKS: Record<number, { items: { name: string; price: number; type: string }[] }> = {
-    0: {
-        items: [
-            { name: 'הליקס כפול - חישוק זהב 14K', price: 450, type: 'Piercing' },
-            { name: 'עגיל תנוך - יהלום שחור', price: 300, type: 'Jewelry' }
-        ]
-    },
-    1: {
-        items: [
-            { name: 'ספטום קליקר טיטניום', price: 180, type: 'Piercing' },
-            { name: 'נזם נקודה זהב', price: 120, type: 'Jewelry' }
-        ]
-    },
-    3: {
-        items: [
-            { name: 'אינדסטריאל קלאסי', price: 250, type: 'Piercing' },
-            { name: 'הליקס קדמי (Forward Helix)', price: 180, type: 'Piercing' }
-        ]
-    }
-};
-
 const JewelryPage: React.FC = () => {
-  const [images, setImages] = useState<string[]>([]);
+  const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadGallery = async () => {
       try {
         const data = await api.getGallery();
-        if (data && data.length > 0) {
-          const dbImages = data.map((item: any) => item.image_url);
-          setImages(dbImages);
-        } else {
-             // Fallback images if DB is empty
-             setImages([
-                'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1629224316810-9d8805b95076?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1630019852942-e5e1237d6d49?q=80&w=800&auto=format&fit=crop',
-                'https://images.unsplash.com/photo-1589904107470-38e07923366c?q=80&w=800&auto=format&fit=crop',
-            ]);
-        }
+        setGalleryItems(data);
       } catch (error) {
         console.error("Failed to load gallery images", error);
       }
@@ -61,13 +27,13 @@ const JewelryPage: React.FC = () => {
 
   const handleNext = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setSelectedIndex((prev) => prev === null ? null : (prev + 1) % images.length);
-  }, [images.length]);
+    setSelectedIndex((prev) => prev === null ? null : (prev + 1) % galleryItems.length);
+  }, [galleryItems.length]);
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setSelectedIndex((prev) => prev === null ? null : (prev - 1 + images.length) % images.length);
-  }, [images.length]);
+    setSelectedIndex((prev) => prev === null ? null : (prev - 1 + galleryItems.length) % galleryItems.length);
+  }, [galleryItems.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -81,17 +47,13 @@ const JewelryPage: React.FC = () => {
   }, [selectedIndex, handleNext, handlePrev]);
 
   // Get look details for current index
-  const currentLook = selectedIndex !== null ? MOCK_LOOKS[selectedIndex % 4] : null; // Using modulo to fake data for all images
-  const totalPrice = currentLook?.items.reduce((acc, item) => acc + item.price, 0) || 0;
+  const currentItem = selectedIndex !== null ? galleryItems[selectedIndex] : null;
+  const taggedServices: Service[] = currentItem?.taggedServices || [];
+  const totalPrice = taggedServices.reduce((acc, item) => acc + item.price, 0);
 
   const handleBuyLook = () => {
-      if (!currentLook || selectedIndex === null) return;
-      const phone = DEFAULT_STUDIO_DETAILS.phone.replace(/\D/g, '').replace(/^0/, '972');
-      
-      const itemsList = currentLook.items.map(i => `- ${i.name} (₪${i.price})`).join('\n');
-      const msg = `*היי יובל! אהבתי את הלוק הזה מהאתר:* 😍\n\n${itemsList}\n\n*סה"כ משוער:* ₪${totalPrice}\n\nאשמח לקבוע תור לביצוע!`;
-      
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      if (!taggedServices.length) return;
+      navigate('/booking', { state: { preSelectedServices: taggedServices } });
   };
 
   return (
@@ -102,28 +64,32 @@ const JewelryPage: React.FC = () => {
       </section>
 
       <div className="container mx-auto px-6">
-        {images.length > 0 ? (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {images.map((src, i) => (
+        {galleryItems.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {galleryItems.map((item, i) => (
               <m.div
-                key={i}
+                key={item.id || i}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "100px" }}
                 transition={{ duration: 0.4 }}
-                className="break-inside-avoid rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group"
+                className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group"
                 onClick={() => setSelectedIndex(i)}
                 whileHover={{ y: -5 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-end p-6">
-                    <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                        <p className="font-serif text-lg flex items-center gap-2"><Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look</p>
+                {/* Overlay indicating it has tags */}
+                {item.taggedServices?.length > 0 && (
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-end p-4">
+                        <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                            <p className="font-serif text-sm flex items-center gap-2"><Sparkles className="w-3 h-3 text-brand-primary" /> Get The Look</p>
+                        </div>
                     </div>
-                </div>
+                )}
+                
                 <img 
-                  src={src} 
+                  src={item.image_url} 
                   alt={`Jewelry ${i}`} 
-                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   loading="lazy"
                 />
               </m.div>
@@ -160,7 +126,7 @@ const JewelryPage: React.FC = () => {
                 </button>
 
                 {/* Left Side: Image */}
-                <div className="w-full md:w-2/3 h-[50vh] md:h-auto relative bg-black flex items-center justify-center group">
+                <div className="w-full md:w-2/3 h-[40vh] md:h-auto relative bg-black flex items-center justify-center group">
                      {/* Navigation on Image */}
                     <button onClick={handlePrev} className="absolute right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all hidden md:block">
                         <ChevronRight className="w-8 h-8" />
@@ -170,7 +136,7 @@ const JewelryPage: React.FC = () => {
                     </button>
 
                     <img 
-                        src={images[selectedIndex]} 
+                        src={galleryItems[selectedIndex].image_url} 
                         className="max-w-full max-h-full object-contain"
                         alt="Look detail"
                     />
@@ -183,16 +149,16 @@ const JewelryPage: React.FC = () => {
                 </div>
 
                 {/* Right Side: "Get The Look" Details */}
-                <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col">
-                    <div className="p-6 md:p-8 flex-1 overflow-y-auto">
+                <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col h-[60vh] md:h-auto">
+                    <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
                         <div className="mb-6 pb-6 border-b border-white/10">
                             <h2 className="text-3xl font-serif text-white mb-2">Get The Look</h2>
                             <p className="text-slate-400 text-sm">הפריטים המופיעים בתמונה זו</p>
                         </div>
 
-                        {currentLook ? (
+                        {taggedServices.length > 0 ? (
                             <div className="space-y-4">
-                                {currentLook.items.map((item, idx) => (
+                                {taggedServices.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 hover:border-brand-primary/30 transition-colors">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
@@ -200,7 +166,7 @@ const JewelryPage: React.FC = () => {
                                             </div>
                                             <div>
                                                 <p className="text-slate-200 font-medium text-sm">{item.name}</p>
-                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">{item.type}</p>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">{item.category}</p>
                                             </div>
                                         </div>
                                         <span className="text-white font-serif">₪{item.price}</span>
@@ -218,19 +184,19 @@ const JewelryPage: React.FC = () => {
                         ) : (
                             <div className="flex flex-col items-center justify-center h-40 text-slate-500">
                                 <ShoppingBag className="w-8 h-8 mb-2 opacity-50" />
-                                <p>פרטי הלוק אינם זמינים כרגע</p>
+                                <p>לא תויגו מוצרים לתמונה זו עדיין</p>
                             </div>
                         )}
                     </div>
 
                     {/* Action Bar */}
-                    <div className="p-6 border-t border-white/10 bg-brand-surface/50 backdrop-blur-sm z-10">
-                        <Button onClick={handleBuyLook} className="w-full py-4 text-lg mb-3 shadow-xl shadow-brand-primary/20" disabled={!currentLook}>
+                    <div className="p-6 border-t border-white/10 bg-brand-surface/95 backdrop-blur-sm z-10 mt-auto">
+                        <Button onClick={handleBuyLook} className="w-full py-4 text-lg mb-2 shadow-xl shadow-brand-primary/20" disabled={taggedServices.length === 0}>
                             <span className="flex items-center justify-center gap-2">
-                                אני רוצה את הלוק הזה <Share2 className="w-4 h-4" />
+                                אני רוצה את הלוק הזה <Calendar className="w-4 h-4" />
                             </span>
                         </Button>
-                        <p className="text-center text-xs text-slate-500">לחיצה תעביר אותך לוואטסאפ לתיאום</p>
+                        <p className="text-center text-[10px] text-slate-500">לחיצה תעביר אותך לקביעת תור עם הפריטים שנבחרו</p>
                     </div>
                 </div>
             </div>

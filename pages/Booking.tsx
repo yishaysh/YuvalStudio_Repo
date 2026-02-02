@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2 } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const m = motion as any;
 
@@ -62,9 +63,8 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-        // Prevent default browser actions (like scrolling) if it's a touch event
         if (e.type === 'touchstart') {
-           // e.preventDefault(); // Note: Managed via CSS touch-action: none usually, but good to know
+           // e.preventDefault(); // Managed via CSS
         }
 
         setIsDrawing(true);
@@ -86,8 +86,6 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
         if (ctx) {
             ctx.lineTo(x, y);
             ctx.stroke();
-            
-            // Start a new path segment to ensure smooth curves and no "connecting lines" issues
             ctx.beginPath();
             ctx.moveTo(x, y);
         }
@@ -118,8 +116,8 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
             <div className="relative border border-white/10 bg-brand-dark/50 rounded-xl overflow-hidden touch-none">
                 <canvas
                     ref={canvasRef}
-                    width={600} // Increased internal resolution for better quality
-                    height={300} // Increased internal resolution
+                    width={600}
+                    height={300}
                     onMouseDown={startDrawing}
                     onMouseUp={stopDrawing}
                     onMouseMove={draw}
@@ -128,7 +126,7 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
                     onTouchEnd={stopDrawing}
                     onTouchMove={draw}
                     className="w-full h-[150px] cursor-crosshair touch-none"
-                    style={{ touchAction: 'none' }} // Critical for mobile to prevent scrolling while signing
+                    style={{ touchAction: 'none' }}
                 />
                 <button 
                     onClick={clearCanvas}
@@ -150,36 +148,50 @@ const Booking: React.FC = () => {
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   
-  // Selection State
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  // Selection State (Changed to Array for Multi-Select)
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   
-  // Settings State for Calendar
   const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
-
-  // Form State
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Consent State
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
 
-  // Scroll to top on step change
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Load initial data and handle navigation state (Get The Look)
+  useEffect(() => {
+    const init = async () => {
+        const fetchedServices = await api.getServices();
+        setServices(fetchedServices);
+        setFilteredServices(fetchedServices);
+        setStudioSettings(await api.getSettings());
+
+        // Check if we came from "Get The Look"
+        if (location.state && location.state.preSelectedServices) {
+            const preSelected = location.state.preSelectedServices as Service[];
+            // Verify IDs exist in fetched services to ensure data consistency
+            const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
+            if (validPreSelected.length > 0) {
+                setSelectedServices(validPreSelected);
+                setStep(BookingStep.SELECT_DATE);
+            }
+            // Clear state so refresh doesn't keep resetting
+            window.history.replaceState({}, document.title);
+        }
+    };
+    init();
+  }, []); // Run only once on mount
+
+  // Scroll top on step change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
-
-  useEffect(() => {
-    api.getServices().then((data) => {
-        setServices(data);
-        setFilteredServices(data);
-    });
-    api.getSettings().then(setStudioSettings);
-  }, []);
 
   useEffect(() => {
       if (activeCategory === 'All') {
@@ -199,6 +211,32 @@ const Booking: React.FC = () => {
       }
   }, [selectedDate]);
 
+  const toggleService = (service: Service) => {
+      const exists = selectedServices.find(s => s.id === service.id);
+      if (exists) {
+          setSelectedServices(selectedServices.filter(s => s.id !== service.id));
+      } else {
+          setSelectedServices([...selectedServices, service]);
+      }
+  };
+
+  const totalDuration = selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0);
+  const totalPrice = selectedServices.reduce((acc, s) => acc + s.price, 0);
+
+  // Slot Logic for Multi-Duration
+  // Check if enough consecutive slots are available
+  const isSlotValid = (startIndex: number) => {
+      if (!availableSlots[startIndex]?.available) return false;
+      
+      const slotsNeeded = Math.ceil(totalDuration / 30); // Assuming 30 min slots
+      if (startIndex + slotsNeeded > availableSlots.length) return false;
+
+      for (let i = 0; i < slotsNeeded; i++) {
+          if (!availableSlots[startIndex + i]?.available) return false;
+      }
+      return true;
+  };
+
   const generateCalendarDays = () => {
       const today = new Date();
       const days = [];
@@ -216,20 +254,37 @@ const Booking: React.FC = () => {
   };
 
   const handleBook = async () => {
-      if(!selectedService || !selectedDate || !selectedSlot || !signatureData) return;
+      if(selectedServices.length === 0 || !selectedDate || !selectedSlot || !signatureData) return;
       setIsSubmitting(true);
       const [hours, minutes] = selectedSlot.split(':').map(Number);
       const date = new Date(selectedDate);
       date.setHours(hours, minutes);
 
+      // Create booking for the PRIMARY service (usually the most expensive or first)
+      // and append others to notes, or backend logic.
+      // Here we will save the list in notes for the MVP
+      const primaryService = selectedServices[0];
+      const otherServices = selectedServices.slice(1);
+      
+      let finalNotes = formData.notes;
+      if (otherServices.length > 0) {
+          finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
+      }
+      finalNotes += `\n[חתם על הצהרת בריאות]`;
+
+      // Calculate end time based on total duration
+      const endTime = new Date(date.getTime() + totalDuration * 60000).toISOString();
+
       try {
         await api.createAppointment({
-            service_id: selectedService.id,
+            service_id: primaryService.id,
             start_time: date.toISOString(),
+            // @ts-ignore - passing custom end time
+            end_time: endTime, 
             client_name: formData.name,
             client_phone: formData.phone,
             client_email: formData.email,
-            notes: `${formData.notes}\n[חתם על הצהרת בריאות]`,
+            notes: finalNotes,
             signature: signatureData
         });
         setStep(BookingStep.CONFIRMATION);
@@ -241,18 +296,19 @@ const Booking: React.FC = () => {
   };
 
   const sendConfirmationWhatsapp = () => {
-      if (!selectedService || !selectedDate || !selectedSlot) return;
+      if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
       const phone = studioSettings?.studio_details.phone || DEFAULT_STUDIO_DETAILS.phone;
       const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '972');
-      const msg = `*היי, קבעתי תור באתר!* 👋\n\n*שם:* ${formData.name}\n*טיפול:* ${selectedService.name}\n*תאריך:* ${selectedDate.toLocaleDateString('he-IL')}\n*שעה:* ${selectedSlot}\n\nאשמח לאישור סופי. תודה! 🙏`;
+      
+      const serviceNames = selectedServices.map(s => s.name).join(' + ');
+      
+      const msg = `*היי, קבעתי תור באתר!* 👋\n\n*שם:* ${formData.name}\n*טיפול:* ${serviceNames}\n*תאריך:* ${selectedDate.toLocaleDateString('he-IL')}\n*שעה:* ${selectedSlot}\n\nאשמח לאישור סופי. תודה! 🙏`;
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const PainLevel = ({ level }: { level: number }) => (
       <div className="flex gap-1">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => {
-              // We map 1-10 to 5 dots for cleaner UI, or use 10 small ones.
-              // Let's use 5 bars, but calculate fill based on 10.
               const isActive = i <= level;
               return (
                   <div key={i} className={`w-1 h-3 rounded-full transition-all ${isActive ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} />
@@ -268,10 +324,9 @@ const Booking: React.FC = () => {
       { id: 'Body', label: 'גוף' },
   ];
 
-  // Logic to determine if the bottom bar should be visible
   const showBottomBar = 
-    (step === BookingStep.SELECT_SERVICE && selectedService) || // Show in step 1 only if selected
-    (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); // Show in steps 2-4
+    (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || 
+    (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
 
   return (
     <div className="min-h-screen bg-brand-dark pt-24 pb-32 lg:pb-12">
@@ -294,11 +349,9 @@ const Booking: React.FC = () => {
                                     שלב {step} מתוך 4
                                 </span>
                             )}
-                            {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך'}
-                            {step === BookingStep.SELECT_DATE && 'מתי נוח לך להגיע אלינו?'}
+                            {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך. ניתן לבחור מספר פריטים.'}
+                            {step === BookingStep.SELECT_DATE && `מתי נוח לך להגיע אלינו? (זמן כולל: ${totalDuration} דק')`}
                             {step === BookingStep.DETAILS && 'איך נוכל ליצור איתך קשר?'}
-                            {step === BookingStep.CONSENT && 'אנא קרא וחתום על הצהרת ההסכמה'}
-                            {step === BookingStep.CONFIRMATION && 'תודה שבחרת בסטודיו של יובל'}
                         </p>
                     </div>
 
@@ -314,13 +367,14 @@ const Booking: React.FC = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {filteredServices.map((service) => {
                                         const meta = getMeta(service.category);
-                                        const isSelected = selectedService?.id === service.id;
+                                        const isSelected = selectedServices.some(s => s.id === service.id);
                                         return (
-                                            <m.div layout key={service.id} onClick={() => setSelectedService(service)} className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 group ${isSelected ? 'border-brand-primary bg-brand-primary/5 shadow-[0_0_30px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}>
+                                            <m.div layout key={service.id} onClick={() => toggleService(service)} className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 group ${isSelected ? 'border-brand-primary bg-brand-primary/10 shadow-[0_0_30px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}>
                                                 <div className="flex h-32">
                                                     <div className="w-32 shrink-0 relative overflow-hidden">
                                                         <img src={service.image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                                         <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors" />
+                                                        {isSelected && <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center"><Check className="w-8 h-8 text-brand-primary drop-shadow-md"/></div>}
                                                     </div>
                                                     <div className="flex-1 p-4 flex flex-col justify-between">
                                                         <div className="flex justify-between items-start">
@@ -364,16 +418,19 @@ const Booking: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="space-y-4 min-h-[200px]">
-                                    <h3 className="text-white font-medium flex items-center gap-2"><Clock className="w-5 h-5 text-brand-primary"/> בחר שעה</h3>
+                                    <h3 className="text-white font-medium flex items-center gap-2"><Clock className="w-5 h-5 text-brand-primary"/> בחר שעה <span className="text-xs text-slate-400 mr-2">(זמן נדרש: {totalDuration} דקות)</span></h3>
                                     {!selectedDate ? (
                                         <div className="text-slate-600 text-sm border border-dashed border-white/10 rounded-xl p-8 text-center">אנא בחר תאריך כדי לראות שעות פנויות</div>
                                     ) : isLoadingSlots ? (
                                         <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 text-brand-primary animate-spin" /></div>
                                     ) : (
                                         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
-                                            {availableSlots.length > 0 ? availableSlots.map((slot, i) => (
-                                                <button key={i} disabled={!slot.available} onClick={() => setSelectedSlot(slot.time)} className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : slot.available ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700'}`}>{slot.time}</button>
-                                            )) : (
+                                            {availableSlots.length > 0 ? availableSlots.map((slot, i) => {
+                                                const valid = isSlotValid(i);
+                                                return (
+                                                    <button key={i} disabled={!valid} onClick={() => setSelectedSlot(slot.time)} className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}>{slot.time}</button>
+                                                )
+                                            }) : (
                                                 <div className="col-span-full text-center text-slate-500 py-8">אין תורים פנויים לתאריך זה.</div>
                                             )}
                                         </div>
@@ -461,7 +518,7 @@ const Booking: React.FC = () => {
                                     <Check className="w-10 h-10" />
                                 </div>
                                 <h2 className="text-4xl font-serif text-white mb-4">בקשתך התקבלה בהצלחה!</h2>
-                                <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">התור שלך ל{selectedService?.name} נקלט במערכת כממתין לאישור. הסטודיו ייצור איתך קשר בהקדם.</p>
+                                <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">התור שלך ל{selectedServices.map(s => s.name).join(', ')} נקלט במערכת כממתין לאישור. הסטודיו ייצור איתך קשר בהקדם.</p>
                                 <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-8">
                                     <Button onClick={sendConfirmationWhatsapp} className="bg-green-600 hover:bg-green-700 text-white border-none flex items-center gap-2">
                                         <Send className="w-4 h-4" /> שלח אישור לסטודיו בוואטסאפ
@@ -473,7 +530,7 @@ const Booking: React.FC = () => {
                     </AnimatePresence>
                 </div>
 
-                {/* RIGHT SIDE: TICKET (Hidden on Consent Step for clarity on mobile) */}
+                {/* RIGHT SIDE: TICKET */}
                 <div className={`hidden lg:block w-80 relative shrink-0 ${step === BookingStep.CONSENT ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                     <div className="sticky top-28">
                         <div className="relative bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
@@ -482,22 +539,40 @@ const Booking: React.FC = () => {
                                 <div className="text-brand-dark/70 text-xs font-medium uppercase tracking-widest relative z-10">Yuval Studio</div>
                             </div>
                             <div className="p-6 space-y-6">
-                                <div className={`transition-all duration-500 ${selectedService ? 'opacity-100' : 'opacity-30'}`}>
-                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">טיפול נבחר</div>
-                                    <div className="font-medium text-white text-lg">{selectedService?.name || '---'}</div>
-                                    <div className="text-brand-primary">{selectedService ? `₪${selectedService.price}` : ''}</div>
+                                <div className={`transition-all duration-500 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
+                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">טיפולים שנבחרו</div>
+                                    <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                                        {selectedServices.length > 0 ? selectedServices.map((s, idx) => (
+                                            <div key={idx} className="flex justify-between items-center text-sm">
+                                                <span className="text-white truncate max-w-[150px]">{s.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-brand-primary">₪{s.price}</span>
+                                                    {step === BookingStep.SELECT_SERVICE && (
+                                                        <button onClick={(e) => { e.stopPropagation(); toggleService(s); }} className="text-red-400 hover:text-red-300">
+                                                            <Trash2 className="w-3 h-3"/>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="text-slate-600 italic">לא נבחרו טיפולים</div>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
                                 <div className={`transition-all duration-500 ${selectedDate && selectedSlot ? 'opacity-100' : 'opacity-30'}`}>
                                     <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">מועד התור</div>
                                     <div className="font-medium text-white text-lg">{selectedDate ? selectedDate.toLocaleDateString('he-IL', {day:'numeric', month:'long'}) : '---'}</div>
-                                    <div className="text-slate-300">{selectedSlot || '--:--'}</div>
+                                    <div className="text-slate-300 flex justify-between">
+                                        <span>{selectedSlot || '--:--'}</span>
+                                        <span className="text-xs text-slate-500 mt-1">({totalDuration} דק')</span>
+                                    </div>
                                 </div>
                                 <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
                                 <div>
                                     <div className="flex justify-between items-end">
                                         <span className="text-slate-400 text-sm">סה"כ לתשלום</span>
-                                        <span className="text-3xl font-serif text-white">{selectedService ? `₪${selectedService.price}` : '0'}</span>
+                                        <span className="text-3xl font-serif text-white">₪{totalPrice}</span>
                                     </div>
                                 </div>
                             </div>
@@ -535,7 +610,7 @@ const Booking: React.FC = () => {
                                 else if(step === BookingStep.CONSENT) handleBook();
                             }}
                             disabled={
-                                (step === BookingStep.SELECT_SERVICE && !selectedService) ||
+                                (step === BookingStep.SELECT_SERVICE && selectedServices.length === 0) ||
                                 (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
                                 (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
                                 (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||

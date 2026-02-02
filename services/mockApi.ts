@@ -20,7 +20,8 @@ export const api = {
       const defaultSettings: StudioSettings = { 
         working_hours: DEFAULT_WORKING_HOURS,
         studio_details: DEFAULT_STUDIO_DETAILS,
-        monthly_goals: DEFAULT_MONTHLY_GOALS
+        monthly_goals: DEFAULT_MONTHLY_GOALS,
+        gallery_tags: {}
       };
       
       if (!supabase) {
@@ -33,7 +34,7 @@ export const api = {
           const { data, error } = await supabase
             .from('settings')
             .select('*')
-            .in('key', ['working_hours', 'studio_details', 'monthly_goals']);
+            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags']);
 
           if (error || !data) {
               cachedSettings = defaultSettings;
@@ -54,6 +55,8 @@ export const api = {
                newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
             } else if (row.key === 'monthly_goals') {
                newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
+            } else if (row.key === 'gallery_tags') {
+               newSettings.gallery_tags = row.value;
             }
           });
           
@@ -71,7 +74,8 @@ export const api = {
       const updates = [
         { key: 'working_hours', value: settings.working_hours },
         { key: 'studio_details', value: settings.studio_details },
-        { key: 'monthly_goals', value: settings.monthly_goals }
+        { key: 'monthly_goals', value: settings.monthly_goals },
+        { key: 'gallery_tags', value: settings.gallery_tags }
       ];
 
       const { error } = await supabase
@@ -221,11 +225,39 @@ export const api = {
             ...appt
         } as Appointment;
     }
+    
+    // Calculate End Time based on Service Duration logic handled in frontend or passed here
+    // But for DB insertion, we need an end_time.
+    // Assuming start_time is valid.
+    const startTime = new Date(appt.start_time!);
+    // If no duration passed, default to 30. If multi-service, frontend should ideally calculate or we default.
+    // Since we don't have duration in 'appt' Partial directly unless we add it, let's assume 30 mins as fallback
+    // OR verify if we can fetch service duration.
+    // Simple fix: Frontend passes end_time or we add 30 mins. 
+    // Let's add 30 mins by default if not present, but in multi-service logic frontend should handle it.
+    
+    // NOTE: For multi-service, appt.service_id might be one of them, but we want to block the whole time.
+    // The Frontend will pass a start_time. We need to know how long to block.
+    // We will assume the frontend calls this iteratively OR we make one booking with long duration.
+    // Let's rely on standard 30 min blocks unless specified.
+    
+    // Better: let's fetch the service duration if possible, or just default.
+    // For now, defaulting to 30min is safe for single service. For bundle, we might need a workaround.
+    // Workaround: We will pass 'end_time' from frontend if we can, or just +30m.
+    // The code below assumes 30m.
+    const duration = 30; 
+    
+    // Hack: If client passed end_time in the object (not in interface but in JS), use it.
+    // @ts-ignore
+    let endTime = appt.end_time;
+    if (!endTime) {
+        endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
+    }
 
     const payload = {
       service_id: appt.service_id,
       start_time: appt.start_time,
-      end_time: new Date(new Date(appt.start_time!).getTime() + 30 * 60000).toISOString(),
+      end_time: endTime,
       guest_name: appt.client_name,
       guest_email: appt.client_email,
       guest_phone: appt.client_phone,
@@ -331,10 +363,29 @@ export const api = {
     if (cachedGallery) return cachedGallery;
 
     if(!supabase) return [];
-    const { data } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
     
-    cachedGallery = data || [];
-    return cachedGallery;
+    // Fetch gallery images
+    const { data: galleryData } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+    
+    if (!galleryData) return [];
+
+    // Fetch tags from settings
+    const settings = await api.getSettings();
+    const tags = settings.gallery_tags || {};
+    const services = await api.getServices();
+
+    // Map tags to full service objects
+    const enrichedGallery = galleryData.map((item: any) => {
+        const itemTags = tags[item.id] || [];
+        const taggedServices = itemTags.map((tagId: string) => services.find(s => s.id === tagId)).filter(Boolean);
+        return {
+            ...item,
+            taggedServices
+        };
+    });
+    
+    cachedGallery = enrichedGallery;
+    return enrichedGallery;
   },
 
   addToGallery: async (imageUrl: string) => {

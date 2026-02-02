@@ -59,6 +59,7 @@ export interface StudioSettings {
   };
   studio_details: StudioDetails;
   monthly_goals: MonthlyGoals;
+  gallery_tags?: Record<string, string[]>; // Map Image ID -> Array of Service IDs
 }
 
 export enum BookingStep {
