@@ -1,21 +1,17 @@
-import React, { useEffect, useState, Suspense, lazy, useTransition } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Instagram, Facebook, MapPin, Lock, Loader2 } from 'lucide-react';
+import { Menu, X, Instagram, Facebook, MapPin, Lock } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 
-// Lazy Load Pages with Prefetching capability
-const lazyLoad = (path: string) => {
-  return lazy(() => import(path));
-};
-
-const Home = lazyLoad('./pages/Home');
-const Booking = lazyLoad('./pages/Booking');
-const Admin = lazyLoad('./pages/Admin');
-const ServicesPage = lazyLoad('./pages/Services');
-const JewelryPage = lazyLoad('./pages/Jewelry');
-const AftercarePage = lazyLoad('./pages/Aftercare');
+// Lazy Load Pages - Must use explicit string literals for static analysis
+const Home = lazy(() => import('./pages/Home'));
+const Booking = lazy(() => import('./pages/Booking'));
+const Admin = lazy(() => import('./pages/Admin'));
+const ServicesPage = lazy(() => import('./pages/Services'));
+const JewelryPage = lazy(() => import('./pages/Jewelry'));
+const AftercarePage = lazy(() => import('./pages/Aftercare'));
 
 const m = motion as any;
 
