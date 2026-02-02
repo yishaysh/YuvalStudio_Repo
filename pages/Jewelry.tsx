@@ -152,11 +152,13 @@ const JewelryPage: React.FC = () => {
                 onClick={() => { setDirection(1); setSelectedIndex(i); }}
                 whileHover={{ y: -5 }}
               >
-                {/* Overlay */}
+                {/* Overlay - Centered "Get The Look" */}
                 {item.taggedServices?.length > 0 && (
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-end justify-end p-4">
-                        <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                            <p className="font-serif text-sm flex items-center gap-2"><Sparkles className="w-3 h-3 text-brand-primary" /> Get The Look</p>
+                     <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center">
+                        <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
+                            <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
+                              <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
+                            </p>
                         </div>
                     </div>
                 )}
