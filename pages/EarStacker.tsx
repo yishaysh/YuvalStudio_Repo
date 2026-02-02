@@ -1,9 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, Card, SectionHeading } from '../components/ui';
-import { Trash2, RotateCw, Save, RefreshCw, Move, Plus, Sparkles, Upload, Camera, ShoppingBag, X } from 'lucide-react';
-import { api } from '../services/mockApi';
-import { Service } from '../types';
+import { Trash2, RotateCw, Save, RefreshCw, Move, Plus, Sparkles, Upload, Camera, ShoppingBag, X, Loader2 } from 'lucide-react';
+import { api, JewelryLibraryItem } from '../services/mockApi';
 // @ts-ignore
 import html2canvas from 'html2canvas';
 
@@ -11,7 +11,7 @@ const m = motion as any;
 
 interface PlacedJewel {
     id: string;
-    serviceId: string;
+    libraryId: string;
     name: string;
     imageUrl: string;
     x: number;
@@ -22,7 +22,7 @@ interface PlacedJewel {
 
 const EarStacker: React.FC = () => {
     const [bgImage, setBgImage] = useState<string | null>(null);
-    const [jewelryCatalog, setJewelryCatalog] = useState<Service[]>([]);
+    const [jewelryCatalog, setJewelryCatalog] = useState<JewelryLibraryItem[]>([]);
     const [placedJewels, setPlacedJewels] = useState<PlacedJewel[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -33,9 +33,8 @@ const EarStacker: React.FC = () => {
 
     useEffect(() => {
         const load = async () => {
-            const services = await api.getServices();
-            // Filter only jewelry items or items suitable for ears
-            setJewelryCatalog(services.filter(s => s.category === 'Jewelry' || s.category === 'Ear'));
+            const items = await api.getJewelryLibrary();
+            setJewelryCatalog(items);
             setIsLoading(false);
         };
         load();
@@ -50,12 +49,12 @@ const EarStacker: React.FC = () => {
         }
     };
 
-    const addJewel = (service: Service) => {
+    const addJewel = (item: JewelryLibraryItem) => {
         const newJewel: PlacedJewel = {
             id: Math.random().toString(36).substr(2, 9),
-            serviceId: service.id,
-            name: service.name,
-            imageUrl: service.image_url,
+            libraryId: item.id,
+            name: item.name,
+            imageUrl: item.image_url,
             x: 150,
             y: 150,
             rotation: 0,
@@ -105,20 +104,25 @@ const EarStacker: React.FC = () => {
                             <h3 className="text-white font-medium mb-4 flex items-center gap-2">
                                 <ShoppingBag className="w-4 h-4 text-brand-primary" /> קטלוג תכשיטים
                             </h3>
-                            <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-                                {jewelryCatalog.map((item) => (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => addJewel(item)}
-                                        className="group relative aspect-square rounded-xl overflow-hidden border border-white/5 hover:border-brand-primary/50 transition-all bg-brand-dark/40"
-                                    >
-                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <Plus className="text-white w-6 h-6" />
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                            {isLoading ? (
+                                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-brand-primary" /></div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                                    {jewelryCatalog.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => addJewel(item)}
+                                            className="group relative aspect-square rounded-xl overflow-hidden border border-white/5 hover:border-brand-primary/50 transition-all bg-brand-dark/40"
+                                        >
+                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-contain p-2 opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Plus className="text-white w-6 h-6" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {jewelryCatalog.length === 0 && <p className="col-span-2 text-center text-slate-500 text-xs py-10">אין תכשיטים במאגר</p>}
+                                </div>
+                            )}
                         </Card>
                         
                         <div className="p-4 bg-brand-primary/5 border border-brand-primary/10 rounded-xl text-xs text-slate-400 leading-relaxed">
@@ -180,21 +184,13 @@ const EarStacker: React.FC = () => {
                                     </div>
                                 </m.div>
                             ))}
-                            
-                            {/* Visual Overlay for Guidance */}
-                            {!bgImage && (
-                                 <svg viewBox="0 0 300 400" className="absolute inset-0 w-full h-full opacity-10 pointer-events-none">
-                                     <path d="M100,80 C50,80 30,150 40,250 C50,330 90,380 150,380 C190,380 200,350 190,330 C180,310 160,320 150,320 C110,320 80,280 80,200 C80,140 100,120 130,120 C160,120 180,140 180,180" fill="none" stroke="white" strokeWidth="2" />
-                                 </svg>
-                            )}
                         </div>
 
-                        {/* Stage Actions */}
                         <div className="mt-8 flex gap-4 w-full max-w-[450px]">
                             <Button variant="secondary" onClick={() => { setBgImage(null); setPlacedJewels([]); }} className="flex-1">
                                 <RefreshCw className="w-4 h-4" /> איפוס
                             </Button>
-                            <Button onClick={handleSave} isLoading={isSaving} disabled={!bgImage} className="flex-[2]">
+                            <Button onClick={handleSave} isLoading={isSaving} disabled={!bgImage} className="flex-[2] shadow-xl shadow-brand-primary/20">
                                 <Save className="w-4 h-4" /> שמירת עיצוב
                             </Button>
                         </div>
@@ -226,7 +222,6 @@ const EarStacker: React.FC = () => {
                                                         onChange={(e) => updateJewel(selectedId, { rotation: parseInt(e.target.value) })}
                                                         className="w-full accent-brand-primary"
                                                     />
-                                                    <RotateCw className="w-4 h-4 text-slate-400" />
                                                 </div>
                                             </div>
 
@@ -234,12 +229,11 @@ const EarStacker: React.FC = () => {
                                                 <label className="text-xs text-slate-500 block mb-3 uppercase tracking-wider">גודל</label>
                                                 <div className="flex items-center gap-4">
                                                     <input 
-                                                        type="range" min="0.5" max="2.5" step="0.1"
+                                                        type="range" min="0.3" max="2.5" step="0.05"
                                                         value={placedJewels.find(j => j.id === selectedId)?.scale || 1}
                                                         onChange={(e) => updateJewel(selectedId, { scale: parseFloat(e.target.value) })}
                                                         className="w-full accent-brand-primary"
                                                     />
-                                                    <Move className="w-4 h-4 text-slate-400" />
                                                 </div>
                                             </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -7,13 +8,14 @@ import { api } from '../services/mockApi';
 
 const m = motion as any;
 
+// Updated Prizes with specific Service IDs (mock IDs for demo)
 const PRIZES = [
-    { id: 1, label: '10% הנחה', type: 'percent', value: 10, color: '#d4b585' },
-    { id: 2, label: 'ספטום ב-15%', type: 'percent', value: 15, color: '#334155' },
-    { id: 3, label: '5% הנחה', type: 'percent', value: 5, color: '#d4b585' },
-    { id: 4, label: 'ניקוי מתנה', type: 'fixed', value: 30, color: '#334155' },
-    { id: 5, label: 'הליקס ב-10%', type: 'percent', value: 10, color: '#d4b585' },
-    { id: 6, label: 'נסה שוב', type: 'loss', value: 0, color: '#0f172a' },
+    { id: 1, label: '10% הנחה על הכל', type: 'percent', value: 10, color: '#d4b585', serviceId: null },
+    { id: 2, label: 'ספטום ב-15% הנחה', type: 'percent', value: 15, color: '#334155', serviceId: '4' },
+    { id: 3, label: '5% הנחה על הכל', type: 'percent', value: 5, color: '#d4b585', serviceId: null },
+    { id: 4, label: 'עגיל בטבור ב-10% הנחה', type: 'percent', value: 10, color: '#334155', serviceId: '6' },
+    { id: 5, label: 'הליקס ב-10% הנחה', type: 'percent', value: 10, color: '#d4b585', serviceId: '2' },
+    { id: 6, label: 'נסה שוב', type: 'loss', value: 0, color: '#0f172a', serviceId: null },
 ];
 
 const Roulette: React.FC = () => {
@@ -45,7 +47,6 @@ const Roulette: React.FC = () => {
             setIsSpinning(false);
             setResult(prize);
             
-            // Create real coupon in DB if won
             if (prize.type !== 'loss') {
                 setIsCreatingCoupon(true);
                 const code = `WIN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
@@ -65,14 +66,27 @@ const Roulette: React.FC = () => {
         }, 5000);
     };
 
-    const handleClaim = () => {
+    const handleClaim = async () => {
         if (!result) return;
         if (result.type === 'loss') {
             setResult(null);
             setRotation(0);
             return;
         }
-        navigate('/booking', { state: { couponCode: generatedCoupon } });
+
+        let preSelectedServices = null;
+        if (result.serviceId) {
+            const allServices = await api.getServices();
+            const service = allServices.find(s => s.id === result.serviceId);
+            if (service) preSelectedServices = [service];
+        }
+
+        navigate('/booking', { 
+            state: { 
+                couponCode: generatedCoupon,
+                preSelectedServices: preSelectedServices 
+            } 
+        });
     };
 
     return (
@@ -112,7 +126,7 @@ const Roulette: React.FC = () => {
                                      <text 
                                         x="72" y="50" 
                                         fill={i % 2 === 0 ? '#0f172a' : '#ffffff'}
-                                        fontSize="3.5" fontWeight="bold" textAnchor="middle" alignmentBaseline="middle"
+                                        fontSize="3.2" fontWeight="bold" textAnchor="middle" alignmentBaseline="middle"
                                         transform={`rotate(${startAngle + segmentAngle/2}, 50, 50)`}
                                      >
                                          {prize.label}
@@ -153,8 +167,10 @@ const Roulette: React.FC = () => {
                              <h2 className="text-3xl font-serif text-white mb-2">
                                  {result.type === 'loss' ? 'אולי בפעם הבאה...' : 'יש לנו זוכה!'}
                              </h2>
-                             <p className="text-slate-400 mb-6">
-                                 {result.type === 'loss' ? 'הגלגל עצר על "נסה שוב". לא נורא, תמיד יש הזדמנות נוספת.' : `זכית ב-${result.label}! הקופון שלך נוצר ומחכה למימוש.`}
+                             <p className="text-slate-400 mb-6 leading-relaxed">
+                                 {result.type === 'loss' 
+                                    ? 'הגלגל עצר על "נסה שוב". לא נורא, תמיד יש הזדמנות נוספת.' 
+                                    : `זכית ב-${result.label}! הקופון שלך נוצר ומחכה למימוש.`}
                              </p>
 
                              {result.type !== 'loss' && (
@@ -163,7 +179,7 @@ const Roulette: React.FC = () => {
                                  </div>
                              )}
 
-                             <Button onClick={handleClaim} className="w-full py-4">
+                             <Button onClick={handleClaim} className="w-full py-4 shadow-lg shadow-brand-primary/20">
                                  {result.type === 'loss' ? 'סגור ונסה שוב' : 'קבעי תור עם ההטבה'} <ArrowRight className="w-4 h-4 mr-2" />
                              </Button>
                         </m.div>

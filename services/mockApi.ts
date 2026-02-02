@@ -1,3 +1,4 @@
+
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
 import { supabase } from './supabaseClient';
@@ -5,6 +6,12 @@ import { supabase } from './supabaseClient';
 export interface TimeSlot {
     time: string;
     available: boolean;
+}
+
+export interface JewelryLibraryItem {
+    id: string;
+    name: string;
+    image_url: string;
 }
 
 // --- In-Memory Cache ---
@@ -95,18 +102,30 @@ export const api = {
     return !error;
   },
 
-  // --- Coupons (Updated to use DB table) ---
+  // --- Jewelry Library (FOR STACKER) ---
+  getJewelryLibrary: async (): Promise<JewelryLibraryItem[]> => {
+      if (!supabase) return [];
+      const { data } = await supabase.from('jewelry_library').select('*').order('created_at', { ascending: false });
+      return data || [];
+  },
+
+  addJewelryToLibrary: async (item: Omit<JewelryLibraryItem, 'id'>) => {
+      if (!supabase) return null;
+      const { data } = await supabase.from('jewelry_library').insert([item]).select().single();
+      return data;
+  },
+
+  deleteJewelryFromLibrary: async (id: string) => {
+      if (!supabase) return false;
+      const { error } = await supabase.from('jewelry_library').delete().eq('id', id);
+      return !error;
+  },
+
+  // --- Coupons ---
   getCoupons: async (): Promise<Coupon[]> => {
       if (!supabase) return [];
       const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
       return data || [];
-  },
-
-  saveCoupons: async (coupons: Coupon[]) => {
-      if (!supabase) return false;
-      // Note: This logic is for Admin mass saving if needed, but we usually upsert individually
-      const { error } = await supabase.from('coupons').upsert(coupons);
-      return !error;
   },
 
   createCoupon: async (coupon: Omit<Coupon, 'id' | 'usage_count'>): Promise<Coupon | null> => {
@@ -157,10 +176,11 @@ export const api = {
 
   createAppointment: async (appt: Partial<Appointment>) => {
     if (!supabase) return { id: 'mock', ...appt } as Appointment;
+    const duration = 30; // Default
     const payload = {
       service_id: appt.service_id,
       start_time: appt.start_time,
-      end_time: appt.final_price ? new Date(new Date(appt.start_time!).getTime() + 30 * 60000).toISOString() : new Date(new Date(appt.start_time!).getTime() + 30 * 60000).toISOString(),
+      end_time: new Date(new Date(appt.start_time!).getTime() + duration * 60000).toISOString(),
       guest_name: appt.client_name,
       guest_email: appt.client_email,
       guest_phone: appt.client_phone,
