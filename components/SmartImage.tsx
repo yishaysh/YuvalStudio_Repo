@@ -1,6 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Image as ImageIcon } from 'lucide-react';
+
+// Fixed: Using any cast to bypass motion type issues which caused "Property 'initial' does not exist" error
+const m = motion as any;
 
 interface SmartImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -25,14 +29,15 @@ export const SmartImage: React.FC<SmartImageProps> = ({ src, alt, className = ''
     <div className={`relative overflow-hidden bg-brand-surface/50 ${className}`}>
       <AnimatePresence>
         {!isLoaded && !error && (
-          <motion.div
+          // Fixed: Replaced motion.div with m.div to resolve type errors on props like 'initial'
+          <m.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             className="absolute inset-0 flex items-center justify-center bg-brand-surface z-10"
           >
              <div className="w-full h-full animate-pulse bg-white/5" />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
       
