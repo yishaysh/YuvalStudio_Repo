@@ -2,17 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { SectionHeading, Card, Button } from '../components/ui';
 import { api } from '../services/mockApi';
 import { Service } from '../types';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const m = motion as any;
 
 const ServicesPage: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.getServices().then(setServices);
   }, []);
+
+  const handleBookService = (service: Service) => {
+    navigate('/booking', { state: { preSelectedServices: [service] } });
+  };
 
   return (
     <div className="pt-24 pb-20">
@@ -60,11 +65,15 @@ const ServicesPage: React.FC = () => {
                 <p className="text-slate-400 text-sm mb-6 flex-grow leading-relaxed">
                   {service.description}
                 </p>
-                <Link to="/booking" className="w-full">
-                  <Button variant="outline" className="w-full group-hover:bg-brand-primary group-hover:text-brand-dark">
+                <div className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full group-hover:bg-brand-primary group-hover:text-brand-dark"
+                    onClick={() => handleBookService(service)}
+                  >
                     הזמן תור
                   </Button>
-                </Link>
+                </div>
               </Card>
             </m.div>
           ))}
