@@ -89,7 +89,6 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 // --- SHARED COMPONENTS ---
 
 const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf }: any) => {
-    // ... [Same implementation as before]
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
 
     useEffect(() => {
@@ -229,9 +228,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
     );
 };
 
-// ... [DashboardTab, CalendarTab, ServicesTab remain unchanged]
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings }: any) => {
-    // [Keeping previous implementation]
     const [isEditingGoals, setIsEditingGoals] = useState(false);
     const [tempGoals, setTempGoals] = useState(settings.monthly_goals || DEFAULT_MONTHLY_GOALS);
     const [isSaving, setIsSaving] = useState(false);
@@ -381,7 +378,6 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
 };
 
 const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf }: any) => {
-    // [Keeping previous implementation - condensed for brevity]
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
     const listRef = useRef<HTMLDivElement>(null);
@@ -531,7 +527,6 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
 };
 
 const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
-    // [Keeping previous implementation]
     const [isEditing, setIsEditing] = useState(false);
     const [currentService, setCurrentService] = useState<Partial<Service>>({ category: 'Ear', pain_level: 1 });
     const [uploading, setUploading] = useState(false);
@@ -690,7 +685,6 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
     )
 }
 
-// 5. GALLERY TAB (UPDATED FOR TAGGING)
 const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateSettings }: any) => {
     const [uploading, setUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<any>(null);
@@ -1003,10 +997,7 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
     );
 };
 
-// ... [SettingsTab and Admin main component integration]
-
 const Admin: React.FC = () => {
-    // [Keeping state setup]
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -1022,6 +1013,7 @@ const Admin: React.FC = () => {
     const [apptToCancel, setApptToCancel] = useState<Appointment | null>(null);
     const [cancelReason, setCancelReason] = useState('');
     const [pdfData, setPdfData] = useState<Appointment | null>(null);
+    const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
   
     const loadData = async () => {
        const [apptsData, servicesData, statsData, galleryData, settingsData] = await Promise.all([
@@ -1054,7 +1046,6 @@ const Admin: React.FC = () => {
       }
     };
 
-    // [Keeping helper handlers: handleStatusUpdate, handleConfirmCancel, etc.]
     const handleStatusUpdate = async (id: string, status: string) => {
         await api.updateAppointmentStatus(id, status);
         loadData();
@@ -1074,7 +1065,17 @@ const Admin: React.FC = () => {
     const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); loadData(); }
     const handleDeleteService = async (id: string) => { if(window.confirm('האם אתה בטוח?')) { await api.deleteService(id); loadData(); } }
     const handleGalleryUpload = async (url: string) => { await api.addToGallery(url); loadData(); }
-    const handleDeleteGalleryImage = async (id: string) => { if(window.confirm('האם אתה בטוח?')) { await api.deleteFromGallery(id); loadData(); } }
+    
+    // Updated delete logic
+    const handleDeleteGalleryImage = (id: string) => { setImageToDeleteId(id); }
+    const handleConfirmDeleteGalleryImage = async () => {
+        if (imageToDeleteId) {
+            await api.deleteFromGallery(imageToDeleteId);
+            setImageToDeleteId(null);
+            loadData();
+        }
+    }
+
     const handleUpdateSettings = async (newSettings: StudioSettings) => { await api.updateSettings(newSettings); loadData(); }
     const handleViewAppointment = (id: string) => { setFilteredAppointmentId(id); setActiveTab('appointments'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     const handleClearFilter = () => { setFilteredAppointmentId(null); }
@@ -1174,6 +1175,17 @@ const Admin: React.FC = () => {
                       <p className="text-xs text-slate-500 mt-2">הסיבה תופיע בהודעת הוואטסאפ שתישלח ללקוח</p>
                   </div>
               </ConfirmationModal>
+
+              <ConfirmationModal
+                  isOpen={!!imageToDeleteId}
+                  onClose={() => setImageToDeleteId(null)}
+                  onConfirm={handleConfirmDeleteGalleryImage}
+                  title="מחיקת תמונה"
+                  description="האם אתה בטוח שברצונך למחוק את התמונה מהגלריה? פעולה זו אינה הפיכה."
+                  confirmText="מחק תמונה"
+                  cancelText="ביטול"
+                  variant="danger"
+              />
   
               <div className="fixed top-0 left-0 -z-50 overflow-hidden h-0 w-0">
                   {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
