@@ -243,7 +243,7 @@ const JewelryPage: React.FC = () => {
                                 className="flex flex-col h-full"
                             >
                                 <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
-                                    <div className="mb-6 pb-6 border-b border-white/10">
+                                    <div className="mb-6 pb-6 border-b border-white/10 text-center">
                                         <h2 className="text-3xl font-serif text-white mb-2">Get The Look</h2>
                                         <p className="text-slate-400 text-sm">הפריטים המופיעים בתמונה זו</p>
                                     </div>
