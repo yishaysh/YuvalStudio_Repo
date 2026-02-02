@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,19 +7,19 @@ import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 import { StudioSettings } from './types';
 
-// Lazy Load Pages - Must use explicit string literals for static analysis
+// Lazy Load Pages
 const Home = lazy(() => import('./pages/Home'));
 const Booking = lazy(() => import('./pages/Booking'));
 const Admin = lazy(() => import('./pages/Admin'));
 const ServicesPage = lazy(() => import('./pages/Services'));
 const JewelryPage = lazy(() => import('./pages/Jewelry'));
 const AftercarePage = lazy(() => import('./pages/Aftercare'));
-const EarStacker = lazy(() => import('./pages/EarStacker')); // Existing File
-const Roulette = lazy(() => import('./pages/Roulette')); // NEW
+const EarStacker = lazy(() => import('./pages/EarStacker'));
+const Roulette = lazy(() => import('./pages/Roulette'));
 
 const m = motion as any;
 
-const StudioLogo = ({ className }: { className?: string }) => (
+export const StudioLogo = ({ className }: { className?: string }) => (
   <svg
     version="1.0"
     xmlns="http://www.w3.org/2000/svg"
@@ -43,15 +44,10 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-brand-dark/80 backdrop-blur-lg border-b border-white/5 transition-all duration-300">
       <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-        {/* Logo */}
         <Link to="/" className="group flex items-center gap-3">
           <StudioLogo className="h-10 w-auto text-brand-primary transition-all duration-300 group-hover:brightness-110 group-hover:drop-shadow-[0_0_8px_rgba(212,181,133,0.3)]" />
-          <span className="text-xl font-serif text-white tracking-wide group-hover:text-brand-primary transition-colors">
-            Yuval Studio
-          </span>
         </Link>
 
-        {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-8">
           <div className="flex items-center gap-8">
             {[
@@ -84,21 +80,18 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* Mobile Toggle */}
         <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-white hover:text-brand-primary transition-colors">
           {isOpen ? <X /> : <Menu />}
         </button>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <m.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-screen will-change-transform"
+            className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-screen z-[100]"
           >
             <div className="flex flex-col p-8 gap-8 items-center text-center pt-20">
               <Link to="/" className="text-2xl font-serif text-white hover:text-brand-primary">דף הבית</Link>
@@ -116,7 +109,6 @@ const Navbar = () => {
   );
 };
 
-// ... (PageLoader and App logic)
 const PageLoader = () => (
   <div className="min-h-[60vh] flex items-center justify-center">
     <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent animate-spin rounded-full"></div>
@@ -134,7 +126,6 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      {/* ScrollToTop component implied here */}
       <Navbar />
       <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
         <Suspense fallback={<PageLoader />}>
@@ -145,8 +136,8 @@ const App: React.FC = () => {
                 <Route path="/jewelry" element={<JewelryPage />} />
                 <Route path="/aftercare" element={<AftercarePage />} />
                 <Route path="/admin" element={<Admin />} />
-                {features.enable_ear_stacker && <Route path="/stacker" element={<EarStacker />} />}
-                {features.enable_roulette && <Route path="/roulette" element={<Roulette />} />}
+                <Route path="/stacker" element={<EarStacker />} />
+                <Route path="/roulette" element={<Roulette />} />
                 <Route path="*" element={<Home />} />
             </Routes>
         </Suspense>
@@ -155,13 +146,14 @@ const App: React.FC = () => {
       <footer className="bg-brand-surface py-16 border-t border-white/5">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center md:text-right mb-12">
-            <div className="col-span-1 md:col-span-2">
-              <h3 className="text-2xl font-serif text-white mb-6">Yuval Studio</h3>
+            <div className="col-span-1 md:col-span-2 flex flex-col items-center md:items-start">
+              <Link to="/" className="mb-6">
+                <StudioLogo className="h-12 w-auto text-brand-primary" />
+              </Link>
               <p className="text-slate-400 text-sm leading-relaxed max-w-md">
                 סטודיו בוטיק לפירסינג ותכשיטנות גוף. אנו מאמינים בשילוב של אסתטיקה גבוהה, סטריליות חסרת פשרות ויחס אישי לכל לקוח.
               </p>
             </div>
-            {/* Contact links */}
             <div>
               <h4 className="text-white font-medium mb-6">יצירת קשר</h4>
               <ul className="space-y-4 text-sm text-slate-400">
@@ -173,7 +165,6 @@ const App: React.FC = () => {
                 <li>{settings?.studio_details?.email || DEFAULT_STUDIO_DETAILS.email}</li>
               </ul>
             </div>
-            {/* Social links */}
             <div>
                <h4 className="text-white font-medium mb-6">עקבו אחרינו</h4>
                <div className="flex justify-center md:justify-start gap-4">
@@ -186,9 +177,8 @@ const App: React.FC = () => {
                </div>
             </div>
           </div>
-          
           <div className="border-t border-white/5 pt-8 text-center text-xs text-slate-600">
-             © 2026 Yuval Studio. כל הזכויות שמורות.
+             © 2026 Studio. כל הזכויות שמורות.
           </div>
         </div>
       </footer>
