@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { api } from '../services/mockApi';
 import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '../components/ui';
@@ -16,6 +16,7 @@ const JewelryPage: React.FC = () => {
   // Selection Dialog State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [direction, setDirection] = useState(0);
 
   const navigate = useNavigate();
 
@@ -44,12 +45,14 @@ const JewelryPage: React.FC = () => {
 
   const handleNext = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
+    setDirection(1);
     setSelectedIndex((prev) => prev === null ? null : (prev + 1) % galleryItems.length);
     setIsSelectionMode(false);
   }, [galleryItems.length]);
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
+    setDirection(-1);
     setSelectedIndex((prev) => prev === null ? null : (prev - 1 + galleryItems.length) % galleryItems.length);
     setIsSelectionMode(false);
   }, [galleryItems.length]);
@@ -92,6 +95,42 @@ const JewelryPage: React.FC = () => {
   const totalPrice = taggedServices.reduce((acc, item) => acc + item.price, 0);
   const selectedPrice = selectedServices.reduce((acc, item) => acc + item.price, 0);
 
+  // Swipe logic
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
+
+  const handleDragEnd = (e: any, { offset, velocity }: PanInfo) => {
+    const swipe = swipePower(offset.x, velocity.x);
+
+    if (swipe < -swipeConfidenceThreshold) {
+      handleNext();
+    } else if (swipe > swipeConfidenceThreshold) {
+      handlePrev();
+    }
+  };
+
+  const variants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.9
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1,
+      scale: 1
+    },
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.9
+    })
+  };
+
   return (
     <div className="pt-24 pb-20">
       <section className="text-center mb-12 px-6">
@@ -110,7 +149,7 @@ const JewelryPage: React.FC = () => {
                 viewport={{ once: true, margin: "100px" }}
                 transition={{ duration: 0.4 }}
                 className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
-                onClick={() => setSelectedIndex(i)}
+                onClick={() => { setDirection(1); setSelectedIndex(i); }}
                 whileHover={{ y: -5 }}
               >
                 {/* Overlay */}
@@ -153,32 +192,45 @@ const JewelryPage: React.FC = () => {
             >
                 <button
                     onClick={() => setSelectedIndex(null)}
-                    className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all"
+                    className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all border border-white/10"
                 >
                     <X className="w-6 h-6" />
                 </button>
 
-                <div className="w-full md:w-2/3 h-[40vh] md:h-auto relative bg-black flex items-center justify-center group">
-                    <button onClick={handlePrev} className="absolute right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all hidden md:block">
-                        <ChevronRight className="w-8 h-8" />
+                <div className="w-full md:w-2/3 h-[40vh] md:h-auto relative bg-black flex items-center justify-center group overflow-hidden">
+                    {/* Navigation Arrows - Centered Vertically */}
+                    <button onClick={handlePrev} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5">
+                        <ChevronRight className="w-6 h-6" />
                     </button>
-                    <button onClick={handleNext} className="absolute left-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all hidden md:block">
-                        <ChevronLeft className="w-8 h-8" />
+                    <button onClick={handleNext} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5">
+                        <ChevronLeft className="w-6 h-6" />
                     </button>
 
-                    <img 
-                        src={galleryItems[selectedIndex].image_url} 
-                        className="max-w-full max-h-full object-contain"
-                        alt="Look detail"
-                    />
-                    
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 md:hidden">
-                         <button onClick={handlePrev} className="p-2 bg-black/30 rounded-full text-white"><ChevronRight className="w-5 h-5"/></button>
-                         <button onClick={handleNext} className="p-2 bg-black/30 rounded-full text-white"><ChevronLeft className="w-5 h-5"/></button>
-                    </div>
+                    {/* Image with Swipe */}
+                    <AnimatePresence initial={false} custom={direction}>
+                        <m.img
+                            key={selectedIndex}
+                            src={galleryItems[selectedIndex].image_url}
+                            custom={direction}
+                            variants={variants}
+                            initial="enter"
+                            animate="center"
+                            exit="exit"
+                            transition={{
+                                x: { type: "spring", stiffness: 300, damping: 30 },
+                                opacity: { duration: 0.2 }
+                            }}
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={1}
+                            onDragEnd={handleDragEnd}
+                            className="absolute max-w-full max-h-full object-contain touch-pan-y"
+                            alt="Look detail"
+                        />
+                    </AnimatePresence>
                 </div>
 
-                <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col h-[60vh] md:h-auto relative overflow-hidden">
+                <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col h-[60vh] md:h-auto relative overflow-hidden z-30">
                     <AnimatePresence mode="wait">
                         {!isSelectionMode ? (
                             <m.div 
