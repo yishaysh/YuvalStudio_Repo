@@ -7,7 +7,8 @@ import Admin from './pages/Admin';
 import ServicesPage from './pages/Services';
 import JewelryPage from './pages/Jewelry';
 import AftercarePage from './pages/Aftercare';
-import { Menu, X, Instagram, Facebook, MapPin, Lock } from 'lucide-react';
+import EarStacker from './pages/EarStacker'; // Import new page
+import { Menu, X, Instagram, Facebook, MapPin, Lock, Sparkles } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 
@@ -65,6 +66,7 @@ const Navbar = () => {
             {[
               { label: 'שירותים', path: '/services' },
               { label: 'גלריה', path: '/jewelry' },
+              { label: 'Ear Stacker', path: '/stacker' }, // New Link
               { label: 'הוראות טיפול', path: '/aftercare' }
             ].map((item) => (
               <Link key={item.path} to={item.path} className="text-sm font-medium text-slate-400 hover:text-white transition-colors relative group">
@@ -112,6 +114,7 @@ const Navbar = () => {
               <Link to="/booking" className="text-2xl font-serif text-white hover:text-brand-primary">הזמן תור</Link>
               <Link to="/services" className="text-2xl font-serif text-white hover:text-brand-primary">שירותים ומחירים</Link>
               <Link to="/jewelry" className="text-2xl font-serif text-white hover:text-brand-primary">גלריה ותכשיטים</Link>
+              <Link to="/stacker" className="text-2xl font-serif text-white hover:text-brand-primary flex items-center gap-2"><Sparkles className="w-5 h-5"/> Ear Stacker</Link>
               <Link to="/aftercare" className="text-2xl font-serif text-white hover:text-brand-primary">הוראות טיפול</Link>
               <div className="w-12 h-[1px] bg-white/10 my-2"></div>
               <Link to="/admin" className="text-sm text-slate-500 hover:text-white border border-white/10 px-6 py-2 rounded-full">כניסת מנהל</Link>
@@ -156,6 +159,7 @@ const App: React.FC = () => {
           <Route path="/booking" element={<Booking />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/jewelry" element={<JewelryPage />} />
+          <Route path="/stacker" element={<EarStacker />} />
           <Route path="/aftercare" element={<AftercarePage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Home />} />
