@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -160,6 +160,9 @@ const Booking: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  
+  // Mobile Cart State
+  const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -335,7 +338,7 @@ const Booking: React.FC = () => {
                 
                 {/* LEFT SIDE: MAIN CONTENT */}
                 <div className="flex-1 w-full z-10">
-                    <div className="mb-8">
+                    <div className="mb-4">
                         <h1 className="text-4xl font-serif text-white mb-2">
                             {step === BookingStep.SELECT_SERVICE && 'בחירת טיפול'}
                             {step === BookingStep.SELECT_DATE && 'תאריך ושעה'}
@@ -354,6 +357,69 @@ const Booking: React.FC = () => {
                             {step === BookingStep.DETAILS && 'איך נוכל ליצור איתך קשר?'}
                         </p>
                     </div>
+
+                    {/* MOBILE CART SUMMARY (NEW) */}
+                    {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
+                        <div className="lg:hidden mb-6 relative z-20">
+                            <button 
+                                onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
+                                className="w-full flex items-center justify-between p-4 bg-brand-surface/80 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-all active:scale-[0.98]"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                                        <ShoppingBag className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-slate-400">סיכום ביניים</p>
+                                        <p className="text-sm font-medium text-white">{selectedServices.length} פריטים נבחרו</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                     <span className="text-xl font-serif text-brand-primary">₪{totalPrice}</span>
+                                     {isMobileSummaryOpen ? <ChevronUp className="w-5 h-5 text-slate-400"/> : <ChevronDown className="w-5 h-5 text-slate-400"/>}
+                                </div>
+                            </button>
+
+                            <AnimatePresence>
+                                {isMobileSummaryOpen && (
+                                    <m.div 
+                                        initial={{ opacity: 0, height: 0, y: -10 }}
+                                        animate={{ opacity: 1, height: 'auto', y: 0 }}
+                                        exit={{ opacity: 0, height: 0, y: -10 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="mt-2 p-4 bg-brand-surface border border-white/5 rounded-xl space-y-3 shadow-xl">
+                                            {selectedServices.map((s, idx) => (
+                                                <div key={`${s.id}-${idx}`} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                                    <span className="text-slate-300">{s.name}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-white">₪{s.price}</span>
+                                                        {step === BookingStep.SELECT_SERVICE && (
+                                                            <button onClick={(e) => { e.stopPropagation(); toggleService(s); }} className="text-red-400">
+                                                                <Trash2 className="w-3 h-3"/>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {selectedDate && (
+                                                <div className="pt-3 mt-1 bg-white/5 rounded-lg p-3 flex justify-between items-center text-sm text-brand-primary border border-brand-primary/10">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="w-4 h-4"/>
+                                                        <span>{selectedDate.toLocaleDateString('he-IL')}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-4 h-4"/>
+                                                        <span>{selectedSlot || '--:--'}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </m.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
 
                     <AnimatePresence mode="wait">
                         {/* STEP 1: SERVICE SELECTION */}
