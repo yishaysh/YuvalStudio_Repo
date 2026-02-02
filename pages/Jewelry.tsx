@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/mockApi';
-import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Share2, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { Service } from '../types';
+import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
 
@@ -36,7 +37,7 @@ const JewelryPage: React.FC = () => {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
-      setIsSelectionMode(false); // Reset selection mode when closing main modal
+      setIsSelectionMode(false); 
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [selectedIndex]);
@@ -67,13 +68,11 @@ const JewelryPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedIndex, handleNext, handlePrev, isSelectionMode]);
 
-  // Get look details for current index
   const currentItem = selectedIndex !== null ? galleryItems[selectedIndex] : null;
   const taggedServices: Service[] = currentItem?.taggedServices || [];
   
-  // Initialize selected services when opening selection mode
   const handleOpenSelection = () => {
-      setSelectedServices(taggedServices); // Select all by default
+      setSelectedServices(taggedServices); 
       setIsSelectionMode(true);
   };
 
@@ -90,7 +89,6 @@ const JewelryPage: React.FC = () => {
       navigate('/booking', { state: { preSelectedServices: selectedServices } });
   };
 
-  // Calculations for display
   const totalPrice = taggedServices.reduce((acc, item) => acc + item.price, 0);
   const selectedPrice = selectedServices.reduce((acc, item) => acc + item.price, 0);
 
@@ -111,11 +109,11 @@ const JewelryPage: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "100px" }}
                 transition={{ duration: 0.4 }}
-                className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group"
+                className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
                 onClick={() => setSelectedIndex(i)}
                 whileHover={{ y: -5 }}
               >
-                {/* Overlay indicating it has tags */}
+                {/* Overlay */}
                 {item.taggedServices?.length > 0 && (
                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-end justify-end p-4">
                         <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
@@ -124,11 +122,10 @@ const JewelryPage: React.FC = () => {
                     </div>
                 )}
                 
-                <img 
+                <SmartImage 
                   src={item.image_url} 
                   alt={`Jewelry ${i}`} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  loading="lazy"
+                  className="w-full h-full object-cover"
                 />
               </m.div>
             ))}
@@ -140,7 +137,6 @@ const JewelryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Enhanced Lightbox / Get The Look Modal */}
       <AnimatePresence>
         {selectedIndex !== null && (
           <m.div
@@ -155,7 +151,6 @@ const JewelryPage: React.FC = () => {
                 className="relative w-full max-w-6xl h-full md:h-auto md:max-h-[90vh] bg-brand-surface rounded-none md:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/10"
                 onClick={(e: any) => e.stopPropagation()}
             >
-                {/* Close Button */}
                 <button
                     onClick={() => setSelectedIndex(null)}
                     className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all"
@@ -163,9 +158,7 @@ const JewelryPage: React.FC = () => {
                     <X className="w-6 h-6" />
                 </button>
 
-                {/* Left Side: Image */}
                 <div className="w-full md:w-2/3 h-[40vh] md:h-auto relative bg-black flex items-center justify-center group">
-                     {/* Navigation on Image */}
                     <button onClick={handlePrev} className="absolute right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all hidden md:block">
                         <ChevronRight className="w-8 h-8" />
                     </button>
@@ -179,17 +172,13 @@ const JewelryPage: React.FC = () => {
                         alt="Look detail"
                     />
                     
-                    {/* Mobile Navigation Indicators */}
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 md:hidden">
                          <button onClick={handlePrev} className="p-2 bg-black/30 rounded-full text-white"><ChevronRight className="w-5 h-5"/></button>
                          <button onClick={handleNext} className="p-2 bg-black/30 rounded-full text-white"><ChevronLeft className="w-5 h-5"/></button>
                     </div>
                 </div>
 
-                {/* Right Side: "Get The Look" Details */}
                 <div className="w-full md:w-1/3 bg-brand-dark/95 border-l border-white/5 flex flex-col h-[60vh] md:h-auto relative overflow-hidden">
-                    
-                    {/* Default View */}
                     <AnimatePresence mode="wait">
                         {!isSelectionMode ? (
                             <m.div 
@@ -238,7 +227,6 @@ const JewelryPage: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* Action Bar */}
                                 <div className="p-6 border-t border-white/10 bg-brand-surface/95 backdrop-blur-sm z-10 mt-auto">
                                     <Button onClick={handleOpenSelection} className="w-full py-4 text-lg mb-2 shadow-xl shadow-brand-primary/20" disabled={taggedServices.length === 0}>
                                         <span className="flex items-center justify-center gap-2">
@@ -249,7 +237,6 @@ const JewelryPage: React.FC = () => {
                                 </div>
                             </m.div>
                         ) : (
-                            /* Selection View */
                             <m.div 
                                 key="selection"
                                 initial={{ opacity: 0, x: 20 }}

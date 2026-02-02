@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Home from './pages/Home';
-import Booking from './pages/Booking';
-import Admin from './pages/Admin';
-import ServicesPage from './pages/Services';
-import JewelryPage from './pages/Jewelry';
-import AftercarePage from './pages/Aftercare';
-import { Menu, X, Instagram, Facebook, MapPin, Lock } from 'lucide-react';
+import { Menu, X, Instagram, Facebook, MapPin, Lock, Loader2 } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
+
+// Lazy Load Pages
+const Home = lazy(() => import('./pages/Home'));
+const Booking = lazy(() => import('./pages/Booking'));
+const Admin = lazy(() => import('./pages/Admin'));
+const ServicesPage = lazy(() => import('./pages/Services'));
+const JewelryPage = lazy(() => import('./pages/Jewelry'));
+const AftercarePage = lazy(() => import('./pages/Aftercare'));
 
 const m = motion as any;
 
@@ -105,7 +107,8 @@ const Navbar = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-screen"
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-screen will-change-transform"
           >
             <div className="flex flex-col p-8 gap-8 items-center text-center pt-20">
               <Link to="/" className="text-2xl font-serif text-white hover:text-brand-primary">דף הבית</Link>
@@ -131,12 +134,20 @@ const ScrollToTop = () => {
   return null;
 };
 
+// Loading Component
+const PageLoader = () => (
+  <div className="min-h-[80vh] flex items-center justify-center">
+    <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
+  </div>
+);
+
 const App: React.FC = () => {
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
   const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
   const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
 
   useEffect(() => {
+    // Non-blocking fetch
     api.getSettings().then(settings => {
       if (settings.studio_details) {
          setAddress(settings.studio_details.address);
@@ -151,15 +162,17 @@ const App: React.FC = () => {
       <ScrollToTop />
       <Navbar />
       <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/booking" element={<Booking />} />
-          <Route path="/services" element={<ServicesPage />} />
-          <Route path="/jewelry" element={<JewelryPage />} />
-          <Route path="/aftercare" element={<AftercarePage />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<Home />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/booking" element={<Booking />} />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/jewelry" element={<JewelryPage />} />
+            <Route path="/aftercare" element={<AftercarePage />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="*" element={<Home />} />
+          </Routes>
+        </Suspense>
       </main>
       
       <footer className="bg-brand-surface py-16 border-t border-white/5">

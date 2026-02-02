@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Feather, Shield } from 'lucide-react';
 import { Button, SectionHeading, Card } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
 
@@ -27,24 +28,26 @@ const Home: React.FC = () => {
     <div className="min-h-screen bg-brand-dark text-white overflow-x-hidden font-sans">
       {/* Hero Section */}
       <section className="relative h-[90vh] flex items-center justify-center">
-        {/* Background */}
+        {/* Background - Optimized Image */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <img 
-            src="https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?q=80&w=2565&auto=format&fit=crop" 
+          <SmartImage 
+            src="https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?q=60&w=1280&auto=format&fit=crop" 
             alt="Studio Atmosphere" 
-            className="w-full h-full object-cover opacity-50 grayscale contrast-110"
+            className="w-full h-full opacity-50 grayscale contrast-110"
+            priority={true}
           />
-          {/* Gradient Overlay - Fully transparent in the center to show image clearly */}
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/95 via-brand-dark/10 to-brand-dark"></div>
-          {/* Radial vignette to focus center */}
-          <div className="absolute inset-0 bg-radial-vignette opacity-40"></div>
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/95 via-brand-dark/10 to-brand-dark pointer-events-none"></div>
+          {/* Radial vignette */}
+          <div className="absolute inset-0 bg-radial-vignette opacity-40 pointer-events-none"></div>
         </div>
 
         <div className="container mx-auto px-6 relative z-10 text-center">
           <m.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="will-change-transform"
           >
             <StudioLogo className="w-32 md:w-40 h-auto mx-auto mb-10 text-brand-primary drop-shadow-[0_0_15px_rgba(212,181,133,0.3)]" />
 
@@ -90,8 +93,9 @@ const Home: React.FC = () => {
               key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: "100px" }}
               transition={{ delay: i * 0.1, duration: 0.5 }}
+              className="will-change-transform"
             >
               <Card className="h-full text-center hover:bg-brand-surface/80 transition-colors group border-transparent hover:border-brand-primary/20">
                 <div className="w-12 h-12 bg-brand-dark rounded-2xl flex items-center justify-center mx-auto mb-6 text-brand-primary group-hover:scale-110 transition-transform duration-500">

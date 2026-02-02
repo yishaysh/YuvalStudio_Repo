@@ -4,6 +4,7 @@ import { api } from '../services/mockApi';
 import { Service } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
 
@@ -27,6 +28,7 @@ const ServicesPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="will-change-transform"
           >
             <h1 className="text-5xl font-serif text-white mb-6">השירותים שלנו</h1>
             <p className="text-slate-400 max-w-2xl mx-auto text-lg font-light">
@@ -45,17 +47,14 @@ const ServicesPage: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "50px" }}
               transition={{ delay: i * 0.05, duration: 0.4 }}
+              className="will-change-transform"
             >
               <Card className="h-full flex flex-col group hover:border-brand-primary/30 transition-colors">
                 <div className="aspect-square w-full mb-6 overflow-hidden rounded-lg bg-brand-dark/50">
-                  <img 
+                  <SmartImage 
                     src={service.image_url} 
                     alt={service.name} 
                     className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://picsum.photos/400/400?grayscale';
-                    }}
                   />
                 </div>
                 <div className="flex justify-between items-start mb-4">

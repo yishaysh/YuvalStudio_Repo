@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="https://vitejs.dev/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>הסטודיו לפירסינג של יובל</title>
     <!-- Tailwind CSS (CDN kept for simplicity in this specific setup) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -35,9 +35,10 @@
         },
       }
     </script>
-    <!-- Fonts -->
+    <!-- Preload Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&family=Playfair+Display:wght@400;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
 <script type="importmap">
 {
@@ -56,6 +57,15 @@
   }
 }
 </script>
+<style>
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .will-change-transform {
+    will-change: transform, opacity;
+  }
+</style>
 </head>
   <body class="bg-brand-dark text-slate-200 antialiased font-sans overflow-x-hidden selection:bg-brand-primary/30 selection:text-brand-primary">
     <div id="root"></div>
