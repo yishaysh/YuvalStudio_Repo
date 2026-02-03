@@ -63,6 +63,8 @@ export interface Coupon {
   value: number; // Percentage (0-100) or Fixed Amount
   minOrderAmount: number;
   isActive: boolean;
+  maxUses?: number; // Optional limit
+  usedCount?: number; // Counter
 }
 
 export interface StudioSettings {

@@ -7,7 +7,8 @@ import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Filter, ChevronRight, ChevronLeft, Loader2, FileText, Tag, ArrowUpDown, Ticket
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Filter, ChevronRight, ChevronLeft, Loader2, FileText, Tag, ArrowUpDown, Ticket,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -153,7 +154,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
     };
 
     return (
-        <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5">
+        <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
             {/* Filter Bar */}
             <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-wrap gap-4 items-end">
                 <div className="flex flex-col gap-1">
@@ -346,7 +347,9 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
             discountType: 'fixed',
             value: 0,
             minOrderAmount: 0,
-            isActive: true
+            isActive: true,
+            maxUses: 0,
+            usedCount: 0
         };
         const newCoupons = [...coupons, newCoupon];
         setCoupons(newCoupons);
@@ -430,16 +433,34 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-end">
+                        <div className="grid grid-cols-2 gap-4 mb-4">
                              <div>
                                 <label className="text-xs text-slate-500 mb-1 block">מינימום הזמנה (₪)</label>
                                 <input 
                                     type="number"
-                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-24 text-sm outline-none"
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
                                     value={coupon.minOrderAmount}
                                     onChange={(e) => updateLocal(coupon.id, 'minOrderAmount', Number(e.target.value))}
                                     onBlur={handleBlur}
                                 />
+                             </div>
+                             <div>
+                                <label className="text-xs text-slate-500 mb-1 block">הגבלת שימוש</label>
+                                <input 
+                                    type="number"
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
+                                    value={coupon.maxUses || 0}
+                                    onChange={(e) => updateLocal(coupon.id, 'maxUses', Number(e.target.value))}
+                                    onBlur={handleBlur}
+                                    placeholder="0 ללא הגבלה"
+                                />
+                             </div>
+                        </div>
+
+                        <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                             <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <Users className="w-3 h-3" />
+                                <span>נוצל: {coupon.usedCount || 0} פעמים</span>
                              </div>
                              
                              <label className="flex items-center gap-2 cursor-pointer">
@@ -546,7 +567,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
     }) : [];
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
+        <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[calc(100vh-200px)]">
             {/* Calendar View */}
             <div className="flex-1 flex flex-col h-full bg-brand-surface/30 rounded-2xl border border-white/5 overflow-hidden">
                 <div className="flex items-center justify-between p-4 border-b border-white/5">
@@ -559,7 +580,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                     <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
                 </div>
 
-                <div className="flex-1 grid grid-cols-7 auto-rows-fr">
+                <div className="flex-1 grid grid-cols-7 auto-rows-fr min-h-[300px]">
                     {blanks.map((x, i) => <div key={`blank-${i}`} className="border-b border-l border-white/5 bg-brand-dark/20"></div>)}
                     {days.map((day) => {
                         const dayAppts = getDayAppointments(day);
@@ -587,35 +608,24 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                 </div>
             </div>
 
-            {/* Side Panel for Selected Day */}
+            {/* Side Panel for Selected Day - NOW USES APPOINTMENT LIST */}
             <div className="w-full lg:w-96 bg-brand-surface rounded-2xl border border-white/5 flex flex-col h-full overflow-hidden">
                 <div className="p-4 border-b border-white/5 bg-brand-dark/50">
                     <h3 className="text-lg font-medium text-white">{selectedDate?.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                     <p className="text-sm text-slate-400">{selectedDateAppointments.length} תורים רשומים</p>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                    {selectedDateAppointments.length > 0 ? selectedDateAppointments.map((apt: any) => (
-                        <div key={apt.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-brand-primary/20 transition-all">
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="font-medium text-white">{new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${apt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' : apt.status === 'cancelled' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                                    {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
-                                </span>
-                            </div>
-                            <div className="text-sm text-slate-300 font-medium mb-1">{apt.client_name}</div>
-                            <div className="text-xs text-slate-500 mb-2">{apt.service_name}</div>
-                            <div className="flex gap-2 border-t border-white/5 pt-2">
-                                {apt.status === 'pending' && (
-                                    <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="flex-1 py-1.5 text-xs bg-brand-primary/10 text-brand-primary rounded hover:bg-brand-primary hover:text-brand-dark transition-colors">אשר</button>
-                                )}
-                                {apt.status !== 'cancelled' && (
-                                    <button onClick={() => onCancelRequest(apt)} className="flex-1 py-1.5 text-xs bg-white/5 text-slate-400 rounded hover:bg-red-500/10 hover:text-red-400 transition-colors">בטל</button>
-                                )}
-                            </div>
-                        </div>
-                    )) : (
-                        <div className="text-center text-slate-500 py-10">אין תורים ליום זה</div>
-                    )}
+                
+                {/* Replaced manual list with reusable AppointmentsList */}
+                <div className="flex-1 overflow-hidden">
+                    <AppointmentsList 
+                        appointments={selectedDateAppointments} 
+                        onStatusUpdate={onStatusUpdate} 
+                        onCancelRequest={onCancelRequest} 
+                        filterId={null} 
+                        onClearFilter={() => {}}
+                        studioAddress={studioAddress}
+                        onDownloadPdf={onDownloadPdf}
+                    />
                 </div>
             </div>
         </div>

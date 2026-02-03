@@ -101,6 +101,11 @@ export const api = {
       if (!coupon.isActive) return { isValid: false, error: 'קופון זה אינו פעיל' };
       if (cartTotal < coupon.minOrderAmount) return { isValid: false, error: `מותנה בהזמנה מעל ₪${coupon.minOrderAmount}` };
       
+      // Check usage limits
+      if (coupon.maxUses && (coupon.usedCount || 0) >= coupon.maxUses) {
+          return { isValid: false, error: 'קופון זה הגיע למכסת השימוש המקסימלית' };
+      }
+      
       return { isValid: true, coupon };
   },
 
@@ -257,6 +262,19 @@ export const api = {
     let finalNotes = appt.notes || '';
     if (appt.coupon_code) {
         finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
+    }
+
+    // --- Transaction-like Logic for Coupon ---
+    // In a real DB we'd use a transaction. Here we optimistically update settings.
+    if (appt.coupon_code) {
+        const settings = await api.getSettings();
+        const updatedCoupons = settings.coupons.map(c => {
+            if (c.code === appt.coupon_code) {
+                return { ...c, usedCount: (c.usedCount || 0) + 1 };
+            }
+            return c;
+        });
+        await api.updateSettings({ ...settings, coupons: updatedCoupons });
     }
 
     const payload = {
