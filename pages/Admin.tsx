@@ -767,24 +767,24 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                         
                         return (
                             <div key={dayKey} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
-                                <div className="grid grid-cols-[80px_60px_1fr] gap-4 items-start">
-                                    <div className="pt-2 font-medium text-white">{dayName}</div>
+                                <div className="grid grid-cols-[1fr_auto] md:grid-cols-[100px_60px_1fr] gap-x-4 gap-y-4 items-center md:items-start">
+                                    <div className="font-medium text-white md:pt-2">{dayName}</div>
                                     
-                                    <div className="pt-1">
+                                    <div className="md:pt-1">
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" className="sr-only peer" checked={dayConfig.isOpen} onChange={() => toggleDay(dayKey)} />
                                             <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
                                         </label>
                                     </div>
 
-                                    <div className="space-y-3">
+                                    <div className="col-span-2 md:col-span-1 w-full space-y-3">
                                         {dayConfig.isOpen ? (
                                             <>
                                                 {dayConfig.ranges.map((range, rIdx) => (
-                                                    <div key={rIdx} className="flex items-center gap-3">
-                                                        <div className="flex items-center gap-2 bg-brand-dark/50 p-1.5 rounded-lg border border-white/10">
+                                                    <div key={rIdx} className="flex items-center gap-3 w-full">
+                                                        <div className="flex-1 flex items-center justify-center gap-2 bg-brand-dark/50 p-2 rounded-lg border border-white/10">
                                                             <select 
-                                                                className="bg-transparent text-white text-sm outline-none w-16 text-center appearance-none cursor-pointer"
+                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
                                                                 value={range.start}
                                                                 onChange={e => updateRange(dayKey, rIdx, 'start', Number(e.target.value))}
                                                             >
@@ -794,7 +794,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                                             </select>
                                                             <span className="text-slate-500">-</span>
                                                             <select 
-                                                                className="bg-transparent text-white text-sm outline-none w-16 text-center appearance-none cursor-pointer"
+                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
                                                                 value={range.end}
                                                                 onChange={e => updateRange(dayKey, rIdx, 'end', Number(e.target.value))}
                                                             >
@@ -806,7 +806,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                                         
                                                         <button 
                                                             onClick={() => removeRange(dayKey, rIdx)}
-                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
                                                             title="מחק טווח"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -816,13 +816,13 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                                 
                                                 <button 
                                                     onClick={() => addRange(dayKey)}
-                                                    className="flex items-center gap-2 text-xs text-brand-primary hover:text-white mt-2 px-2 py-1 rounded hover:bg-white/5 w-fit transition-colors"
+                                                    className="flex items-center gap-2 text-xs text-brand-primary hover:text-white mt-2 px-3 py-1.5 rounded-lg bg-brand-primary/5 hover:bg-brand-primary/10 border border-brand-primary/10 w-full md:w-fit justify-center transition-colors"
                                                 >
                                                     <Plus className="w-3 h-3" /> הוסף טווח שעות
                                                 </button>
                                             </>
                                         ) : (
-                                            <div className="pt-2 text-slate-500 text-sm italic">סגור</div>
+                                            <div className="text-slate-500 text-sm italic md:pt-2">סגור</div>
                                         )}
                                     </div>
                                 </div>
