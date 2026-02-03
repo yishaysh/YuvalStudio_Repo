@@ -672,7 +672,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
     useEffect(() => { setLocalSettings(settings); }, [settings]);
 
-    const handleSave = () => { onUpdate(localSettings); };
+    const handleSilentSave = () => { onUpdate(localSettings, true); };
     
     // New helper to update state and trigger save silently
     const updateAndSaveWorkingHours = (newWorkingHours: any) => {
@@ -742,18 +742,50 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             <Card>
                 <SectionHeading title="פרטי הסטודיו" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input label="שם העסק" value={localSettings.studio_details.name} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, name: e.target.value}})} />
-                    <Input label="טלפון" value={localSettings.studio_details.phone} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, phone: e.target.value}})} />
-                    <Input label="כתובת" value={localSettings.studio_details.address} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, address: e.target.value}})} />
-                    <Input label="אימייל" value={localSettings.studio_details.email} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, email: e.target.value}})} />
+                    <Input 
+                        label="שם העסק" 
+                        value={localSettings.studio_details.name} 
+                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, name: e.target.value}})} 
+                        onBlur={handleSilentSave}
+                    />
+                    <Input 
+                        label="טלפון" 
+                        value={localSettings.studio_details.phone} 
+                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, phone: e.target.value}})} 
+                        onBlur={handleSilentSave}
+                    />
+                    <Input 
+                        label="כתובת" 
+                        value={localSettings.studio_details.address} 
+                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, address: e.target.value}})} 
+                        onBlur={handleSilentSave}
+                    />
+                    <Input 
+                        label="אימייל" 
+                        value={localSettings.studio_details.email} 
+                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, email: e.target.value}})} 
+                        onBlur={handleSilentSave}
+                    />
                 </div>
             </Card>
 
             <Card>
                 <SectionHeading title="יעדים חודשיים" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input label="יעד הכנסות (₪)" type="number" value={localSettings.monthly_goals.revenue} onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, revenue: Number(e.target.value)}})} />
-                    <Input label="יעד תורים" type="number" value={localSettings.monthly_goals.appointments} onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, appointments: Number(e.target.value)}})} />
+                    <Input 
+                        label="יעד הכנסות (₪)" 
+                        type="number" 
+                        value={localSettings.monthly_goals.revenue} 
+                        onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, revenue: Number(e.target.value)}})} 
+                        onBlur={handleSilentSave}
+                    />
+                    <Input 
+                        label="יעד תורים" 
+                        type="number" 
+                        value={localSettings.monthly_goals.appointments} 
+                        onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, appointments: Number(e.target.value)}})} 
+                        onBlur={handleSilentSave}
+                    />
                 </div>
             </Card>
 
@@ -834,10 +866,6 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                     })}
                 </div>
             </Card>
-
-            <div className="flex justify-end pt-4">
-                <Button onClick={handleSave} className="w-full md:w-auto px-12 py-4 text-lg">שמור שינויים (פרטי סטודיו ויעדים)</Button>
-            </div>
         </div>
     );
 };
