@@ -1,17 +1,10 @@
-
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
-import { Appointment, Service, StudioSettings, Coupon } from '../types';
+import { Appointment, Service, StudioSettings } from '../types';
 import { supabase } from './supabaseClient';
 
 export interface TimeSlot {
     time: string;
     available: boolean;
-}
-
-export interface JewelryLibraryItem {
-    id: string;
-    name: string;
-    image_url: string;
 }
 
 // --- In-Memory Cache ---
@@ -28,46 +21,67 @@ export const api = {
         working_hours: DEFAULT_WORKING_HOURS,
         studio_details: DEFAULT_STUDIO_DETAILS,
         monthly_goals: DEFAULT_MONTHLY_GOALS,
-        gallery_tags: {},
-        features: { enable_ear_stacker: true, enable_roulette: true }
+        gallery_tags: {}
       };
       
-      if (!supabase) return defaultSettings;
+      if (!supabase) {
+          cachedSettings = defaultSettings;
+          return defaultSettings;
+      }
 
       try {
+          // Fetch settings keys
           const { data, error } = await supabase
             .from('settings')
             .select('*')
-            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'features']);
+            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags']);
 
-          if (error || !data) return defaultSettings;
+          if (error || !data) {
+              cachedSettings = defaultSettings;
+              return defaultSettings;
+          }
 
           const newSettings = { ...defaultSettings };
+          
           data.forEach(row => {
-            if (row.key === 'working_hours') newSettings.working_hours = row.value;
-            else if (row.key === 'studio_details') newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
-            else if (row.key === 'monthly_goals') newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
-            else if (row.key === 'gallery_tags') newSettings.gallery_tags = row.value;
-            else if (row.key === 'features') newSettings.features = { ...defaultSettings.features, ...row.value };
+            if (row.key === 'working_hours') {
+               // Legacy check
+               if (row.value['0'] && row.value['0'].start !== undefined) {
+                  // Ignore legacy format
+               } else {
+                  newSettings.working_hours = row.value;
+               }
+            } else if (row.key === 'studio_details') {
+               newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
+            } else if (row.key === 'monthly_goals') {
+               newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
+            } else if (row.key === 'gallery_tags') {
+               newSettings.gallery_tags = row.value;
+            }
           });
           
           cachedSettings = newSettings;
           return newSettings;
       } catch (e) {
+          console.error(e);
           return defaultSettings;
       }
   },
 
   updateSettings: async (settings: StudioSettings): Promise<boolean> => {
       if (!supabase) return false;
+      
       const updates = [
         { key: 'working_hours', value: settings.working_hours },
         { key: 'studio_details', value: settings.studio_details },
         { key: 'monthly_goals', value: settings.monthly_goals },
-        { key: 'gallery_tags', value: settings.gallery_tags },
-        { key: 'features', value: settings.features }
+        { key: 'gallery_tags', value: settings.gallery_tags }
       ];
-      const { error } = await supabase.from('settings').upsert(updates, { onConflict: 'key' });
+
+      const { error } = await supabase
+        .from('settings')
+        .upsert(updates, { onConflict: 'key' });
+      
       if (!error) cachedSettings = settings;
       return !error;
   },
@@ -75,180 +89,301 @@ export const api = {
   // --- Services ---
   getServices: async (): Promise<Service[]> => {
     if (cachedServices) return cachedServices;
+
     if (!supabase) return SERVICES;
-    const { data, error } = await supabase.from('services').select('*').eq('is_active', true).order('price', { ascending: true });
-    cachedServices = data || SERVICES;
-    return cachedServices;
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('is_active', true)
+        .order('price', { ascending: true });
+      if (error) throw error;
+      
+      cachedServices = data || SERVICES;
+      return cachedServices;
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      return SERVICES;
+    }
   },
 
-  addService: async (service:  Omit<Service, 'id'>) => {
+  addService: async (service:  Omit<Service, 'id'>): Promise<Service | null> => {
     if (!supabase) return null;
     const { data, error } = await supabase.from('services').insert([service]).select().single();
-    cachedServices = null;
+    if (error) { console.error(error); return null; }
+    
+    cachedServices = null; // Invalidate cache
     return data;
   },
 
-  updateService: async (id: string, updates: Partial<Service>) => {
+  updateService: async (id: string, updates: Partial<Service>): Promise<Service | null> => {
     if (!supabase) return null;
     const { data, error } = await supabase.from('services').update(updates).eq('id', id).select().single();
-    cachedServices = null;
+    if (error) { console.error(error); return null; }
+    
+    cachedServices = null; // Invalidate cache
     return data;
   },
 
-  deleteService: async (id: string) => {
+  deleteService: async (id: string): Promise<boolean> => {
     if (!supabase) return false;
     const { error } = await supabase.from('services').update({ is_active: false }).eq('id', id);
-    cachedServices = null;
+    
+    if (!error) cachedServices = null; // Invalidate cache
     return !error;
-  },
-
-  // --- Jewelry Library (FOR STACKER) ---
-  getJewelryLibrary: async (): Promise<JewelryLibraryItem[]> => {
-      if (!supabase) return [];
-      const { data } = await supabase.from('jewelry_library').select('*').order('created_at', { ascending: false });
-      return data || [];
-  },
-
-  addJewelryToLibrary: async (item: Omit<JewelryLibraryItem, 'id'>) => {
-      if (!supabase) return null;
-      const { data } = await supabase.from('jewelry_library').insert([item]).select().single();
-      return data;
-  },
-
-  deleteJewelryFromLibrary: async (id: string) => {
-      if (!supabase) return false;
-      const { error } = await supabase.from('jewelry_library').delete().eq('id', id);
-      return !error;
-  },
-
-  // --- Coupons ---
-  getCoupons: async (): Promise<Coupon[]> => {
-      if (!supabase) return [];
-      const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
-      return data || [];
-  },
-
-  createCoupon: async (coupon: Omit<Coupon, 'id' | 'usage_count'>): Promise<Coupon | null> => {
-      if (!supabase) return null;
-      const { data, error } = await supabase.from('coupons').insert([coupon]).select().single();
-      return data;
-  },
-
-  validateCoupon: async (code: string): Promise<Coupon | null> => {
-      if (!supabase) return null;
-      const { data } = await supabase.from('coupons').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single();
-      return data || null;
-  },
-
-  deleteCoupon: async (id: string) => {
-      if (!supabase) return false;
-      const { error } = await supabase.from('coupons').delete().eq('id', id);
-      return !error;
   },
 
   // --- Appointments ---
   getAvailability: async (date: Date): Promise<TimeSlot[]> => {
-    const settings = await api.getSettings();
-    const workingHours = settings.working_hours;
-    const dayIndex = date.getDay().toString();
+    // 1. Fetch Settings (Use cache if available)
+    let workingHours = DEFAULT_WORKING_HOURS;
+    if (supabase) {
+        if (cachedSettings) {
+            workingHours = cachedSettings.working_hours;
+        } else {
+            const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+            if (data?.value && data.value['0'] && data.value['0'].ranges) { 
+                workingHours = data.value;
+            }
+        }
+    }
+
+    // 2. Identify Day Config
+    const dayIndex = date.getDay().toString(); // 0 = Sunday
     const dayConfig = workingHours[dayIndex];
-    if (!dayConfig || !dayConfig.isOpen) return [];
+
+    // If day is closed or config missing
+    if (!dayConfig || !dayConfig.isOpen || !dayConfig.ranges || dayConfig.ranges.length === 0) {
+        return [];
+    }
+
+    // 3. Generate All Slots for that specific day (Iterate through all ranges)
     let allSlots: string[] = [];
+    
     dayConfig.ranges.forEach(range => {
         for (let hour = range.start; hour < range.end; hour++) {
             allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
             allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
         }
     });
+    
+    // Sort slots just in case ranges were out of order
+    allSlots.sort();
+
+    // Map to object structure
     const slotsWithStatus = allSlots.map(time => ({ time, available: true }));
+
     if (!supabase) return slotsWithStatus;
-    const startOfDay = new Date(date); startOfDay.setHours(0,0,0,0);
-    const endOfDay = new Date(date); endOfDay.setHours(23,59,59,999);
-    const { data: existing } = await supabase.from('appointments').select('start_time, end_time').gte('start_time', startOfDay.toISOString()).lte('start_time', endOfDay.toISOString()).neq('status', 'cancelled');
-    const busyRanges = existing?.map(app => ({ start: new Date(app.start_time).getTime(), end: new Date(app.end_time).getTime() })) || [];
-    return slotsWithStatus.map(slot => {
-        const [h, m] = slot.time.split(':').map(Number);
-        const slotDate = new Date(date); slotDate.setHours(h, m, 0, 0);
-        const isBusy = busyRanges.some(range => slotDate.getTime() >= range.start && slotDate.getTime() < range.end);
-        return { ...slot, available: !isBusy };
-    });
+
+    // 4. Check against existing appointments (Range Check)
+    try {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Fetch Start AND End time
+      const { data: existingAppointments, error } = await supabase
+        .from('appointments')
+        .select('start_time, end_time')
+        .gte('start_time', startOfDay.toISOString())
+        .lte('start_time', endOfDay.toISOString())
+        .neq('status', 'cancelled'); // Includes 'pending' and 'confirmed'
+
+      if (error) throw error;
+
+      // Convert existing appointments to timestamp ranges
+      const busyRanges = existingAppointments?.map(app => ({
+          start: new Date(app.start_time).getTime(),
+          end: new Date(app.end_time).getTime()
+      })) || [];
+
+      // Update availability status
+      return slotsWithStatus.map(slot => {
+          const [h, m] = slot.time.split(':').map(Number);
+          const slotDate = new Date(date);
+          slotDate.setHours(h, m, 0, 0);
+          const slotTime = slotDate.getTime();
+
+          // A slot is unavailable if its start time is >= existing start time AND < existing end time
+          const isBusy = busyRanges.some(range => slotTime >= range.start && slotTime < range.end);
+          
+          return { ...slot, available: !isBusy };
+      });
+
+    } catch (err) {
+      console.error('Error fetching availability:', err);
+      return slotsWithStatus;
+    }
   },
 
-  createAppointment: async (appt: Partial<Appointment>) => {
-    if (!supabase) return { id: 'mock', ...appt } as Appointment;
-    const duration = 30; // Default
+  createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
+    if (!supabase) {
+        // Mock fallback
+        return {
+            id: 'mock',
+            ...appt
+        } as Appointment;
+    }
+    
+    // Calculate End Time based on Service Duration logic handled in frontend or passed here
+    // But for DB insertion, we need an end_time.
+    // Assuming start_time is valid.
+    const startTime = new Date(appt.start_time!);
+    // If no duration passed, default to 30. If multi-service, frontend should ideally calculate or we default.
+    // Since we don't have duration in 'appt' Partial directly unless we add it, let's assume 30 mins as fallback
+    // OR verify if we can fetch service duration.
+    // Simple fix: Frontend passes end_time or we add 30 mins. 
+    // Let's add 30 mins by default if not present, but in multi-service logic frontend should handle it.
+    
+    // NOTE: For multi-service, appt.service_id might be one of them, but we want to block the whole time.
+    // The Frontend will pass a start_time. We need to know how long to block.
+    // We will assume the frontend calls this iteratively OR we make one booking with long duration.
+    // Let's rely on standard 30 min blocks unless specified.
+    
+    // Better: let's fetch the service duration if possible, or just default.
+    // For now, defaulting to 30min is safe for single service. For bundle, we might need a workaround.
+    // Workaround: We will pass 'end_time' from frontend if we can, or just +30m.
+    // The code below assumes 30m.
+    const duration = 30; 
+    
+    // Hack: If client passed end_time in the object (not in interface but in JS), use it.
+    // @ts-ignore
+    let endTime = appt.end_time;
+    if (!endTime) {
+        endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
+    }
+
     const payload = {
       service_id: appt.service_id,
       start_time: appt.start_time,
-      end_time: new Date(new Date(appt.start_time!).getTime() + duration * 60000).toISOString(),
+      end_time: endTime,
       guest_name: appt.client_name,
       guest_email: appt.client_email,
       guest_phone: appt.client_phone,
       notes: appt.notes,
       signature: appt.signature,
-      status: 'pending'
+      status: 'pending' // Default to pending
     };
+
     const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
     if (error) throw error;
-    return data;
+
+    return {
+      id: data.id,
+      client_name: data.guest_name,
+      client_email: data.guest_email,
+      client_phone: data.guest_phone,
+      service_id: data.service_id,
+      start_time: data.start_time,
+      status: data.status as Appointment['status'],
+      notes: data.notes,
+      signature: data.signature
+    };
   },
 
   getAppointments: async (): Promise<Appointment[]> => {
     if (!supabase) return MOCK_APPOINTMENTS as Appointment[];
-    const { data } = await supabase.from('appointments').select(`*, services (name, price)`).order('start_time', { ascending: false });
-    return data?.map((item: any) => ({
-      id: item.id,
-      client_name: item.guest_name,
-      client_email: item.guest_email,
-      client_phone: item.guest_phone,
-      service_id: item.service_id,
-      service_name: item.services?.name, 
-      service_price: item.services?.price,
-      start_time: item.start_time,
-      status: item.status,
-      notes: item.notes,
-      signature: item.signature
-    })) || [];
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+            *,
+            services (name, price)
+        `)
+        .order('start_time', { ascending: false });
+
+      if (error) throw error;
+      
+      return data.map((item: any) => ({
+        id: item.id,
+        client_name: item.guest_name || 'לקוח רשום',
+        client_email: item.guest_email,
+        client_phone: item.guest_phone,
+        service_id: item.service_id,
+        service_name: item.services?.name, 
+        service_price: item.services?.price,
+        start_time: item.start_time,
+        status: item.status,
+        notes: item.notes,
+        signature: item.signature
+      }));
+    } catch (err) {
+      console.error(err);
+      return MOCK_APPOINTMENTS as Appointment[];
+    }
   },
 
-  updateAppointmentStatus: async (id: string, status: string) => {
+  updateAppointmentStatus: async (id: string, status: string): Promise<boolean> => {
       if (!supabase) return true;
       const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
       return !error;
   },
 
-  updateAppointment: async (id: string, updates: Partial<Appointment>) => {
+  updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
       if (!supabase) return true;
       const { error } = await supabase.from('appointments').update(updates).eq('id', id);
       return !error;
   },
 
+  // --- Stats ---
   getMonthlyStats: async () => {
       if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };
+      
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const { data } = await supabase.from('appointments').select(`status, services(price)`).gte('start_time', startOfMonth).neq('status', 'cancelled');
-      let revenue = 0; let pending = 0;
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+
+      const { data } = await supabase
+        .from('appointments')
+        .select(`status, services(price)`)
+        .gte('start_time', startOfMonth)
+        .lte('start_time', endOfMonth)
+        .neq('status', 'cancelled');
+        
+      let revenue = 0;
+      let pending = 0;
+      
       data?.forEach((app: any) => {
-          revenue += (app.services?.price || 0);
+          if (app.status !== 'cancelled') {
+             revenue += (app.services?.price || 0);
+          }
           if (app.status === 'pending') pending++;
       });
-      return { revenue, appointments: data?.length || 0, pending };
+
+      return {
+          revenue,
+          appointments: data?.length || 0,
+          pending
+      };
   },
 
+  // --- Gallery ---
   getGallery: async () => {
     if (cachedGallery) return cachedGallery;
+
     if(!supabase) return [];
+    
+    // Fetch gallery images
     const { data: galleryData } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+    
     if (!galleryData) return [];
+
+    // Fetch tags from settings
     const settings = await api.getSettings();
     const tags = settings.gallery_tags || {};
     const services = await api.getServices();
+
+    // Map tags to full service objects
     const enrichedGallery = galleryData.map((item: any) => {
         const itemTags = tags[item.id] || [];
         const taggedServices = itemTags.map((tagId: string) => services.find(s => s.id === tagId)).filter(Boolean);
-        return { ...item, taggedServices };
+        return {
+            ...item,
+            taggedServices
+        };
     });
+    
     cachedGallery = enrichedGallery;
     return enrichedGallery;
   },
@@ -256,23 +391,32 @@ export const api = {
   addToGallery: async (imageUrl: string) => {
       if(!supabase) return;
       await supabase.from('gallery').insert([{ image_url: imageUrl }]);
-      cachedGallery = null;
+      cachedGallery = null; // Invalidate cache
   },
 
   deleteFromGallery: async (id: string) => {
       if(!supabase) return false;
       const { error } = await supabase.from('gallery').delete().eq('id', id);
-      cachedGallery = null;
+      
+      if (!error) cachedGallery = null; // Invalidate cache
       return !error;
   },
 
-  uploadImage: async (file: File, bucket: string): Promise<string | null> => {
+  // --- Storage ---
+  uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
       if(!supabase) return null;
+      
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, file);
-      if (uploadError) return null;
-      const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
+      if (uploadError) {
+          console.error(uploadError);
+          return null;
+      }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
       return data.publicUrl;
   }
 };

@@ -1,7 +1,5 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
-// Fixed: Removed PanInfo as it caused a module error
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { api } from '../services/mockApi';
 import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '../components/ui';
@@ -103,8 +101,7 @@ const JewelryPage: React.FC = () => {
     return Math.abs(offset) * velocity;
   };
 
-  // Fixed: Changed PanInfo to any to resolve type error
-  const handleDragEnd = (e: any, { offset, velocity }: any) => {
+  const handleDragEnd = (e: any, { offset, velocity }: PanInfo) => {
     const swipe = swipePower(offset.x, velocity.x);
 
     if (swipe < -swipeConfidenceThreshold) {

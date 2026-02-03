@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
@@ -8,28 +7,18 @@ const m = motion as any;
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  // Added size prop to resolve TypeScript errors in components using the Button with a size prop
-  size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({ 
   children, 
   variant = 'primary', 
-  size = 'md',
   className = '', 
   isLoading,
   ...props 
 }) => {
-  // Removed hardcoded padding and font size from baseStyle to be handled by sizeStyles
-  const baseStyle = "relative font-medium tracking-wide transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.98]";
+  const baseStyle = "relative px-6 py-3 text-sm font-medium tracking-wide transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.98]";
   
-  const sizeStyles = {
-    sm: "px-4 py-2 text-xs",
-    md: "px-6 py-3 text-sm",
-    lg: "px-8 py-4 text-base"
-  };
-
   const variants = {
     primary: "bg-brand-primary text-brand-dark hover:bg-brand-primaryHover",
     secondary: "bg-brand-surface text-white border border-brand-border hover:bg-brand-border",
@@ -40,7 +29,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button 
-      className={`${baseStyle} ${sizeStyles[size]} ${variants[variant]} ${className}`}
+      className={`${baseStyle} ${variants[variant]} ${className}`}
       disabled={isLoading || props.disabled}
       {...props}
     >
