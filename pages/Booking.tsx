@@ -391,8 +391,9 @@ const Booking: React.FC = () => {
     (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || 
     (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
     
-  // Reusable Ticket Summary Component content
-  const TicketContent = () => (
+  // Reusable Ticket Summary Content (Render Function)
+  // Converted from component to function to prevent unmounting/focus loss on re-render
+  const renderTicketContent = () => (
       <div className="p-6 space-y-6">
         <div className={`transition-all duration-500 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">טיפולים שנבחרו</div>
@@ -532,7 +533,7 @@ const Booking: React.FC = () => {
                                         className="overflow-hidden"
                                     >
                                         <div className="mt-2 bg-brand-surface border border-white/5 rounded-xl shadow-xl">
-                                            <TicketContent />
+                                            {renderTicketContent()}
                                         </div>
                                     </m.div>
                                 )}
@@ -766,7 +767,7 @@ const Booking: React.FC = () => {
                                 <h2 className="text-brand-dark font-serif font-bold text-xl relative z-10">סיכום הזמנה</h2>
                                 <div className="text-brand-dark/70 text-xs font-medium uppercase tracking-widest relative z-10">Yuval Studio</div>
                             </div>
-                            <TicketContent />
+                            {renderTicketContent()}
                             <div className="bg-brand-dark h-3 w-full relative">
                                 <div className="absolute -top-3 w-full h-3 bg-[radial-gradient(circle,transparent_50%,#1e293b_50%)] bg-[length:12px_12px] rotate-180"></div>
                             </div>
