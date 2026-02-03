@@ -1,14 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui';
-import { Sparkles, Trophy, ArrowRight, Gift, Loader2 } from 'lucide-react';
+import { Sparkles, Trophy, ArrowRight, Gift, Loader2, Info } from 'lucide-react';
 import { api } from '../services/mockApi';
 
 const m = motion as any;
 
-// Updated Prizes with specific Service IDs (mock IDs for demo)
 const PRIZES = [
     { id: 1, label: '10% הנחה על הכל', type: 'percent', value: 10, color: '#d4b585', serviceId: null },
     { id: 2, label: 'ספטום ב-15% הנחה', type: 'percent', value: 15, color: '#334155', serviceId: '4' },
@@ -25,21 +24,27 @@ const Roulette: React.FC = () => {
     const [generatedCoupon, setGeneratedCoupon] = useState<string | null>(null);
     const [isCreatingCoupon, setIsCreatingCoupon] = useState(false);
     const navigate = useNavigate();
+    
+    // Swipe logic
+    const dragX = useMotionValue(0);
 
-    const handleSpin = () => {
+    const spinToWin = (prizeIndexOverride?: number) => {
         if (isSpinning) return;
         setIsSpinning(true);
         setResult(null);
         setGeneratedCoupon(null);
 
-        const prizeIndex = Math.floor(Math.random() * PRIZES.length);
+        const prizeIndex = prizeIndexOverride ?? Math.floor(Math.random() * PRIZES.length);
         const prize = PRIZES[prizeIndex];
 
         const segmentAngle = 360 / PRIZES.length;
         const spinCount = 8 + Math.floor(Math.random() * 5);
         const baseRotation = 360 * spinCount;
+        
+        // Target calculation to ensure visual alignment with the "pointer" at the right (0 deg)
+        // Since the wheel is rotated -90 initially to match SVG logic, we adjust accordingly
         const targetRotation = baseRotation + (360 - (prizeIndex * segmentAngle));
-        const noise = (Math.random() - 0.5) * (segmentAngle * 0.7);
+        const noise = (Math.random() - 0.5) * (segmentAngle * 0.6);
 
         setRotation(targetRotation + noise);
 
@@ -64,6 +69,13 @@ const Roulette: React.FC = () => {
                 setIsCreatingCoupon(false);
             }
         }, 5000);
+    };
+
+    const handleDragEnd = (_: any, info: any) => {
+        const velocity = Math.abs(info.velocity.x);
+        if (velocity > 100 && !isSpinning) {
+            spinToWin();
+        }
     };
 
     const handleClaim = async () => {
@@ -93,20 +105,24 @@ const Roulette: React.FC = () => {
         <div className="pt-24 pb-20 min-h-screen bg-brand-dark overflow-hidden flex flex-col items-center justify-center relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand-primary/5 via-transparent to-transparent pointer-events-none" />
 
-            <div className="text-center mb-8 relative z-10">
+            <div className="text-center mb-8 relative z-10 px-6">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/20 mb-4">
                      <Sparkles className="w-4 h-4 text-brand-primary animate-pulse" />
                      <span className="text-xs font-bold tracking-widest text-brand-primary uppercase">Piercing Roulette</span>
                 </div>
                 <h1 className="text-4xl md:text-6xl font-serif text-white mb-2 text-shadow-lg">הגרלת המזל</h1>
-                <p className="text-slate-400">האם הגורל יחייך אלייך היום?</p>
+                <p className="text-slate-400">החליקי על הגלגל או לחצי על הכפתור כדי לסובב!</p>
             </div>
 
             <div className="relative w-[320px] h-[320px] md:w-[450px] md:h-[450px] mb-12">
+                {/* Pointer */}
                 <div className="absolute top-1/2 -right-4 -translate-y-1/2 z-20 w-0 h-0 border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent border-r-[25px] border-r-white drop-shadow-lg" />
 
                 <m.div
-                    className="w-full h-full rounded-full border-[8px] border-brand-dark shadow-[0_0_80px_rgba(212,181,133,0.15)] relative overflow-hidden"
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    onDragEnd={handleDragEnd}
+                    className="w-full h-full rounded-full border-[8px] border-brand-dark shadow-[0_0_80px_rgba(212,181,133,0.15)] relative overflow-hidden cursor-grab active:cursor-grabbing"
                     animate={{ rotate: rotation }}
                     transition={{ duration: 5, ease: [0.15, 0.85, 0.35, 1] }}
                 >
@@ -125,8 +141,8 @@ const Roulette: React.FC = () => {
                                      <path d={`M50,50 L${x1},${y1} A50,50 0 0,1 ${x2},${y2} Z`} fill={prize.color} stroke="#0f172a" strokeWidth="0.5" />
                                      <text 
                                         x="72" y="50" 
-                                        fill={i % 2 === 0 ? '#0f172a' : '#ffffff'}
-                                        fontSize="3.2" fontWeight="bold" textAnchor="middle" alignmentBaseline="middle"
+                                        fill={i % 2 === 0 && i !== 5 ? '#0f172a' : '#ffffff'}
+                                        fontSize="3" fontWeight="bold" textAnchor="middle" alignmentBaseline="middle"
                                         transform={`rotate(${startAngle + segmentAngle/2}, 50, 50)`}
                                      >
                                          {prize.label}
@@ -144,7 +160,7 @@ const Roulette: React.FC = () => {
                 </div>
             </div>
 
-            <Button onClick={handleSpin} disabled={isSpinning} className="w-48 py-4 text-xl shadow-[0_0_30px_rgba(212,181,133,0.3)]">
+            <Button onClick={() => spinToWin()} disabled={isSpinning} className="w-48 py-4 text-xl shadow-[0_0_30px_rgba(212,181,133,0.3)]">
                 {isSpinning ? 'מסתובב...' : 'סובב את הגלגל'}
             </Button>
 
