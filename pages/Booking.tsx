@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
@@ -156,7 +157,7 @@ const Booking: React.FC = () => {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   
   const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', notes: '' });
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', nationalId: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -269,7 +270,12 @@ const Booking: React.FC = () => {
       const primaryService = selectedServices[0];
       const otherServices = selectedServices.slice(1);
       
+      // Construct notes with National ID
       let finalNotes = formData.notes;
+      if (formData.nationalId) {
+          finalNotes = `ת.ז: ${formData.nationalId}\n` + finalNotes;
+      }
+
       if (otherServices.length > 0) {
           finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
       }
@@ -528,15 +534,25 @@ const Booking: React.FC = () => {
                                             onChange={e => setFormData({...formData, phone: e.target.value})} 
                                         />
                                     </div>
-                                    <Input 
-                                        label="אימייל" 
-                                        type="email" 
-                                        inputMode="email"
-                                        dir="ltr"
-                                        className="text-right"
-                                        value={formData.email} 
-                                        onChange={e => setFormData({...formData, email: e.target.value})} 
-                                    />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <Input 
+                                            label="אימייל" 
+                                            type="email" 
+                                            inputMode="email"
+                                            dir="ltr"
+                                            className="text-right"
+                                            value={formData.email} 
+                                            onChange={e => setFormData({...formData, email: e.target.value})} 
+                                        />
+                                        <Input 
+                                            label="תעודת זהות" 
+                                            type="tel" 
+                                            inputMode="numeric"
+                                            maxLength={9}
+                                            value={formData.nationalId} 
+                                            onChange={e => setFormData({...formData, nationalId: e.target.value})} 
+                                        />
+                                    </div>
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-slate-400 ms-1">הערות נוספות</label>
                                         <textarea className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[100px]" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
@@ -685,7 +701,7 @@ const Booking: React.FC = () => {
                             disabled={
                                 (step === BookingStep.SELECT_SERVICE && selectedServices.length === 0) ||
                                 (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
-                                (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
+                                (step === BookingStep.DETAILS && (!formData.name || !formData.phone || !formData.nationalId)) ||
                                 (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||
                                 isSubmitting
                             }

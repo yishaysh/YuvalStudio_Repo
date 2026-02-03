@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal, Modal, SectionHeading } from '../components/ui';
@@ -943,54 +944,57 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                      {saveStatus === 'saving' && <span className="text-xs text-brand-primary animate-pulse">שומר...</span>}
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {weekDays.map((dayName, idx) => {
                         const dayIndex = idx.toString();
                         const config = localSettings.working_hours[dayIndex] || { isOpen: false, ranges: [] };
 
                         return (
-                            <div key={dayIndex} className={`p-4 rounded-xl border transition-colors ${config.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
-                                {/* Grid Layout for Mobile alignment */}
-                                <div className="grid grid-cols-[80px_auto_1fr] md:grid-cols-[120px_auto_1fr] gap-4 items-start">
+                            <div key={dayIndex} className={`p-4 rounded-xl border transition-all ${config.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
+                                {/* Flexible Layout: Column on Mobile, Row on Desktop */}
+                                <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-8">
                                     
-                                    {/* 1. Toggle & Day Name */}
-                                    <div className="flex flex-col items-center justify-center gap-2 pt-1">
-                                         <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${config.isOpen ? 'bg-brand-primary' : 'bg-slate-600'}`} onClick={() => toggleDay(dayIndex)}>
-                                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${config.isOpen ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                    {/* 1. Header: Toggle & Day Name */}
+                                    <div className="flex items-center justify-between md:justify-start md:w-32 gap-3 min-w-[120px]">
+                                         <div className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors shrink-0 ${config.isOpen ? 'bg-brand-primary' : 'bg-slate-600'}`} onClick={() => toggleDay(dayIndex)}>
+                                            <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${config.isOpen ? 'translate-x-5' : 'translate-x-0'}`}></div>
                                         </div>
-                                        <span className={`font-medium text-sm ${config.isOpen ? 'text-white' : 'text-slate-500'}`}>{dayName}</span>
+                                        <span className={`font-medium ${config.isOpen ? 'text-white' : 'text-slate-500'}`}>{dayName}</span>
                                     </div>
 
-                                    {/* Divider */}
-                                    <div className="w-[1px] bg-white/5 h-full self-stretch mx-auto"></div>
+                                    {/* Desktop Divider */}
+                                    <div className="hidden md:block w-[1px] bg-white/10 self-stretch"></div>
 
-                                    {/* 2. Time Ranges */}
-                                    <div className="flex flex-col gap-3 w-full">
+                                    {/* 2. Time Ranges Area */}
+                                    <div className="flex-1 space-y-3 w-full">
                                         {config.isOpen ? (
                                             <>
                                                 {config.ranges && config.ranges.map((range, rIdx) => (
-                                                    <div key={rIdx} className="flex items-center gap-2">
-                                                        <select 
-                                                            value={range.start} 
-                                                            onChange={(e) => updateTimeRange(dayIndex, rIdx, 'start', parseInt(e.target.value))}
-                                                            className="bg-brand-dark border border-white/10 rounded-lg px-2 py-2 text-sm outline-none min-w-[70px] text-center"
-                                                        >
-                                                            {Array.from({length: 24}).map((_, i) => (
-                                                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                                            ))}
-                                                        </select>
-                                                        <span className="text-slate-400">-</span>
-                                                        <select 
-                                                            value={range.end} 
-                                                            onChange={(e) => updateTimeRange(dayIndex, rIdx, 'end', parseInt(e.target.value))}
-                                                            className="bg-brand-dark border border-white/10 rounded-lg px-2 py-2 text-sm outline-none min-w-[70px] text-center"
-                                                        >
-                                                            {Array.from({length: 24}).map((_, i) => (
-                                                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                                            ))}
-                                                        </select>
+                                                    <div key={rIdx} className="flex flex-row items-center gap-2 flex-wrap">
+                                                        <div className="flex items-center gap-2 bg-brand-dark/50 p-1 rounded-lg border border-white/5">
+                                                            <select 
+                                                                value={range.start} 
+                                                                onChange={(e) => updateTimeRange(dayIndex, rIdx, 'start', parseInt(e.target.value))}
+                                                                className="bg-transparent text-white text-sm outline-none w-16 text-center appearance-none cursor-pointer hover:text-brand-primary"
+                                                            >
+                                                                {Array.from({length: 24}).map((_, i) => (
+                                                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                                                ))}
+                                                            </select>
+                                                            <span className="text-slate-500">-</span>
+                                                            <select 
+                                                                value={range.end} 
+                                                                onChange={(e) => updateTimeRange(dayIndex, rIdx, 'end', parseInt(e.target.value))}
+                                                                className="bg-transparent text-white text-sm outline-none w-16 text-center appearance-none cursor-pointer hover:text-brand-primary"
+                                                            >
+                                                                {Array.from({length: 24}).map((_, i) => (
+                                                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                        
                                                         {config.ranges.length > 1 && (
-                                                            <button onClick={() => removeRange(dayIndex, rIdx)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full transition-colors">
+                                                            <button onClick={() => removeRange(dayIndex, rIdx)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors">
                                                                 <Trash2 className="w-4 h-4" />
                                                             </button>
                                                         )}
@@ -998,13 +1002,13 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                                 ))}
                                                 <button 
                                                     onClick={() => addRange(dayIndex)}
-                                                    className="flex items-center gap-1 text-xs text-brand-primary hover:underline mt-1 w-fit"
+                                                    className="flex items-center gap-2 text-xs text-brand-primary hover:text-white mt-1 px-2 py-1 rounded hover:bg-white/5 w-fit transition-colors"
                                                 >
-                                                    <Plus className="w-3 h-3" /> הוסף טווח שעות
+                                                    <Plus className="w-3 h-3" /> הוסף טווח
                                                 </button>
                                             </>
                                         ) : (
-                                            <div className="py-2 text-slate-500 text-sm italic">העסק סגור ביום זה</div>
+                                            <div className="py-1 text-slate-600 text-sm italic">העסק סגור ביום זה</div>
                                         )}
                                     </div>
                                 </div>
@@ -1018,6 +1022,14 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 };
 
 const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
+    // Extract ID from notes if present (simple regex)
+    const extractId = (notes?: string) => {
+        const match = notes?.match(/ת\.ז:\s*(\d+)/);
+        return match ? match[1] : null;
+    };
+
+    const nationalId = extractId(data.notes);
+
     return (
         <div id="pdf-template" className="bg-white text-black p-12 w-[210mm] min-h-[297mm] mx-auto font-sans direction-rtl relative box-border" style={{ direction: 'rtl' }}>
             <div className="text-center border-b-2 border-black pb-8 mb-8">
@@ -1030,7 +1042,7 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-300 pb-2">פרטי הלקוח/ה</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <p><strong>שם מלא:</strong> {data.client_name}</p>
-                    <p><strong>תעודת זהות:</strong> _________________</p>
+                    <p><strong>תעודת זהות:</strong> {nationalId || '_________________'}</p>
                     <p><strong>טלפון:</strong> {data.client_phone}</p>
                     <p><strong>תאריך:</strong> {new Date(data.start_time).toLocaleDateString('he-IL')}</p>
                     <p><strong>שירות מבוקש:</strong> {data.service_name || 'פירסינג'}</p>
