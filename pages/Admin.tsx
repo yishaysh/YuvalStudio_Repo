@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal, Modal, SectionHeading } from '../components/ui';
@@ -793,7 +792,7 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
                                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-slate-500'}`}>
                                              {isSelected && <Check className="w-3 h-3 text-brand-dark" />}
                                          </div>
-                                         <span className={isSelected ? 'text-white font-medium' : 'text-slate-300'}>{service.name}</span>
+                                         <span className="text-white font-medium">{service.name}</span>
                                      </div>
                                      <span className="text-xs text-slate-500">₪{service.price}</span>
                                  </div>
@@ -1020,7 +1019,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
 const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
     return (
-        <div id="pdf-template" className="bg-white text-black p-12 w-[210mm] mx-auto font-sans direction-rtl relative" style={{ direction: 'rtl' }}>
+        <div id="pdf-template" className="bg-white text-black p-12 w-[210mm] min-h-[297mm] mx-auto font-sans direction-rtl relative box-border" style={{ direction: 'rtl' }}>
             <div className="text-center border-b-2 border-black pb-8 mb-8">
                 <h1 className="text-4xl font-serif font-bold mb-2">{settings.studio_details.name}</h1>
                 <p className="text-sm text-gray-600">{settings.studio_details.address} | {settings.studio_details.phone}</p>
@@ -1052,7 +1051,7 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
                 </ul>
             </div>
 
-            <div className="flex justify-between items-end mt-12 pt-8 border-t border-black">
+            <div className="flex justify-between items-end mt-12 pt-8 border-t border-black break-inside-avoid">
                 <div className="text-center w-1/3">
                     {data.signature ? (
                         <img src={data.signature} alt="Client Signature" className="h-16 mx-auto mb-2 object-contain" />
@@ -1157,7 +1156,7 @@ const Admin: React.FC = () => {
     const handleViewAppointment = (id: string) => { setFilteredAppointmentId(id); setActiveTab('appointments'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     const handleClearFilter = () => { setFilteredAppointmentId(null); }
     
-    // PDF Logic - Corrected to use Blob
+    // PDF Logic - Robust Blob Generation
     const handleDownloadPdf = async (apt: Appointment) => {
         setPdfData(apt);
         // Wait for render
@@ -1173,7 +1172,7 @@ const Admin: React.FC = () => {
                         backgroundColor: '#ffffff'
                     });
                     
-                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     
                     // 2. Generate PDF
                     const pdf = new jsPDF({
@@ -1200,12 +1199,12 @@ const Admin: React.FC = () => {
                     URL.revokeObjectURL(url);
                     
                 } catch (err) { 
-                    console.error(err);
+                    console.error("PDF Error:", err);
                     alert("שגיאה ביצירת ה-PDF"); 
                 }
             }
             setPdfData(null);
-        }, 300); // Slight delay to ensure React rendering
+        }, 500); // Increased delay slightly to ensuring rendering
     };
   
     if (!isAuthenticated) {
@@ -1238,7 +1237,7 @@ const Admin: React.FC = () => {
                      <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
                   </div>
                   
-                  {/* Fixed Tabs Row */}
+                  {/* Fixed Tabs Row - Directly below header */}
                   <div className="w-full overflow-x-auto pb-2">
                       <div className="flex flex-row items-center gap-2 p-1 bg-brand-surface/50 rounded-xl min-w-max">
                           {[
@@ -1301,8 +1300,8 @@ const Admin: React.FC = () => {
                   variant="danger"
               />
   
-              {/* PDF Template Container - Hidden from View but accessible to html2canvas */}
-              <div className="fixed top-0 left-[-9999px] z-[-1]">
+              {/* PDF Template Container - Positioning Fix to ensure rendering but remain hidden */}
+              <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
                   {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
               </div>
           </div>
