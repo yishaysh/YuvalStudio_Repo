@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal, Modal, SectionHeading } from '../components/ui';
 import { Appointment, Service, StudioSettings, TimeRange } from '../types';
@@ -6,7 +7,7 @@ import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } 
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag, Minus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -721,7 +722,6 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
         };
 
         await onUpdateSettings(newSettings);
-        // Optimistic UI update or wait for reload logic from parent
     }
 
     const currentImageTags = selectedImage ? (settings.gallery_tags?.[selectedImage.id] || []) : [];
@@ -763,7 +763,6 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
                                  <Trash2 className="w-4 h-4" />
                              </button>
                          </div>
-                         {/* Tag Indicator */}
                          {(settings.gallery_tags?.[item.id]?.length > 0) && (
                              <div className="absolute bottom-2 left-2 bg-brand-dark/80 backdrop-blur-sm p-1 rounded-md border border-white/10">
                                  <Tag className="w-3 h-3 text-brand-primary" />
@@ -813,18 +812,31 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
 
 const SettingsTab = ({ settings, onUpdate }: any) => {
     const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
-    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleSave = async () => {
-        setIsSaving(true);
-        await onUpdate(localSettings);
-        setIsSaving(false);
-    };
+    // Debounced Auto-Save
+    useEffect(() => {
+        // Skip first render or identical settings
+        if (JSON.stringify(localSettings) === JSON.stringify(settings)) return;
+
+        setSaveStatus('saving');
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        debounceRef.current = setTimeout(async () => {
+            await onUpdate(localSettings);
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+        }, 1000); // 1 second debounce
+
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [localSettings]);
 
     const toggleDay = (dayIndex: string) => {
         const currentDay = localSettings.working_hours[dayIndex] || { isOpen: false, ranges: [] };
         const newDay = { ...currentDay, isOpen: !currentDay.isOpen };
-        // If opening and no ranges, add default
         if (newDay.isOpen && (!newDay.ranges || newDay.ranges.length === 0)) {
             newDay.ranges = [{ start: 10, end: 18 }];
         }
@@ -838,13 +850,39 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
         });
     };
 
-    const updateTime = (dayIndex: string, type: 'start' | 'end', value: number) => {
+    const updateTimeRange = (dayIndex: string, rangeIndex: number, type: 'start' | 'end', value: number) => {
         const currentDay = localSettings.working_hours[dayIndex];
-        if (!currentDay || !currentDay.ranges[0]) return;
+        if (!currentDay || !currentDay.ranges) return;
         
         const newRanges = [...currentDay.ranges];
-        newRanges[0] = { ...newRanges[0], [type]: value };
+        if (newRanges[rangeIndex]) {
+            newRanges[rangeIndex] = { ...newRanges[rangeIndex], [type]: value };
+        }
         
+        setLocalSettings({
+            ...localSettings,
+            working_hours: {
+                ...localSettings.working_hours,
+                [dayIndex]: { ...currentDay, ranges: newRanges }
+            }
+        });
+    };
+
+    const addRange = (dayIndex: string) => {
+        const currentDay = localSettings.working_hours[dayIndex];
+        const newRanges = [...(currentDay.ranges || []), { start: 10, end: 14 }];
+        setLocalSettings({
+            ...localSettings,
+            working_hours: {
+                ...localSettings.working_hours,
+                [dayIndex]: { ...currentDay, ranges: newRanges }
+            }
+        });
+    };
+
+    const removeRange = (dayIndex: string, rangeIndex: number) => {
+        const currentDay = localSettings.working_hours[dayIndex];
+        const newRanges = currentDay.ranges.filter((_, i) => i !== rangeIndex);
         setLocalSettings({
             ...localSettings,
             working_hours: {
@@ -858,7 +896,23 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
     return (
         <div className="space-y-8">
-            <Card>
+            <div className="fixed bottom-6 left-6 z-50">
+                 <AnimatePresence>
+                    {saveStatus !== 'idle' && (
+                        <m.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className={`px-4 py-2 rounded-full shadow-lg flex items-center gap-2 backdrop-blur-md border ${saveStatus === 'saving' ? 'bg-brand-dark/80 text-brand-primary border-brand-primary/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}
+                        >
+                            {saveStatus === 'saving' ? <Loader2 className="w-4 h-4 animate-spin"/> : <Check className="w-4 h-4"/>}
+                            <span className="text-sm font-medium">{saveStatus === 'saving' ? 'שומר שינויים...' : 'נשמר בהצלחה'}</span>
+                        </m.div>
+                    )}
+                 </AnimatePresence>
+            </div>
+
+            <Card className="relative">
                 <SectionHeading title="פרטי העסק" subtitle="מידע כללי" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Input 
@@ -885,65 +939,88 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             </Card>
 
             <Card>
-                <SectionHeading title="שעות פעילות" subtitle="ניהול ימים ושעות" />
-                <div className="space-y-4">
+                <div className="flex items-center justify-between mb-8">
+                     <SectionHeading title="שעות פעילות" subtitle="ניהול ימים ושעות" />
+                     {saveStatus === 'saving' && <span className="text-xs text-brand-primary animate-pulse">שומר...</span>}
+                </div>
+                
+                <div className="space-y-2">
                     {weekDays.map((dayName, idx) => {
                         const dayIndex = idx.toString();
                         const config = localSettings.working_hours[dayIndex] || { isOpen: false, ranges: [] };
-                        const range = config.ranges[0] || { start: 10, end: 18 };
 
                         return (
-                            <div key={dayIndex} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${config.isOpen ? 'bg-brand-primary' : 'bg-slate-600'}`} onClick={() => toggleDay(dayIndex)}>
-                                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${config.isOpen ? 'translate-x-0' : '-translate-x-4'}`}></div>
+                            <div key={dayIndex} className={`p-4 rounded-xl border transition-colors ${config.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
+                                {/* Grid Layout for Mobile alignment */}
+                                <div className="grid grid-cols-[80px_auto_1fr] md:grid-cols-[120px_auto_1fr] gap-4 items-start">
+                                    
+                                    {/* 1. Toggle & Day Name */}
+                                    <div className="flex flex-col items-center justify-center gap-2 pt-1">
+                                         <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${config.isOpen ? 'bg-brand-primary' : 'bg-slate-600'}`} onClick={() => toggleDay(dayIndex)}>
+                                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${config.isOpen ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                        </div>
+                                        <span className={`font-medium text-sm ${config.isOpen ? 'text-white' : 'text-slate-500'}`}>{dayName}</span>
                                     </div>
-                                    <span className={`font-medium ${config.isOpen ? 'text-white' : 'text-slate-500'}`}>{dayName}</span>
+
+                                    {/* Divider */}
+                                    <div className="w-[1px] bg-white/5 h-full self-stretch mx-auto"></div>
+
+                                    {/* 2. Time Ranges */}
+                                    <div className="flex flex-col gap-3 w-full">
+                                        {config.isOpen ? (
+                                            <>
+                                                {config.ranges && config.ranges.map((range, rIdx) => (
+                                                    <div key={rIdx} className="flex items-center gap-2">
+                                                        <select 
+                                                            value={range.start} 
+                                                            onChange={(e) => updateTimeRange(dayIndex, rIdx, 'start', parseInt(e.target.value))}
+                                                            className="bg-brand-dark border border-white/10 rounded-lg px-2 py-2 text-sm outline-none min-w-[70px] text-center"
+                                                        >
+                                                            {Array.from({length: 24}).map((_, i) => (
+                                                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                                            ))}
+                                                        </select>
+                                                        <span className="text-slate-400">-</span>
+                                                        <select 
+                                                            value={range.end} 
+                                                            onChange={(e) => updateTimeRange(dayIndex, rIdx, 'end', parseInt(e.target.value))}
+                                                            className="bg-brand-dark border border-white/10 rounded-lg px-2 py-2 text-sm outline-none min-w-[70px] text-center"
+                                                        >
+                                                            {Array.from({length: 24}).map((_, i) => (
+                                                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                                                            ))}
+                                                        </select>
+                                                        {config.ranges.length > 1 && (
+                                                            <button onClick={() => removeRange(dayIndex, rIdx)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full transition-colors">
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                <button 
+                                                    onClick={() => addRange(dayIndex)}
+                                                    className="flex items-center gap-1 text-xs text-brand-primary hover:underline mt-1 w-fit"
+                                                >
+                                                    <Plus className="w-3 h-3" /> הוסף טווח שעות
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="py-2 text-slate-500 text-sm italic">העסק סגור ביום זה</div>
+                                        )}
+                                    </div>
                                 </div>
-                                
-                                {config.isOpen ? (
-                                    <div className="flex items-center gap-2">
-                                        <select 
-                                            value={range.start} 
-                                            onChange={(e) => updateTime(dayIndex, 'start', parseInt(e.target.value))}
-                                            className="bg-brand-dark border border-white/10 rounded-lg px-2 py-1 text-sm outline-none"
-                                        >
-                                            {Array.from({length: 24}).map((_, i) => (
-                                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                            ))}
-                                        </select>
-                                        <span className="text-slate-400">-</span>
-                                        <select 
-                                            value={range.end} 
-                                            onChange={(e) => updateTime(dayIndex, 'end', parseInt(e.target.value))}
-                                            className="bg-brand-dark border border-white/10 rounded-lg px-2 py-1 text-sm outline-none"
-                                        >
-                                            {Array.from({length: 24}).map((_, i) => (
-                                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ) : (
-                                    <span className="text-sm text-slate-500">סגור</span>
-                                )}
                             </div>
                         );
                     })}
                 </div>
             </Card>
-
-            <div className="flex justify-end">
-                <Button onClick={handleSave} isLoading={isSaving} className="min-w-[150px]">
-                    <Save className="w-4 h-4" /> שמור שינויים
-                </Button>
-            </div>
         </div>
     );
 };
 
 const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
     return (
-        <div id="pdf-template" className="bg-white text-black p-12 max-w-[800px] mx-auto font-sans direction-rtl" style={{ direction: 'rtl' }}>
+        <div id="pdf-template" className="bg-white text-black p-12 w-[210mm] mx-auto font-sans direction-rtl relative" style={{ direction: 'rtl' }}>
             <div className="text-center border-b-2 border-black pb-8 mb-8">
                 <h1 className="text-4xl font-serif font-bold mb-2">{settings.studio_details.name}</h1>
                 <p className="text-sm text-gray-600">{settings.studio_details.address} | {settings.studio_details.phone}</p>
@@ -976,17 +1053,17 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
             </div>
 
             <div className="flex justify-between items-end mt-12 pt-8 border-t border-black">
-                <div className="text-center">
+                <div className="text-center w-1/3">
                     {data.signature ? (
-                        <img src={data.signature} alt="Client Signature" className="h-16 mx-auto mb-2" />
+                        <img src={data.signature} alt="Client Signature" className="h-16 mx-auto mb-2 object-contain" />
                     ) : (
                         <div className="h-16 mb-2"></div>
                     )}
-                    <p className="border-t border-black px-8 pt-2">חתימת הלקוח/ה</p>
+                    <p className="border-t border-black pt-2">חתימת הלקוח/ה</p>
                 </div>
-                <div className="text-center">
+                <div className="text-center w-1/3">
                     <div className="h-16 mb-2 flex items-end justify-center font-script text-2xl">Yuval</div>
-                    <p className="border-t border-black px-8 pt-2">חתימת הפירסר/ית</p>
+                    <p className="border-t border-black pt-2">חתימת הפירסר/ית</p>
                 </div>
             </div>
             
@@ -1080,22 +1157,55 @@ const Admin: React.FC = () => {
     const handleViewAppointment = (id: string) => { setFilteredAppointmentId(id); setActiveTab('appointments'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     const handleClearFilter = () => { setFilteredAppointmentId(null); }
     
-    // PDF Logic
+    // PDF Logic - Corrected to use Blob
     const handleDownloadPdf = async (apt: Appointment) => {
         setPdfData(apt);
+        // Wait for render
         setTimeout(async () => {
             const input = document.getElementById('pdf-template');
             if (input) {
                 try {
-                    const canvas = await html2canvas(input, { scale: 2, useCORS: true, logging: false });
-                    const imgData = canvas.toDataURL('image/jpeg', 0.75);
-                    const pdf = new jsPDF('p', 'mm', 'a4');
-                    pdf.addImage(imgData, 'JPEG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
-                    pdf.save(`Consent_${apt.client_name}.pdf`);
-                } catch (err) { alert("שגיאה ביצירת ה-PDF"); }
+                    // 1. Capture High Quality Canvas
+                    const canvas = await html2canvas(input, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    
+                    // 2. Generate PDF
+                    const pdf = new jsPDF({
+                        orientation: 'p',
+                        unit: 'mm',
+                        format: 'a4',
+                        compress: true
+                    });
+                    
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    
+                    // 3. Save as Blob and Download
+                    const blob = pdf.output('blob');
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `Consent_${apt.client_name.replace(/\s+/g, '_')}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                } catch (err) { 
+                    console.error(err);
+                    alert("שגיאה ביצירת ה-PDF"); 
+                }
             }
             setPdfData(null);
-        }, 100);
+        }, 300); // Slight delay to ensure React rendering
     };
   
     if (!isAuthenticated) {
@@ -1122,29 +1232,33 @@ const Admin: React.FC = () => {
     return (
       <div className="min-h-screen bg-brand-dark pt-24 pb-12">
           <div className="container mx-auto px-6">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+              <div className="flex flex-col gap-6 mb-10">
                   <div>
                      <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
                      <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
                   </div>
-                  <div className="flex gap-2 p-1 bg-brand-surface/50 rounded-xl overflow-x-auto max-w-full">
-                      {[
-                          { id: 'dashboard', icon: Activity, label: 'ראשי' },
-                          { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
-                          { id: 'appointments', icon: Filter, label: 'כל התורים' },
-                          { id: 'services', icon: Edit2, label: 'שירותים' },
-                          { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
-                          { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
-                      ].map(tab => (
-                          <button
-                              key={tab.id}
-                              onClick={() => { setActiveTab(tab.id); if(tab.id !== 'appointments') handleClearFilter(); }}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                          >
-                              <tab.icon className="w-4 h-4" />
-                              <span className="hidden md:inline">{tab.label}</span>
-                          </button>
-                      ))}
+                  
+                  {/* Fixed Tabs Row */}
+                  <div className="w-full overflow-x-auto pb-2">
+                      <div className="flex flex-row items-center gap-2 p-1 bg-brand-surface/50 rounded-xl min-w-max">
+                          {[
+                              { id: 'dashboard', icon: Activity, label: 'ראשי' },
+                              { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
+                              { id: 'appointments', icon: Filter, label: 'כל התורים' },
+                              { id: 'services', icon: Edit2, label: 'שירותים' },
+                              { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
+                              { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
+                          ].map(tab => (
+                              <button
+                                  key={tab.id}
+                                  onClick={() => { setActiveTab(tab.id); if(tab.id !== 'appointments') handleClearFilter(); }}
+                                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                              >
+                                  <tab.icon className="w-4 h-4" />
+                                  <span>{tab.label}</span>
+                              </button>
+                          ))}
+                      </div>
                   </div>
               </div>
   
@@ -1187,7 +1301,8 @@ const Admin: React.FC = () => {
                   variant="danger"
               />
   
-              <div className="fixed top-0 left-0 -z-50 overflow-hidden h-0 w-0">
+              {/* PDF Template Container - Hidden from View but accessible to html2canvas */}
+              <div className="fixed top-0 left-[-9999px] z-[-1]">
                   {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
               </div>
           </div>
