@@ -330,6 +330,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
 // --- Coupons Tab ---
 const CouponsTab = ({ settings, onUpdate }: any) => {
     const [coupons, setCoupons] = useState<Coupon[]>(settings.coupons || []);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     // Sync when settings change
     useEffect(() => { setCoupons(settings.coupons || []); }, [settings.coupons]);
@@ -352,17 +353,29 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
         handleSilentSave(newCoupons);
     };
 
-    const updateCoupon = (id: string, field: keyof Coupon, value: any) => {
+    // Update local state ONLY (prevents re-render jumps during typing)
+    const updateLocal = (id: string, field: keyof Coupon, value: any) => {
+        setCoupons(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+    };
+
+    // Trigger save to server (onBlur)
+    const handleBlur = () => {
+        handleSilentSave(coupons);
+    };
+
+    // Immediate update and save (for Select/Toggle)
+    const updateImmediate = (id: string, field: keyof Coupon, value: any) => {
         const newCoupons = coupons.map(c => c.id === id ? { ...c, [field]: value } : c);
         setCoupons(newCoupons);
         handleSilentSave(newCoupons);
     };
 
-    const deleteCoupon = (id: string) => {
-        if(window.confirm('האם אתה בטוח שברצונך למחוק קופון זה?')) {
-            const newCoupons = coupons.filter(c => c.id !== id);
+    const confirmDelete = () => {
+        if(deleteId) {
+            const newCoupons = coupons.filter(c => c.id !== deleteId);
             setCoupons(newCoupons);
             handleSilentSave(newCoupons);
+            setDeleteId(null);
         }
     };
 
@@ -383,11 +396,12 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                                     type="text" 
                                     className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full uppercase font-bold tracking-wider focus:border-brand-primary/50 outline-none"
                                     value={coupon.code}
-                                    onChange={(e) => updateCoupon(coupon.id, 'code', e.target.value)}
+                                    onChange={(e) => updateLocal(coupon.id, 'code', e.target.value)}
+                                    onBlur={handleBlur}
                                     placeholder="CODE"
                                 />
                             </div>
-                            <button onClick={() => deleteCoupon(coupon.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors mr-2">
+                            <button onClick={() => setDeleteId(coupon.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors mr-2">
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
@@ -398,7 +412,7 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                                 <select 
                                     className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
                                     value={coupon.discountType}
-                                    onChange={(e) => updateCoupon(coupon.id, 'discountType', e.target.value)}
+                                    onChange={(e) => updateImmediate(coupon.id, 'discountType', e.target.value)}
                                 >
                                     <option value="fixed">שקלים (₪)</option>
                                     <option value="percentage">אחוזים (%)</option>
@@ -410,7 +424,8 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                                     type="number"
                                     className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
                                     value={coupon.value}
-                                    onChange={(e) => updateCoupon(coupon.id, 'value', Number(e.target.value))}
+                                    onChange={(e) => updateLocal(coupon.id, 'value', Number(e.target.value))}
+                                    onBlur={handleBlur}
                                 />
                             </div>
                         </div>
@@ -422,14 +437,15 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                                     type="number"
                                     className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-24 text-sm outline-none"
                                     value={coupon.minOrderAmount}
-                                    onChange={(e) => updateCoupon(coupon.id, 'minOrderAmount', Number(e.target.value))}
+                                    onChange={(e) => updateLocal(coupon.id, 'minOrderAmount', Number(e.target.value))}
+                                    onBlur={handleBlur}
                                 />
                              </div>
                              
                              <label className="flex items-center gap-2 cursor-pointer">
                                 <span className={`text-xs ${coupon.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>{coupon.isActive ? 'פעיל' : 'לא פעיל'}</span>
                                 <div className="relative inline-flex items-center">
-                                    <input type="checkbox" className="sr-only peer" checked={coupon.isActive} onChange={() => updateCoupon(coupon.id, 'isActive', !coupon.isActive)} />
+                                    <input type="checkbox" className="sr-only peer" checked={coupon.isActive} onChange={() => updateImmediate(coupon.id, 'isActive', !coupon.isActive)} />
                                     <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                                 </div>
                              </label>
@@ -437,6 +453,16 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                     </Card>
                 ))}
             </div>
+
+            <ConfirmationModal 
+                isOpen={!!deleteId} 
+                onClose={() => setDeleteId(null)} 
+                onConfirm={confirmDelete} 
+                title="מחיקת קופון" 
+                description="האם אתה בטוח שברצונך למחוק קופון זה? הפעולה אינה הפיכה." 
+                confirmText="מחק" 
+                variant="danger" 
+            />
         </div>
     );
 };
