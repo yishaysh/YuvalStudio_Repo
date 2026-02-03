@@ -2,12 +2,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../services/mockApi';
 import { Card, Button, Input, ConfirmationModal, Modal, SectionHeading } from '../components/ui';
-import { Appointment, Service, StudioSettings, TimeRange } from '../types';
-import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } from '../constants';
+import { Appointment, Service, StudioSettings, Coupon } from '../types';
+import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag, Minus, ArrowUpDown
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Filter, ChevronRight, ChevronLeft, Loader2, FileText, Tag, ArrowUpDown, Ticket
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -324,6 +324,120 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
             </table>
             </div>
       </Card>
+    );
+};
+
+// --- Coupons Tab ---
+const CouponsTab = ({ settings, onUpdate }: any) => {
+    const [coupons, setCoupons] = useState<Coupon[]>(settings.coupons || []);
+
+    // Sync when settings change
+    useEffect(() => { setCoupons(settings.coupons || []); }, [settings.coupons]);
+
+    const handleSilentSave = (newCoupons: Coupon[]) => {
+        onUpdate({ ...settings, coupons: newCoupons }, true);
+    };
+
+    const addCoupon = () => {
+        const newCoupon: Coupon = {
+            id: Math.random().toString(36).substr(2, 9),
+            code: '',
+            discountType: 'fixed',
+            value: 0,
+            minOrderAmount: 0,
+            isActive: true
+        };
+        const newCoupons = [...coupons, newCoupon];
+        setCoupons(newCoupons);
+        handleSilentSave(newCoupons);
+    };
+
+    const updateCoupon = (id: string, field: keyof Coupon, value: any) => {
+        const newCoupons = coupons.map(c => c.id === id ? { ...c, [field]: value } : c);
+        setCoupons(newCoupons);
+        handleSilentSave(newCoupons);
+    };
+
+    const deleteCoupon = (id: string) => {
+        if(window.confirm('האם אתה בטוח שברצונך למחוק קופון זה?')) {
+            const newCoupons = coupons.filter(c => c.id !== id);
+            setCoupons(newCoupons);
+            handleSilentSave(newCoupons);
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-serif text-white">ניהול קופונים</h3>
+                <Button onClick={addCoupon} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> הוסף קופון</Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {coupons.map((coupon, index) => (
+                    <Card key={coupon.id} className="relative group border border-white/5 hover:border-brand-primary/30 transition-colors">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="w-full">
+                                <label className="text-xs text-slate-500 mb-1 block">קוד קופון</label>
+                                <input 
+                                    type="text" 
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full uppercase font-bold tracking-wider focus:border-brand-primary/50 outline-none"
+                                    value={coupon.code}
+                                    onChange={(e) => updateCoupon(coupon.id, 'code', e.target.value)}
+                                    placeholder="CODE"
+                                />
+                            </div>
+                            <button onClick={() => deleteCoupon(coupon.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors mr-2">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className="text-xs text-slate-500 mb-1 block">סוג הנחה</label>
+                                <select 
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
+                                    value={coupon.discountType}
+                                    onChange={(e) => updateCoupon(coupon.id, 'discountType', e.target.value)}
+                                >
+                                    <option value="fixed">שקלים (₪)</option>
+                                    <option value="percentage">אחוזים (%)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500 mb-1 block">ערך ההנחה</label>
+                                <input 
+                                    type="number"
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
+                                    value={coupon.value}
+                                    onChange={(e) => updateCoupon(coupon.id, 'value', Number(e.target.value))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-end">
+                             <div>
+                                <label className="text-xs text-slate-500 mb-1 block">מינימום הזמנה (₪)</label>
+                                <input 
+                                    type="number"
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-24 text-sm outline-none"
+                                    value={coupon.minOrderAmount}
+                                    onChange={(e) => updateCoupon(coupon.id, 'minOrderAmount', Number(e.target.value))}
+                                />
+                             </div>
+                             
+                             <label className="flex items-center gap-2 cursor-pointer">
+                                <span className={`text-xs ${coupon.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>{coupon.isActive ? 'פעיל' : 'לא פעיל'}</span>
+                                <div className="relative inline-flex items-center">
+                                    <input type="checkbox" className="sr-only peer" checked={coupon.isActive} onChange={() => updateCoupon(coupon.id, 'isActive', !coupon.isActive)} />
+                                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </div>
+                             </label>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+        </div>
     );
 };
 
@@ -1094,6 +1208,7 @@ const Admin: React.FC = () => {
                                 { id: 'appointments', icon: Filter, label: 'ניהול תורים' }, // Restored Tab
                                 { id: 'services', icon: Edit2, label: 'שירותים' },
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
+                                { id: 'coupons', icon: Ticket, label: 'קופונים' },
                                 { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
                             ].map(tab => (
                                 <button
@@ -1126,6 +1241,7 @@ const Admin: React.FC = () => {
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
                         {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'coupons' && <CouponsTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
                     </m.div>
                 </AnimatePresence>

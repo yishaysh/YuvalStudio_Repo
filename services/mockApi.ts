@@ -1,6 +1,7 @@
 
+
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
-import { Appointment, Service, StudioSettings } from '../types';
+import { Appointment, Service, StudioSettings, Coupon } from '../types';
 import { supabase } from './supabaseClient';
 
 export interface TimeSlot {
@@ -22,7 +23,8 @@ export const api = {
         working_hours: DEFAULT_WORKING_HOURS,
         studio_details: DEFAULT_STUDIO_DETAILS,
         monthly_goals: DEFAULT_MONTHLY_GOALS,
-        gallery_tags: {}
+        gallery_tags: {},
+        coupons: []
       };
       
       if (!supabase) {
@@ -35,7 +37,7 @@ export const api = {
           const { data, error } = await supabase
             .from('settings')
             .select('*')
-            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags']);
+            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons']);
 
           if (error || !data) {
               cachedSettings = defaultSettings;
@@ -58,6 +60,8 @@ export const api = {
                newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
             } else if (row.key === 'gallery_tags') {
                newSettings.gallery_tags = row.value;
+            } else if (row.key === 'coupons') {
+               newSettings.coupons = row.value;
             }
           });
           
@@ -76,7 +80,8 @@ export const api = {
         { key: 'working_hours', value: settings.working_hours },
         { key: 'studio_details', value: settings.studio_details },
         { key: 'monthly_goals', value: settings.monthly_goals },
-        { key: 'gallery_tags', value: settings.gallery_tags }
+        { key: 'gallery_tags', value: settings.gallery_tags },
+        { key: 'coupons', value: settings.coupons }
       ];
 
       const { error } = await supabase
@@ -85,6 +90,18 @@ export const api = {
       
       if (!error) cachedSettings = settings;
       return !error;
+  },
+
+  validateCoupon: async (code: string, cartTotal: number): Promise<{ isValid: boolean, error?: string, coupon?: Coupon }> => {
+      const settings = await api.getSettings();
+      // Case insensitive check
+      const coupon = settings.coupons?.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
+      
+      if (!coupon) return { isValid: false, error: 'קופון לא נמצא' };
+      if (!coupon.isActive) return { isValid: false, error: 'קופון זה אינו פעיל' };
+      if (cartTotal < coupon.minOrderAmount) return { isValid: false, error: `מותנה בהזמנה מעל ₪${coupon.minOrderAmount}` };
+      
+      return { isValid: true, coupon };
   },
 
   // --- Services ---
@@ -236,6 +253,12 @@ export const api = {
         endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
     }
 
+    // Append coupon info to notes if present
+    let finalNotes = appt.notes || '';
+    if (appt.coupon_code) {
+        finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
+    }
+
     const payload = {
       service_id: appt.service_id,
       start_time: appt.start_time,
@@ -243,7 +266,7 @@ export const api = {
       guest_name: appt.client_name,
       guest_email: appt.client_email,
       guest_phone: appt.client_phone,
-      notes: appt.notes,
+      notes: finalNotes,
       signature: appt.signature,
       status: 'pending' // Default to pending
     };
@@ -261,7 +284,9 @@ export const api = {
       status: data.status as Appointment['status'],
       notes: data.notes,
       signature: data.signature,
-      created_at: data.created_at
+      created_at: data.created_at,
+      coupon_code: appt.coupon_code,
+      final_price: appt.final_price
     };
   },
 

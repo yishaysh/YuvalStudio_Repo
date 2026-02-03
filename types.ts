@@ -1,4 +1,5 @@
 
+
 export interface Service {
   id: string;
   name: string;
@@ -23,6 +24,8 @@ export interface Appointment {
   notes?: string;
   signature?: string; // Base64 string of the signature
   created_at?: string; // Added for sorting/display
+  coupon_code?: string; // Optional coupon code
+  final_price?: number; // Final price after discount
 }
 
 export interface DayAvailability {
@@ -53,6 +56,15 @@ export interface MonthlyGoals {
   appointments: number;
 }
 
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'fixed' | 'percentage';
+  value: number; // Percentage (0-100) or Fixed Amount
+  minOrderAmount: number;
+  isActive: boolean;
+}
+
 export interface StudioSettings {
   // Key is "0" for Sunday, "1" for Monday, etc.
   working_hours: {
@@ -61,6 +73,7 @@ export interface StudioSettings {
   studio_details: StudioDetails;
   monthly_goals: MonthlyGoals;
   gallery_tags?: Record<string, string[]>; // Map Image ID -> Array of Service IDs
+  coupons: Coupon[];
 }
 
 export enum BookingStep {
