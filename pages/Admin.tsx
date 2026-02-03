@@ -90,7 +90,7 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 
 // --- SHARED COMPONENTS ---
 
-const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf }: any) => {
+const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf, showFilters = true }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -156,53 +156,55 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
     return (
         <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
             {/* Filter Bar */}
-            <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-wrap gap-4 items-end">
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-400">סטטוס</label>
-                    <select 
-                        value={statusFilter} 
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
-                    >
-                        <option value="all">הכל</option>
-                        <option value="pending">ממתין</option>
-                        <option value="confirmed">מאושר</option>
-                        <option value="cancelled">בוטל</option>
-                    </select>
+            {showFilters && (
+                <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-wrap gap-4 items-end">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-slate-400">סטטוס</label>
+                        <select 
+                            value={statusFilter} 
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
+                        >
+                            <option value="all">הכל</option>
+                            <option value="pending">ממתין</option>
+                            <option value="confirmed">מאושר</option>
+                            <option value="cancelled">בוטל</option>
+                        </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-slate-400">מתאריך</label>
+                        <input 
+                            type="date" 
+                            value={dateRange.start}
+                            onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-slate-400">עד תאריך</label>
+                        <input 
+                            type="date" 
+                            value={dateRange.end}
+                            onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
+                        />
+                    </div>
+                    
+                    {/* Clear Filters */}
+                    {(statusFilter !== 'all' || dateRange.start || dateRange.end || filterId) && (
+                        <button 
+                            onClick={() => {
+                                setStatusFilter('all');
+                                setDateRange({ start: '', end: '' });
+                                onClearFilter();
+                            }}
+                            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 mb-2 mr-auto"
+                        >
+                            <X className="w-3 h-3" /> נקה סינון
+                        </button>
+                    )}
                 </div>
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-400">מתאריך</label>
-                    <input 
-                        type="date" 
-                        value={dateRange.start}
-                        onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                        className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
-                    />
-                </div>
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-400">עד תאריך</label>
-                    <input 
-                        type="date" 
-                        value={dateRange.end}
-                        onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                        className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
-                    />
-                </div>
-                
-                {/* Clear Filters */}
-                {(statusFilter !== 'all' || dateRange.start || dateRange.end || filterId) && (
-                    <button 
-                        onClick={() => {
-                            setStatusFilter('all');
-                            setDateRange({ start: '', end: '' });
-                            onClearFilter();
-                        }}
-                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 mb-2 mr-auto"
-                    >
-                        <X className="w-3 h-3" /> נקה סינון
-                    </button>
-                )}
-            </div>
+            )}
             
             <div className="overflow-x-auto">
             <table className="w-full text-right text-sm border-collapse">
@@ -545,7 +547,8 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
 const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-    
+    const appointmentsRef = useRef<HTMLDivElement>(null);
+
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -590,7 +593,15 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         return (
                             <div 
                                 key={day} 
-                                onClick={() => setSelectedDate(new Date(year, month, day))}
+                                onClick={() => {
+                                    setSelectedDate(new Date(year, month, day));
+                                    // Scroll to appointments list on mobile
+                                    if (window.innerWidth < 1024) {
+                                        setTimeout(() => {
+                                            appointmentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }, 100);
+                                    }
+                                }}
                                 className={`border-b border-l border-white/5 p-2 cursor-pointer transition-colors relative hover:bg-white/5 ${isSelected ? 'bg-brand-primary/10' : ''}`}
                             >
                                 <div className={`text-sm w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isTodayDate ? 'bg-brand-primary text-brand-dark font-bold' : 'text-slate-400'}`}>
@@ -608,8 +619,8 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                 </div>
             </div>
 
-            {/* Side Panel for Selected Day - NOW USES APPOINTMENT LIST */}
-            <div className="w-full lg:w-96 bg-brand-surface rounded-2xl border border-white/5 flex flex-col h-full overflow-hidden">
+            {/* Side Panel for Selected Day */}
+            <div ref={appointmentsRef} className="w-full lg:w-96 bg-brand-surface rounded-2xl border border-white/5 flex flex-col h-full overflow-hidden">
                 <div className="p-4 border-b border-white/5 bg-brand-dark/50">
                     <h3 className="text-lg font-medium text-white">{selectedDate?.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                     <p className="text-sm text-slate-400">{selectedDateAppointments.length} תורים רשומים</p>
@@ -625,6 +636,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         onClearFilter={() => {}}
                         studioAddress={studioAddress}
                         onDownloadPdf={onDownloadPdf}
+                        showFilters={false}
                     />
                 </div>
             </div>
