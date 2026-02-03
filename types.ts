@@ -22,6 +22,7 @@ export interface Appointment {
   status: 'pending' | 'confirmed' | 'cancelled';
   notes?: string;
   signature?: string; // Base64 string of the signature
+  created_at?: string; // Added for sorting/display
 }
 
 export interface DayAvailability {

@@ -428,9 +428,10 @@ const Booking: React.FC = () => {
                     )}
 
                     <AnimatePresence mode="wait">
-                        {/* STEP 1: SERVICE SELECTION */}
+                        {/* STEPS 1-3 ... (Unchanged logic, just ensure they render correctly) */}
                         {step === BookingStep.SELECT_SERVICE && (
                             <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                                {/* ... Service Selection Content ... */}
                                 <div className="flex gap-3 overflow-x-auto pb-2">
                                     {categories.map(cat => (
                                         <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`px-6 py-2 rounded-full text-sm transition-all whitespace-nowrap border ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
@@ -472,9 +473,9 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
-                        {/* STEP 2: DATE & TIME */}
                         {step === BookingStep.SELECT_DATE && (
                             <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                                {/* ... Date & Time Selection ... */}
                                 <div className="space-y-4">
                                     <h3 className="text-white font-medium flex items-center gap-2"><Calendar className="w-5 h-5 text-brand-primary"/> בחר תאריך</h3>
                                     <div className="flex gap-3 overflow-x-auto pb-4">
@@ -518,7 +519,6 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
-                        {/* STEP 3: DETAILS */}
                         {step === BookingStep.DETAILS && (
                             <m.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                 <Card className="border-none bg-white/5 space-y-6">
@@ -561,7 +561,7 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
-                        {/* STEP 4: CONSENT */}
+                        {/* STEP 4: CONSENT - Updated to remove bullets */}
                         {step === BookingStep.CONSENT && (
                             <m.div key="consent" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <Card className="bg-white/5 border-none p-6">
@@ -569,23 +569,27 @@ const Booking: React.FC = () => {
                                         <FileText className="w-5 h-5" />
                                         <h3 className="font-medium">הצהרת בריאות ואישור ביצוע</h3>
                                     </div>
-                                    <div className="text-sm text-slate-300 space-y-4 h-64 overflow-y-auto pr-2 custom-scrollbar mb-6 bg-brand-dark/20 p-4 rounded-xl leading-relaxed">
-                                        <p>אני מצהיר בזאת כי:</p>
-                                        <ul className="list-disc list-inside space-y-2">
-                                            <li>אני מעל גיל 16 (או מלווה באישור הורה/אפוטרופוס).</li>
-                                            <li>איני סובל ממחלות דם, סוכרת לא מאוזנת או מחלות זיהומיות.</li>
-                                            <li>איני נוטל תרופות המדללות את הדם (אספירין, קומדין וכו').</li>
-                                            <li>איני בהריון או מניקה (לפירסינג בפטמה/טבור).</li>
-                                            <li>אני מבין כי הפירסינג דורש טיפול יומיומי והקפדה על היגיינה.</li>
-                                            <li>אני מבין את הסיכונים הכרוכים (זיהום, צלקות, רגישות למתכת).</li>
-                                            <li>קראתי והבנתי את הוראות הטיפול שניתנו לי.</li>
-                                        </ul>
-                                        <p className="font-medium text-brand-primary border-t border-white/5 pt-2">אני מאשר לסטודיו לבצע את הנקיב ומסיר כל אחריות במקרה של אי-מילוי אחר הוראות הטיפול.</p>
+                                    <div className="text-sm text-slate-300 space-y-3 h-64 overflow-y-auto pr-2 custom-scrollbar mb-6 bg-brand-dark/20 p-4 rounded-xl leading-relaxed border border-white/5">
+                                        <p className="font-medium mb-2 text-white">אני מצהיר בזאת כי:</p>
+                                        
+                                        <div className="space-y-2 text-slate-300">
+                                            <p>- אני מעל גיל 16 (או מלווה באישור הורה/אפוטרופוס).</p>
+                                            <p>- איני סובל ממחלות דם, סוכרת לא מאוזנת או מחלות זיהומיות.</p>
+                                            <p>- איני נוטל תרופות המדללות את הדם (אספירין, קומדין וכו').</p>
+                                            <p>- איני בהריון או מניקה (לפירסינג בפטמה/טבור).</p>
+                                            <p>- אני מבין כי הפירסינג דורש טיפול יומיומי והקפדה על היגיינה.</p>
+                                            <p>- אני מבין את הסיכונים הכרוכים (זיהום, צלקות, רגישות למתכת).</p>
+                                            <p>- קראתי והבנתי את הוראות הטיפול שניתנו לי.</p>
+                                        </div>
+
+                                        <p className="font-medium text-brand-primary border-t border-white/5 pt-4 mt-4">
+                                            אני מאשר לסטודיו לבצע את הנקיב ומסיר כל אחריות במקרה של אי-מילוי אחר הוראות הטיפול.
+                                        </p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                                         <div className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setHasAgreedToTerms(!hasAgreedToTerms)}>
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${hasAgreedToTerms ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${hasAgreedToTerms ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
                                                 {hasAgreedToTerms && <Check className="w-3.5 h-3.5 stroke-[4]" />}
                                             </div>
                                             <span className="text-sm text-slate-200 select-none">אני מאשר כי קראתי את כל הסעיפים ומסכים לתוכן.</span>
@@ -600,7 +604,7 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
-                        {/* STEP 5: CONFIRMATION */}
+                        {/* STEP 5: CONFIRMATION ... */}
                         {step === BookingStep.CONFIRMATION && (
                             <m.div key="step5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
                                 <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
@@ -619,7 +623,7 @@ const Booking: React.FC = () => {
                     </AnimatePresence>
                 </div>
 
-                {/* RIGHT SIDE: TICKET */}
+                {/* RIGHT SIDE: TICKET ... */}
                 <div className={`hidden lg:block w-80 relative shrink-0 ${step === BookingStep.CONSENT ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                     <div className="sticky top-28">
                         <div className="relative bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
@@ -674,7 +678,7 @@ const Booking: React.FC = () => {
             </div>
         </div>
 
-        {/* FLOATING ACTION BAR FOR NAVIGATION */}
+        {/* FLOATING ACTION BAR */}
         <AnimatePresence>
             {showBottomBar && (
                 <m.div 

@@ -7,7 +7,7 @@ import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS } 
 import { 
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag, Minus
+  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Save, AlertCircle, Filter, MapPin, ChevronRight, ChevronLeft, Loader2, FileText, Tag, Minus, ArrowUpDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -91,6 +91,9 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 
 const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
     useEffect(() => {
         if (filterId && rowRefs.current[filterId]) {
@@ -100,36 +103,128 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
         }
     }, [filterId]);
 
+    // Filtering
+    const filteredAppointments = appointments.filter((apt: any) => {
+        if (filterId && apt.id !== filterId) return false;
+        if (statusFilter !== 'all' && apt.status !== statusFilter) return false;
+        
+        if (dateRange.start) {
+            if (new Date(apt.start_time) < new Date(dateRange.start)) return false;
+        }
+        if (dateRange.end) {
+            // End of day logic
+            const end = new Date(dateRange.end);
+            end.setHours(23, 59, 59, 999);
+            if (new Date(apt.start_time) > end) return false;
+        }
+        return true;
+    });
+
+    // Sorting
+    const sortedAppointments = [...filteredAppointments].sort((a: any, b: any) => {
+        if (!sortConfig) return 0;
+        const { key, direction } = sortConfig;
+        
+        let aValue = a[key];
+        let bValue = b[key];
+
+        // Handle specific keys
+        if (key === 'created_at' || key === 'start_time') {
+            aValue = new Date(aValue || 0).getTime();
+            bValue = new Date(bValue || 0).getTime();
+        }
+
+        if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const requestSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const SortIcon = ({ column }: { column: string }) => {
+        if (sortConfig?.key !== column) return <ArrowUpDown className="w-3 h-3 text-slate-600 ml-1 inline" />;
+        return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortConfig.direction === 'asc' ? 'text-brand-primary' : 'text-brand-primary rotate-180'}`} />;
+    };
+
     return (
         <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5">
-            {filterId && (
-                <div className="p-4 bg-brand-primary/10 border-b border-brand-primary/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
-                    <div className="flex items-center gap-2 text-brand-primary">
-                        <Filter className="w-4 h-4" />
-                        <span className="text-sm font-medium">מסומן תור ספציפי</span>
-                    </div>
-                    <button 
-                        onClick={onClearFilter}
-                        className="text-xs text-slate-400 hover:text-white flex items-center gap-1"
+            {/* Filter Bar */}
+            <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-wrap gap-4 items-end">
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-400">סטטוס</label>
+                    <select 
+                        value={statusFilter} 
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
                     >
-                        <X className="w-3 h-3" /> נקה סימון
-                    </button>
+                        <option value="all">הכל</option>
+                        <option value="pending">ממתין</option>
+                        <option value="confirmed">מאושר</option>
+                        <option value="cancelled">בוטל</option>
+                    </select>
                 </div>
-            )}
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-400">מתאריך</label>
+                    <input 
+                        type="date" 
+                        value={dateRange.start}
+                        onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                        className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
+                    />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-400">עד תאריך</label>
+                    <input 
+                        type="date" 
+                        value={dateRange.end}
+                        onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                        className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
+                    />
+                </div>
+                
+                {/* Clear Filters */}
+                {(statusFilter !== 'all' || dateRange.start || dateRange.end || filterId) && (
+                    <button 
+                        onClick={() => {
+                            setStatusFilter('all');
+                            setDateRange({ start: '', end: '' });
+                            onClearFilter();
+                        }}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 mb-2 mr-auto"
+                    >
+                        <X className="w-3 h-3" /> נקה סינון
+                    </button>
+                )}
+            </div>
             
             <div className="overflow-x-auto">
             <table className="w-full text-right text-sm border-collapse">
                 <thead className="">
                 <tr className="border-b border-white/5 text-slate-500 text-xs bg-brand-dark/50 shadow-sm">
-                    <th className="py-4 px-6 font-medium whitespace-nowrap">לקוח</th>
-                    <th className="py-4 px-6 font-medium whitespace-nowrap">תאריך ושעה</th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('client_name')}>
+                        לקוח <SortIcon column="client_name" />
+                    </th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('start_time')}>
+                        מועד התור <SortIcon column="start_time" />
+                    </th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('created_at')}>
+                        נוצר ב <SortIcon column="created_at" />
+                    </th>
                     <th className="py-4 px-6 font-medium whitespace-nowrap">שירות</th>
-                    <th className="py-4 px-6 font-medium whitespace-nowrap">סטטוס</th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('status')}>
+                        סטטוס <SortIcon column="status" />
+                    </th>
                     <th className="py-4 px-6 text-left whitespace-nowrap">פעולות</th>
                 </tr>
                 </thead>
                 <tbody className="text-slate-300 divide-y divide-white/5">
-                {appointments.length > 0 ? appointments.map((apt: any) => {
+                {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
                     const isHighlighted = apt.id === filterId;
                     return (
                         <tr 
@@ -144,6 +239,9 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                             <td className="py-4 px-6 text-slate-400">
                                 <div>{new Date(apt.start_time).toLocaleDateString('he-IL')}</div>
                                 <div className="text-xs">{new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</div>
+                            </td>
+                            <td className="py-4 px-6 text-slate-500 text-xs">
+                                {apt.created_at ? new Date(apt.created_at).toLocaleDateString('he-IL') : '-'}
                             </td>
                             <td className="py-4 px-6">
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-white/5 border border-white/10 whitespace-nowrap">
@@ -217,7 +315,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                     );
                 }) : (
                     <tr>
-                        <td colSpan={5} className="py-12 text-center text-slate-500">
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
                             לא נמצאו תורים
                         </td>
                     </tr>
@@ -229,583 +327,526 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
     );
 };
 
+// --- Dashboard Tab ---
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings }: any) => {
-    const [isEditingGoals, setIsEditingGoals] = useState(false);
-    const [tempGoals, setTempGoals] = useState(settings.monthly_goals || DEFAULT_MONTHLY_GOALS);
-    const [isSaving, setIsSaving] = useState(false);
-  
-    const handleSaveGoals = async () => {
-        setIsSaving(true);
-        await onUpdateSettings({
-            ...settings,
-            monthly_goals: tempGoals
-        });
-        setIsEditingGoals(false);
-        setIsSaving(false);
-    };
-  
-    const revenueGoal = settings.monthly_goals?.revenue || 20000;
-    const appointmentGoal = settings.monthly_goals?.appointments || 100;
-    
-    const revenuePercent = Math.min((stats.revenue / revenueGoal) * 100, 100);
-    const apptPercent = Math.min((stats.appointments / appointmentGoal) * 100, 100);
-  
     return (
-      <div className="space-y-8">
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="flex items-center gap-4 border-l-4 border-l-brand-primary">
-            <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-              <DollarSign className="w-6 h-6" />
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="p-6 flex items-center gap-4 bg-gradient-to-br from-brand-surface to-brand-surface/50 border-brand-primary/20">
+                    <div className="w-12 h-12 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary">
+                        <DollarSign className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <div className="text-sm text-slate-400">הכנסות החודש</div>
+                        <div className="text-2xl font-serif font-bold text-white">₪{stats.revenue.toLocaleString()}</div>
+                        <div className="text-xs text-brand-primary/70 mt-1">יעד: ₪{settings.monthly_goals.revenue.toLocaleString()}</div>
+                    </div>
+                </Card>
+                <Card className="p-6 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
+                        <Activity className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <div className="text-sm text-slate-400">תורים החודש</div>
+                        <div className="text-2xl font-serif font-bold text-white">{stats.appointments}</div>
+                        <div className="text-xs text-slate-500 mt-1">יעד: {settings.monthly_goals.appointments}</div>
+                    </div>
+                </Card>
+                <Card className="p-6 flex items-center gap-4">
+                     <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-400">
+                        <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <div className="text-sm text-slate-400">ממתינים לאישור</div>
+                        <div className="text-2xl font-serif font-bold text-white">{stats.pending}</div>
+                        <div className="text-xs text-amber-500/70 mt-1">דורש טיפול</div>
+                    </div>
+                </Card>
             </div>
+
             <div>
-              <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">הכנסה חודשית</p>
-              <p className="text-3xl font-serif text-white">₪{stats.revenue.toLocaleString()}</p>
+                <h3 className="text-xl font-serif text-white mb-4">תורים אחרונים</h3>
+                <AppointmentsList 
+                    appointments={appointments.slice(0, 5)} 
+                    onStatusUpdate={() => {}} 
+                    onCancelRequest={() => {}} 
+                    filterId={null} 
+                    onClearFilter={() => {}}
+                    studioAddress={settings.studio_details.address}
+                    onDownloadPdf={() => {}}
+                />
             </div>
-          </Card>
-          <Card className="flex items-center gap-4 border-l-4 border-l-brand-secondary">
-            <div className="w-12 h-12 rounded-full bg-brand-surface border border-white/5 flex items-center justify-center text-slate-400">
-              <CalendarIcon className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">תורים החודש</p>
-              <p className="text-3xl font-serif text-white">{stats.appointments}</p>
-            </div>
-          </Card>
-          <Card className="flex items-center gap-4 border-l-4 border-l-amber-500">
-            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">ממתינים לאישור</p>
-              <p className="text-3xl font-serif text-white">{stats.pending}</p>
-            </div>
-          </Card>
         </div>
-  
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
-              <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-medium text-white">יעדי החודש</h3>
-                  {!isEditingGoals ? (
-                      <button 
-                          onClick={() => { setTempGoals(settings.monthly_goals); setIsEditingGoals(true); }}
-                          className="text-slate-400 hover:text-white transition-colors p-1"
-                          title="ערוך יעדים"
-                      >
-                          <Edit2 className="w-4 h-4" />
-                      </button>
-                  ) : (
-                      <div className="flex gap-2">
-                          <button onClick={() => setIsEditingGoals(false)} className="text-slate-500 text-xs hover:text-white">ביטול</button>
-                          <button onClick={handleSaveGoals} className="text-brand-primary text-xs hover:text-white font-medium disabled:opacity-50" disabled={isSaving}>
-                              {isSaving ? 'שומר...' : 'שמור'}
-                          </button>
-                      </div>
-                  )}
-              </div>
-              
-              {isEditingGoals ? (
-                  <div className="space-y-4 animate-fade-in">
-                      <Input 
-                          label="יעד הכנסות (₪)" 
-                          type="number" 
-                          value={tempGoals.revenue} 
-                          onChange={(e) => setTempGoals({...tempGoals, revenue: Number(e.target.value)})}
-                      />
-                      <Input 
-                          label="יעד כמות תורים" 
-                          type="number" 
-                          value={tempGoals.appointments} 
-                          onChange={(e) => setTempGoals({...tempGoals, appointments: Number(e.target.value)})}
-                      />
-                  </div>
-              ) : (
-                  <div className="space-y-8 animate-fade-in">
-                      <div>
-                          <div className="flex justify-between text-sm mb-2">
-                              <span className="text-slate-400">יעד הכנסות ({revenueGoal.toLocaleString()}₪)</span>
-                              <span className="text-brand-primary">{Math.round(revenuePercent)}%</span>
-                          </div>
-                          <div className="h-2 bg-brand-dark rounded-full overflow-hidden">
-                              <m.div 
-                              initial={{ width: 0 }} 
-                              animate={{ width: `${revenuePercent}%` }}
-                              className="h-full bg-brand-primary"
-                              ></m.div>
-                          </div>
-                      </div>
-                      <div>
-                          <div className="flex justify-between text-sm mb-2">
-                              <span className="text-slate-400">יעד תורים ({appointmentGoal})</span>
-                              <span className="text-brand-primary">{Math.round(apptPercent)}%</span>
-                          </div>
-                          <div className="h-2 bg-brand-dark rounded-full overflow-hidden">
-                              <m.div 
-                              initial={{ width: 0 }} 
-                              animate={{ width: `${apptPercent}%` }}
-                              className="h-full bg-brand-secondary"
-                              ></m.div>
-                          </div>
-                      </div>
-                  </div>
-              )}
-          </Card>
-  
-          <Card className="relative overflow-hidden">
-               <h3 className="text-lg font-medium text-white mb-4">תורים אחרונים</h3>
-               <div className="space-y-4">
-                   {appointments.slice(0, 3).map((apt: any) => (
-                       <div 
-                          key={apt.id} 
-                          onClick={() => onViewAppointment(apt.id)}
-                          className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-colors group"
-                          title="לחץ לצפייה ביומן התורים"
-                       >
-                           <div className="flex items-center gap-3">
-                               <div className={`w-2 h-2 rounded-full ${apt.status === 'confirmed' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
-                               <div>
-                                   <div className="text-sm font-medium text-white group-hover:text-brand-primary transition-colors">{apt.client_name}</div>
-                                   <div className="text-xs text-slate-500">{new Date(apt.start_time).toLocaleDateString()} | {new Date(apt.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                               </div>
-                           </div>
-                           <div className="text-xs font-serif text-brand-primary">₪{apt.service_price || '-'}</div>
-                       </div>
-                   ))}
-               </div>
-          </Card>
-        </div>
-      </div>
     );
 };
 
+// --- Calendar Tab ---
 const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf }: any) => {
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
-    const listRef = useRef<HTMLDivElement>(null);
-
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
     const firstDay = getFirstDayOfMonth(year, month);
-    const today = new Date();
+    
+    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const blanks = Array.from({ length: firstDay }, (_, i) => i);
 
-    const appointmentsByDay = appointments.reduce((acc: any, apt: any) => {
-        const date = new Date(apt.start_time);
-        if (date.getMonth() === month && date.getFullYear() === year) {
-            const day = date.getDate();
-            if (!acc[day]) acc[day] = [];
-            acc[day].push(apt);
-        }
-        return acc;
-    }, {});
-
-    const nextMonth = () => { setCurrentMonth(new Date(year, month + 1)); setSelectedDay(null); };
-    const prevMonth = () => { setCurrentMonth(new Date(year, month - 1)); setSelectedDay(null); };
-
-    const selectedAppointments = selectedDay ? (appointmentsByDay[selectedDay] || []).sort((a: any, b: any) => 
-        new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-    ) : [];
-
-    const handleDayClick = (day: number) => {
-        setSelectedDay(day);
-        setTimeout(() => {
-            listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+    const getDayAppointments = (day: number) => {
+        return appointments.filter((apt: any) => {
+            const d = new Date(apt.start_time);
+            return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year && apt.status !== 'cancelled';
+        });
     };
 
-    const weekDays = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+    const selectedDateAppointments = selectedDate ? appointments.filter((apt: any) => {
+        const d = new Date(apt.start_time);
+        return d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+    }) : [];
 
     return (
-        <div className="flex flex-col gap-8">
-            <Card className="p-0 overflow-hidden bg-brand-surface/40 backdrop-blur-xl border-white/5">
-                {/* Header */}
-                <div className="p-4 flex items-center justify-between bg-white/[0.02] border-b border-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <CalendarIcon className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-serif text-white leading-none">
-                                {currentMonth.toLocaleDateString('he-IL', { month: 'long' })}
-                            </h3>
-                            <p className="text-slate-500 text--[10px] mt-1 uppercase tracking-widest">{year}</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-1">
-                        <button onClick={prevMonth} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all active:scale-95">
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-                        <button onClick={nextMonth} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all active:scale-95">
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Weekdays */}
-                <div className="grid grid-cols-7 bg-white/[0.01] border-b border-white/5">
-                    {weekDays.map(day => (
-                        <div key={day} className="py-3 text-center text-[10px] font-bold text-slate-500">
-                            {day}
-                        </div>
-                    ))}
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
+            {/* Calendar View */}
+            <div className="flex-1 flex flex-col h-full bg-brand-surface/30 rounded-2xl border border-white/5 overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                    <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="p-2 hover:bg-white/5 rounded-full"><ChevronRight/></button>
+                    <h2 className="text-xl font-serif text-white">{currentDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2>
+                    <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="p-2 hover:bg-white/5 rounded-full"><ChevronLeft/></button>
                 </div>
                 
-                {/* Grid */}
-                <div className="grid grid-cols-7 gap-px bg-white/5">
-                    {Array.from({ length: firstDay }).map((_, i) => (
-                        <div key={`empty-${i}`} className="bg-brand-dark/30 min-h-[80px]" />
-                    ))}
+                <div className="grid grid-cols-7 text-center py-2 bg-brand-dark/30 text-xs text-slate-500 border-b border-white/5">
+                    <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
+                </div>
 
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const date = new Date(year, month, day);
-                        const dayAppointments = appointmentsByDay[day] || [];
-                        const count = dayAppointments.length;
-                        const isCurrent = isToday(date);
-                        const isActive = selectedDay === day;
+                <div className="flex-1 grid grid-cols-7 auto-rows-fr">
+                    {blanks.map((x, i) => <div key={`blank-${i}`} className="border-b border-l border-white/5 bg-brand-dark/20"></div>)}
+                    {days.map((day) => {
+                        const dayAppts = getDayAppointments(day);
+                        const isSelected = selectedDate?.getDate() === day && selectedDate?.getMonth() === month;
+                        const isTodayDate = isToday(new Date(year, month, day));
 
                         return (
                             <div 
                                 key={day} 
-                                onClick={() => handleDayClick(day)}
-                                className={`min-h-[80px] sm:min-h-[120px] p-2 cursor-pointer transition-all relative border-white/5 bg-brand-dark/50 flex flex-col justify-between hover:bg-white/5 ${isActive ? 'bg-white/5 ring-1 ring-inset ring-brand-primary/50 z-10' : ''}`}
+                                onClick={() => setSelectedDate(new Date(year, month, day))}
+                                className={`border-b border-l border-white/5 p-2 cursor-pointer transition-colors relative hover:bg-white/5 ${isSelected ? 'bg-brand-primary/10' : ''}`}
                             >
-                                <div className="flex justify-between items-start">
-                                    <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isCurrent ? 'bg-brand-primary text-brand-dark' : (isActive ? 'text-brand-primary' : 'text-slate-400')}`}>
-                                        {day}
-                                    </span>
+                                <div className={`text-sm w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isTodayDate ? 'bg-brand-primary text-brand-dark font-bold' : 'text-slate-400'}`}>
+                                    {day}
                                 </div>
-                                
-                                <div className="flex flex-wrap gap-1 content-end">
-                                    {dayAppointments.slice(0, 4).map((apt: any, idx: number) => (
-                                        <div 
-                                            key={idx} 
-                                            className={`w-1.5 h-1.5 rounded-full ${
-                                                apt.status === 'confirmed' ? 'bg-emerald-500' : (apt.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500')
-                                            }`} 
-                                        />
+                                <div className="space-y-1">
+                                    {dayAppts.slice(0, 3).map((apt: any, i: number) => (
+                                        <div key={i} className={`h-1.5 rounded-full ${apt.status === 'confirmed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                                     ))}
-                                    {count > 4 && <span className="text-[8px] text-slate-600">+</span>}
+                                    {dayAppts.length > 3 && <div className="text-[10px] text-slate-600">+{dayAppts.length - 3}</div>}
                                 </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Side Panel for Selected Day */}
+            <div className="w-full lg:w-96 bg-brand-surface rounded-2xl border border-white/5 flex flex-col h-full overflow-hidden">
+                <div className="p-4 border-b border-white/5 bg-brand-dark/50">
+                    <h3 className="text-lg font-medium text-white">{selectedDate?.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                    <p className="text-sm text-slate-400">{selectedDateAppointments.length} תורים רשומים</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                    {selectedDateAppointments.length > 0 ? selectedDateAppointments.map((apt: any) => (
+                        <div key={apt.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-brand-primary/20 transition-all">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="font-medium text-white">{new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${apt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' : apt.status === 'cancelled' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                    {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
+                                </span>
+                            </div>
+                            <div className="text-sm text-slate-300 font-medium mb-1">{apt.client_name}</div>
+                            <div className="text-xs text-slate-500 mb-2">{apt.service_name}</div>
+                            <div className="flex gap-2 border-t border-white/5 pt-2">
+                                {apt.status === 'pending' && (
+                                    <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="flex-1 py-1.5 text-xs bg-brand-primary/10 text-brand-primary rounded hover:bg-brand-primary hover:text-brand-dark transition-colors">אשר</button>
+                                )}
+                                {apt.status !== 'cancelled' && (
+                                    <button onClick={() => onCancelRequest(apt)} className="flex-1 py-1.5 text-xs bg-white/5 text-slate-400 rounded hover:bg-red-500/10 hover:text-red-400 transition-colors">בטל</button>
+                                )}
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center text-slate-500 py-10">אין תורים ליום זה</div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Services Tab ---
+const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingService, setEditingService] = useState<Service | null>(null);
+    const [formData, setFormData] = useState<Partial<Service>>({ category: 'Ear', pain_level: 1 });
+
+    const openModal = (service?: Service) => {
+        if (service) {
+            setEditingService(service);
+            setFormData(service);
+        } else {
+            setEditingService(null);
+            setFormData({ category: 'Ear', pain_level: 1, duration_minutes: 30, price: 100 });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = async () => {
+        if (editingService) {
+            await onUpdateService(editingService.id, formData);
+        } else {
+            await onAddService(formData);
+        }
+        setIsModalOpen(false);
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-serif text-white">ניהול שירותים</h3>
+                <Button onClick={() => openModal()} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> הוסף שירות</Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {services.map((service: Service) => (
+                    <Card key={service.id} className="relative group hover:border-brand-primary/30 transition-all">
+                        <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openModal(service)} className="p-2 bg-brand-surface rounded-full text-brand-primary hover:bg-brand-primary hover:text-brand-dark"><Edit2 className="w-4 h-4"/></button>
+                            <button onClick={() => onDeleteService(service.id)} className="p-2 bg-brand-surface rounded-full text-red-400 hover:bg-red-500 hover:text-white"><Trash2 className="w-4 h-4"/></button>
+                        </div>
+                        <div className="h-40 bg-brand-dark/50 rounded-lg mb-4 overflow-hidden">
+                            <img src={service.image_url} alt={service.name} className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-500"/>
+                        </div>
+                        <h4 className="text-lg font-medium text-white mb-1">{service.name}</h4>
+                        <div className="flex justify-between items-center text-sm text-slate-400 mb-2">
+                            <span>{service.category}</span>
+                            <span className="text-brand-primary font-bold">₪{service.price}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-2">{service.description}</p>
+                    </Card>
+                ))}
+            </div>
+
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingService ? 'עריכת שירות' : 'שירות חדש'}>
+                <div className="space-y-4">
+                    <Input label="שם השירות" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <Input label="תיאור" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="מחיר (₪)" type="number" value={formData.price || ''} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
+                        <Input label="משך (דקות)" type="number" value={formData.duration_minutes || ''} onChange={e => setFormData({...formData, duration_minutes: Number(e.target.value)})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
+                            <select 
+                                className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
+                                value={formData.category}
+                                onChange={e => setFormData({...formData, category: e.target.value as any})}
+                            >
+                                <option value="Ear">אוזן</option>
+                                <option value="Face">פנים</option>
+                                <option value="Body">גוף</option>
+                                <option value="Jewelry">תכשיט</option>
+                            </select>
+                        </div>
+                        <Input label="תמונה (URL)" value={formData.image_url || ''} onChange={e => setFormData({...formData, image_url: e.target.value})} />
+                    </div>
+                    <div>
+                         <label className="text-sm font-medium text-slate-400 block mb-2">רמת כאב ({formData.pain_level})</label>
+                         <input 
+                            type="range" min="1" max="10" 
+                            className="w-full accent-brand-primary" 
+                            value={formData.pain_level} 
+                            onChange={e => setFormData({...formData, pain_level: Number(e.target.value)})} 
+                        />
+                    </div>
+                    <Button onClick={handleSubmit} className="w-full mt-4">שמור</Button>
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
+// --- Gallery Tab ---
+const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateSettings }: any) => {
+    const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const [uploadUrl, setUploadUrl] = useState('');
+    const [taggingImageId, setTaggingImageId] = useState<string | null>(null);
+    
+    // Tagging state
+    const currentTags = taggingImageId && settings.gallery_tags ? (settings.gallery_tags[taggingImageId] || []) : [];
+
+    const handleToggleTag = (serviceId: string) => {
+        if (!taggingImageId) return;
+        
+        const newTags = currentTags.includes(serviceId) 
+            ? currentTags.filter((id: string) => id !== serviceId)
+            : [...currentTags, serviceId];
+            
+        const newGalleryTags = { ...settings.gallery_tags, [taggingImageId]: newTags };
+        onUpdateSettings({ ...settings, gallery_tags: newGalleryTags });
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-serif text-white">גלריה</h3>
+                <Button onClick={() => setIsUploadOpen(true)} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> הוסף תמונה</Button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {gallery.map((item: any) => (
+                    <div key={item.id} className="relative group aspect-square rounded-xl overflow-hidden bg-brand-dark/50 border border-white/5">
+                        <img src={item.image_url} alt="Gallery" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
+                        
+                        {/* Overlay Actions */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                             <button 
+                                onClick={() => setTaggingImageId(item.id)}
+                                className="px-4 py-2 bg-brand-primary text-brand-dark rounded-full text-xs font-medium hover:bg-white transition-colors flex items-center gap-2"
+                            >
+                                <Tag className="w-3 h-3" /> תייג מוצרים
+                            </button>
+                            <button 
+                                onClick={() => onDelete(item.id)}
+                                className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Tag Indicator */}
+                        {item.taggedServices?.length > 0 && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-brand-primary text-brand-dark rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
+                                {item.taggedServices.length}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Upload Modal */}
+            <Modal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} title="העלאת תמונה">
+                <div className="space-y-4">
+                    <Input label="כתובת תמונה (URL)" value={uploadUrl} onChange={e => setUploadUrl(e.target.value)} placeholder="https://..." />
+                    <Button onClick={() => { onUpload(uploadUrl); setIsUploadOpen(false); setUploadUrl(''); }} className="w-full">העלה</Button>
+                </div>
+            </Modal>
+
+            {/* Tagging Modal */}
+            <Modal isOpen={!!taggingImageId} onClose={() => setTaggingImageId(null)} title="תיוג מוצרים בתמונה">
+                <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    {services.map((s: Service) => {
+                        const isTagged = currentTags.includes(s.id);
+                        return (
+                            <div 
+                                key={s.id} 
+                                onClick={() => handleToggleTag(s.id)}
+                                className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all ${isTagged ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                            >
+                                <span className={isTagged ? 'text-white' : 'text-slate-400'}>{s.name}</span>
+                                {isTagged && <Check className="w-4 h-4 text-brand-primary" />}
+                            </div>
+                        )
+                    })}
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/10 text-center">
+                    <Button onClick={() => setTaggingImageId(null)} className="w-full">סיום</Button>
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
+// --- Settings Tab ---
+const SettingsTab = ({ settings, onUpdate }: any) => {
+    const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
+
+    useEffect(() => { setLocalSettings(settings); }, [settings]);
+
+    const handleSave = () => { onUpdate(localSettings); };
+    
+    // Helper to update deeply nested working hours
+    const updateDay = (dayIndex: string, field: string, value: any) => {
+        setLocalSettings(prev => ({
+            ...prev,
+            working_hours: {
+                ...prev.working_hours,
+                [dayIndex]: {
+                    ...prev.working_hours[dayIndex],
+                    [field]: value
+                }
+            }
+        }));
+    };
+
+    const updateDayRange = (dayIndex: string, rangeIndex: number, field: 'start' | 'end', value: number) => {
+        const newRanges = [...(localSettings.working_hours[dayIndex]?.ranges || [])];
+        if (!newRanges[rangeIndex]) return;
+        newRanges[rangeIndex] = { ...newRanges[rangeIndex], [field]: value };
+        updateDay(dayIndex, 'ranges', newRanges);
+    };
+
+    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-8">
+            <Card>
+                <SectionHeading title="פרטי הסטודיו" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="שם העסק" value={localSettings.studio_details.name} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, name: e.target.value}})} />
+                    <Input label="טלפון" value={localSettings.studio_details.phone} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, phone: e.target.value}})} />
+                    <Input label="כתובת" value={localSettings.studio_details.address} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, address: e.target.value}})} />
+                    <Input label="אימייל" value={localSettings.studio_details.email} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, email: e.target.value}})} />
+                </div>
+            </Card>
+
+            <Card>
+                <SectionHeading title="יעדים חודשיים" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="יעד הכנסות (₪)" type="number" value={localSettings.monthly_goals.revenue} onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, revenue: Number(e.target.value)}})} />
+                    <Input label="יעד תורים" type="number" value={localSettings.monthly_goals.appointments} onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, appointments: Number(e.target.value)}})} />
+                </div>
+            </Card>
+
+            <Card>
+                <SectionHeading title="שעות פעילות" />
+                <div className="space-y-4">
+                    {days.map((dayName, index) => {
+                        const dayKey = index.toString();
+                        const dayConfig = localSettings.working_hours[dayKey] || { isOpen: false, ranges: [] };
+                        
+                        return (
+                            <div key={dayKey} className="flex items-center gap-4 p-3 rounded-lg bg-white/5 border border-white/5">
+                                <div className="w-20 font-medium text-white">{dayName}</div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" className="sr-only peer" checked={dayConfig.isOpen} onChange={e => updateDay(dayKey, 'isOpen', e.target.checked)} />
+                                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+                                </label>
+                                
+                                {dayConfig.isOpen ? (
+                                    <div className="flex-1 flex flex-wrap gap-2">
+                                        {dayConfig.ranges.map((range, rangeIndex) => (
+                                            <div key={rangeIndex} className="flex items-center gap-2 bg-brand-dark/50 px-3 py-1 rounded-md">
+                                                <input 
+                                                    type="number" min="0" max="23" 
+                                                    className="w-12 bg-transparent text-center outline-none border-b border-white/20 focus:border-brand-primary"
+                                                    value={range.start}
+                                                    onChange={e => updateDayRange(dayKey, rangeIndex, 'start', Number(e.target.value))}
+                                                />
+                                                <span>-</span>
+                                                <input 
+                                                    type="number" min="0" max="23" 
+                                                    className="w-12 bg-transparent text-center outline-none border-b border-white/20 focus:border-brand-primary"
+                                                    value={range.end}
+                                                    onChange={e => updateDayRange(dayKey, rangeIndex, 'end', Number(e.target.value))}
+                                                />
+                                            </div>
+                                        ))}
+                                        {/* Minimal implementation: assume 1 range per day for now or add button */}
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 text-slate-500 text-sm">סגור</div>
+                                )}
                             </div>
                         );
                     })}
                 </div>
             </Card>
 
-            {/* Selected Day List */}
-            <div ref={listRef} className="scroll-mt-24">
-                <AnimatePresence mode="wait">
-                    {selectedDay && (
-                        <m.div
-                            key={selectedDay}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                        >
-                             <div className="flex items-center justify-between mb-4 px-1">
-                                <h4 className="text-xl font-medium text-white">
-                                    תורים ליום {selectedDay} ב{currentMonth.toLocaleDateString('he-IL', { month: 'long' })}
-                                </h4>
-                                <span className="text-sm text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                                    {selectedAppointments.length} תורים
-                                </span>
-                            </div>
-
-                            <AppointmentsList 
-                                appointments={selectedAppointments}
-                                onStatusUpdate={onStatusUpdate}
-                                onCancelRequest={onCancelRequest}
-                                studioAddress={studioAddress}
-                                onDownloadPdf={onDownloadPdf}
-                            />
-                        </m.div>
-                    )}
-                </AnimatePresence>
+            <div className="flex justify-end pt-4">
+                <Button onClick={handleSave} className="w-full md:w-auto px-12 py-4 text-lg">שמור שינויים</Button>
             </div>
         </div>
     );
 };
 
-const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentService, setCurrentService] = useState<Partial<Service>>({ category: 'Ear', pain_level: 1 });
-    const [uploading, setUploading] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Auto-save effect for existing services
-    useEffect(() => {
-        if (currentService.id && isEditing) {
-            setSaving(true);
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-            
-            debounceRef.current = setTimeout(async () => {
-                await onUpdateService(currentService.id, currentService);
-                setSaving(false);
-            }, 1000);
-        }
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [currentService]);
-
-    const handleCreate = async () => {
-        if (!currentService.name || !currentService.price) return;
-        
-        let imageUrl = currentService.image_url;
-        if (fileInputRef.current?.files?.[0]) {
-            setUploading(true);
-            const url = await api.uploadImage(fileInputRef.current.files[0], 'service-images');
-            if (url) imageUrl = url;
-            setUploading(false);
-        }
-
-        const serviceData = { ...currentService, image_url: imageUrl };
-        await onAddService(serviceData);
-        setIsEditing(false);
-        setCurrentService({ category: 'Ear', pain_level: 1 });
+const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
+    // Extract ID from notes if present (simple regex)
+    const extractId = (notes?: string) => {
+        const match = notes?.match(/ת\.ז: (\d+)/);
+        return match ? match[1] : null;
     };
-    
-    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files?.[0]) {
-            setUploading(true);
-            const url = await api.uploadImage(e.target.files[0], 'service-images');
-            setUploading(false);
-            if (url) {
-                setCurrentService(prev => ({ ...prev, image_url: url }));
-            }
-        }
-    };
+
+    const nationalId = extractId(data.notes);
 
     return (
-        <div>
-            <div className="flex justify-between mb-6">
-                <h3 className="text-xl font-medium text-white">רשימת טיפולים</h3>
-                <Button onClick={() => { setCurrentService({ category: 'Ear', pain_level: 1 }); setIsEditing(true); }} className="text-sm py-2 px-4">
-                    <Plus className="w-4 h-4" /> הוסף חדש
-                </Button>
+        <div id="pdf-template" className="bg-white text-black p-12 w-[210mm] min-h-[297mm] mx-auto font-sans direction-rtl relative box-border" style={{ direction: 'rtl' }}>
+            <div className="text-center border-b-2 border-black pb-8 mb-8">
+                <h1 className="text-4xl font-serif font-bold mb-2">{settings.studio_details.name}</h1>
+                <p className="text-sm text-gray-600">{settings.studio_details.address} | {settings.studio_details.phone}</p>
+                <h2 className="text-2xl font-bold mt-6 underline">הצהרת בריאות ואישור ביצוע פירסינג</h2>
             </div>
 
-            {isEditing && (
-                <Card className="mb-8 border-brand-primary/50 bg-brand-surface/80">
-                    <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-4">
-                        <h4 className="text-lg font-medium text-white">{currentService.id ? 'עריכת טיפול' : 'הוספת טיפול חדש'}</h4>
-                        {saving && <span className="text-xs text-brand-primary animate-pulse">שומר...</span>}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div className="space-y-4">
-                            <Input 
-                                label="שם הטיפול" 
-                                value={currentService.name || ''} 
-                                onChange={e => setCurrentService({...currentService, name: e.target.value})} 
-                            />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input 
-                                    label="מחיר (₪)" 
-                                    type="number" 
-                                    value={currentService.price || ''} 
-                                    onChange={e => setCurrentService({...currentService, price: Number(e.target.value)})} 
-                                />
-                                <Input 
-                                    label="משך זמן (דק')" 
-                                    type="number" 
-                                    value={currentService.duration_minutes || 30} 
-                                    onChange={e => setCurrentService({...currentService, duration_minutes: Number(e.target.value)})} 
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-slate-400 ms-1 block mb-2">קטגוריה</label>
-                                <div className="flex gap-2">
-                                    {['Ear', 'Face', 'Body'].map(cat => (
-                                        <button 
-                                            key={cat} 
-                                            onClick={() => setCurrentService({...currentService, category: cat as any})}
-                                            className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${currentService.category === cat ? 'bg-brand-primary/20 border-brand-primary text-brand-primary' : 'bg-white/5 border-white/10 text-slate-400'}`}
-                                        >
-                                            {cat === 'Ear' ? 'אוזניים' : cat === 'Face' ? 'פנים' : 'גוף'}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-slate-400 ms-1">תיאור</label>
-                                <textarea 
-                                    className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[80px]"
-                                    value={currentService.description || ''}
-                                    onChange={e => setCurrentService({...currentService, description: e.target.value})}
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="relative aspect-video rounded-xl overflow-hidden bg-brand-dark border-2 border-dashed border-white/10 flex items-center justify-center group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                {currentService.image_url ? (
-                                    <img src={currentService.image_url} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
-                                ) : (
-                                    <div className="text-center text-slate-500">
-                                        <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                        <span className="text-xs">לחץ להעלאת תמונה</span>
-                                    </div>
-                                )}
-                                {uploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-white"/></div>}
-                            </div>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
-                            
-                            <div>
-                                <label className="text-sm font-medium text-slate-400 ms-1 block mb-2">רמת כאב (1-10)</label>
-                                <input 
-                                    type="range" 
-                                    min="1" 
-                                    max="10" 
-                                    className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-brand-primary"
-                                    value={currentService.pain_level || 1} 
-                                    onChange={e => setCurrentService({...currentService, pain_level: Number(e.target.value)})} 
-                                />
-                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                    <span>קל</span>
-                                    <span>{currentService.pain_level}</span>
-                                    <span>כואב</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                        <Button onClick={() => setIsEditing(false)} variant="ghost" className="text-slate-400">ביטול</Button>
-                        <Button onClick={handleCreate} isLoading={uploading || saving} disabled={!currentService.name}>
-                            {currentService.id ? 'סיים עריכה' : 'צור טיפול'}
-                        </Button>
-                    </div>
-                </Card>
-            )}
+            <div className="mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="font-bold text-lg mb-4 border-b border-gray-300 pb-2">פרטי הלקוח/ה</h3>
+                <div className="grid grid-cols-2 gap-6 text-sm">
+                    <p className="border-b border-gray-200 pb-1"><strong>שם מלא:</strong> {data.client_name}</p>
+                    <p className="border-b border-gray-200 pb-1"><strong>תעודת זהות:</strong> {nationalId || '_________________'}</p>
+                    <p className="border-b border-gray-200 pb-1"><strong>טלפון:</strong> {data.client_phone}</p>
+                    <p className="border-b border-gray-200 pb-1"><strong>תאריך:</strong> {new Date(data.start_time).toLocaleDateString('he-IL')}</p>
+                    <p className="col-span-2 border-b border-gray-200 pb-1"><strong>שירות מבוקש:</strong> {data.service_name || 'פירסינג'}</p>
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {services.map((s: Service) => (
-                    <div key={s.id} className="bg-brand-surface/50 border border-white/5 p-4 rounded-xl flex gap-4 group hover:border-brand-primary/30 transition-colors relative overflow-hidden">
-                        <div className="w-20 h-20 bg-brand-dark rounded-lg overflow-hidden shrink-0 relative">
-                            {s.image_url && <img src={s.image_url} alt="" className="w-full h-full object-cover" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start">
-                                <h4 className="font-medium text-white truncate">{s.name}</h4>
-                                <span className="text-brand-primary font-serif font-bold text-sm">₪{s.price}</span>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{s.description}</p>
-                            <div className="mt-3 flex gap-2">
-                                <button onClick={() => { setCurrentService(s); setIsEditing(true); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-xs text-white bg-white/10 px-3 py-1.5 rounded-lg hover:bg-brand-primary hover:text-brand-dark transition-colors">ערוך</button>
-                                <button onClick={() => onDeleteService(s.id)} className="text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-colors">מחק</button>
-                            </div>
-                        </div>
+            <div className="mb-8 text-sm leading-relaxed">
+                <h3 className="font-bold text-lg mb-4 underline">הצהרת הלקוח/ה:</h3>
+                
+                {/* Manual List using Paragraphs to avoid Bullet RTL Issues */}
+                <div className="space-y-3 text-justify">
+                    <p>- אני מצהיר/ה כי אני מעל גיל 16, או מלווה ע"י הורה/אפוטרופוס חוקי שחתם על אישור זה.</p>
+                    <p>- אני מצהיר/ה כי איני תחת השפעת אלכוהול או סמים.</p>
+                    <p>- אני מצהיר/ה כי איני סובל/ת ממחלות המועברות בדם (כגון צהבת, HIV וכו').</p>
+                    <p>- אני מצהיר/ה כי איני סובל/ת מבעיות קרישת דם, סוכרת לא מאוזנת, מחלות לב, אפילפסיה או אלרגיות למתכות.</p>
+                    <p>- נשים: אני מצהיר/ה כי איני בהריון ואיני מניקה (רלוונטי לפירסינג בפטמה/טבור).</p>
+                    <p>- ידוע לי כי ביצוע הפירסינג כרוך בפציעה מבוקרת של העור וכי קיימים סיכונים לזיהום, צלקות, דחייה או אלרגיה.</p>
+                    <p>- קיבלתי הסבר מפורט על אופן הטיפול בפירסינג והבנתי את חשיבות השמירה על היגיינה.</p>
+                    <p>- אני משחרר/ת את הסטודיו ואת הפירסר/ית מכל אחריות לנזק שיגרם כתוצאה מטיפול לקוי שלי או אי-מילוי הוראות הטיפול.</p>
+                </div>
+            </div>
+
+            <div className="mt-auto pt-12 pb-4">
+                <p className="mb-8 text-sm">בחתימתי אני מאשר/ת כי קראתי את ההצהרה לעיל, הבנתי את תוכנה ואני מסכים/ה לכל האמור בה.</p>
+                
+                <div className="flex justify-between items-end border-t border-black pt-8">
+                    <div className="text-center w-1/3">
+                        {data.signature ? (
+                            <img src={data.signature} alt="Client Signature" className="h-16 mx-auto mb-2 object-contain" />
+                        ) : (
+                            <div className="h-16 mb-2"></div>
+                        )}
+                        <p className="border-t border-black pt-2 font-bold">חתימת הלקוח/ה</p>
                     </div>
-                ))}
+                    <div className="text-center w-1/3">
+                        <div className="h-16 mb-2 flex items-end justify-center font-script text-2xl">Yuval</div>
+                        <p className="border-t border-black pt-2 font-bold">חתימת הפירסר/ית</p>
+                    </div>
+                </div>
+                
+                <div className="mt-8 text-center text-[10px] text-gray-500">
+                    מסמך זה נוצר דיגיטלית ביום {new Date().toLocaleDateString('he-IL')} בשעה {new Date().toLocaleTimeString('he-IL')}
+                </div>
             </div>
         </div>
     );
 };
 
-const SettingsTab = ({ settings, onUpdateSettings }: any) => {
-    const [workingHours, setWorkingHours] = useState(settings.working_hours || DEFAULT_WORKING_HOURS);
-    const [details, setDetails] = useState(settings.studio_details || DEFAULT_STUDIO_DETAILS);
-    const [isSaving, setIsSaving] = useState(false);
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        await onUpdateSettings({ ...settings, working_hours: workingHours, studio_details: details });
-        setIsSaving(false);
-    };
-
-    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-
-    const updateDay = (dayIndex: string, field: string, value: any) => {
-        const day = workingHours[dayIndex] || { isOpen: false, ranges: [] };
-        if (field === 'isOpen') {
-             setWorkingHours({ ...workingHours, [dayIndex]: { ...day, isOpen: value, ranges: value ? (day.ranges.length ? day.ranges : [{start: 10, end: 18}]) : [] } });
-        } else if (field === 'start') {
-             const newRanges = [...day.ranges];
-             if(newRanges.length > 0) newRanges[0].start = Number(value);
-             setWorkingHours({ ...workingHours, [dayIndex]: { ...day, ranges: newRanges } });
-        } else if (field === 'end') {
-             const newRanges = [...day.ranges];
-             if(newRanges.length > 0) newRanges[0].end = Number(value);
-             setWorkingHours({ ...workingHours, [dayIndex]: { ...day, ranges: newRanges } });
-        }
-    };
-
-    return (
-        <div className="space-y-8">
-            <Card>
-                <SectionHeading title="פרטי העסק" subtitle="מופיע באתר ובחשבוניות" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input label="שם הסטודיו" value={details.name} onChange={e => setDetails({...details, name: e.target.value})} />
-                    <Input label="טלפון" value={details.phone} onChange={e => setDetails({...details, phone: e.target.value})} />
-                    <Input label="כתובת" value={details.address} onChange={e => setDetails({...details, address: e.target.value})} />
-                    <Input label="אימייל" value={details.email} onChange={e => setDetails({...details, email: e.target.value})} />
-                </div>
-            </Card>
-
-            <Card>
-                <SectionHeading title="שעות פעילות" subtitle="הגדרת זמני קבלת קהל" />
-                <div className="space-y-4">
-                    {Object.keys(workingHours).map((dayIndex) => {
-                        const day = workingHours[dayIndex];
-                        const range = day.ranges && day.ranges[0] ? day.ranges[0] : { start: 10, end: 18 };
-                        
-                        return (
-                            <div key={dayIndex} className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
-                                <div className="w-20 font-medium text-slate-300">{days[Number(dayIndex)]}</div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" className="sr-only peer" checked={day.isOpen} onChange={(e) => updateDay(dayIndex, 'isOpen', e.target.checked)} />
-                                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
-                                </label>
-                                
-                                {day.isOpen ? (
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <div className="flex items-center gap-2 bg-brand-dark rounded-lg px-3 py-1 border border-white/10">
-                                            <input 
-                                                type="number" 
-                                                min="0" max="23" 
-                                                className="bg-transparent w-8 text-center outline-none" 
-                                                value={range.start} 
-                                                onChange={(e) => updateDay(dayIndex, 'start', e.target.value)}
-                                            />
-                                            <span>:00</span>
-                                        </div>
-                                        <span className="text-slate-500">-</span>
-                                        <div className="flex items-center gap-2 bg-brand-dark rounded-lg px-3 py-1 border border-white/10">
-                                            <input 
-                                                type="number" 
-                                                min="0" max="23" 
-                                                className="bg-transparent w-8 text-center outline-none" 
-                                                value={range.end} 
-                                                onChange={(e) => updateDay(dayIndex, 'end', e.target.value)}
-                                            />
-                                            <span>:00</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <span className="text-slate-500 text-sm flex-1">סגור</span>
-                                )}
-                            </div>
-                        )
-                    })}
-                </div>
-            </Card>
-
-            <div className="sticky bottom-6 flex justify-end">
-                <Button onClick={handleSave} isLoading={isSaving} className="shadow-2xl">
-                    <Save className="w-4 h-4" /> שמור שינויים
-                </Button>
-            </div>
-        </div>
-    );
-};
-
-const Admin = () => {
+const Admin: React.FC = () => {
+    // ... [Authentication logic same as before] ...
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [activeTab, setActiveTab] = useState('dashboard');
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [services, setServices] = useState<Service[]>([]);
+    const [gallery, setGallery] = useState<any[]>([]);
     const [settings, setSettings] = useState<StudioSettings | null>(null);
     const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
     const [isLoading, setIsLoading] = useState(true);
@@ -813,19 +854,23 @@ const Admin = () => {
     // Filters & Modals
     const [filterId, setFilterId] = useState<string | null>(null);
     const [modalData, setModalData] = useState<{ isOpen: boolean, type: 'cancel' | null, item: any | null }>({ isOpen: false, type: null, item: null });
+    const [pdfData, setPdfData] = useState<Appointment | null>(null);
+    const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const [appts, srvs, stgs, sts] = await Promise.all([
+        const [appts, srvs, stgs, sts, gall] = await Promise.all([
             api.getAppointments(),
             api.getServices(),
             api.getSettings(),
-            api.getMonthlyStats()
+            api.getMonthlyStats(),
+            api.getGallery()
         ]);
         setAppointments(appts);
         setServices(srvs);
         setSettings(stgs);
         setStats(sts);
+        setGallery(gall);
         setIsLoading(false);
     }, []);
 
@@ -835,7 +880,7 @@ const Admin = () => {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === '1234') { // Mock password
+        if (password === '2007') {
             setIsAuthenticated(true);
         } else {
             alert('סיסמה שגויה');
@@ -852,26 +897,50 @@ const Admin = () => {
     };
 
     const handleDownloadPdf = async (apt: Appointment) => {
-        // Implementation for PDF generation
-        const doc = new jsPDF();
-        doc.addFont("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf", "Roboto", "normal");
-        doc.setFont("Roboto"); 
-        
-        doc.setFontSize(20);
-        doc.text("Health Declaration", 105, 20, { align: "center" });
-        
-        doc.setFontSize(12);
-        doc.text(`Client: ${apt.client_name}`, 20, 40);
-        doc.text(`ID: ${apt.notes?.match(/ת\.ז: (\d+)/)?.[1] || 'N/A'}`, 20, 50);
-        doc.text(`Date: ${new Date(apt.start_time).toLocaleDateString()}`, 20, 60);
-        
-        if (apt.signature) {
-             doc.text("Signature:", 20, 80);
-             doc.addImage(apt.signature, 'PNG', 20, 90, 100, 50);
-        }
-
-        doc.save(`declaration_${apt.client_name}.pdf`);
+        setPdfData(apt);
+        // Wait for render
+        setTimeout(async () => {
+            const input = document.getElementById('pdf-template');
+            if (input) {
+                try {
+                    const canvas = await html2canvas(input, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const pdf = new jsPDF({
+                        orientation: 'p',
+                        unit: 'mm',
+                        format: 'a4',
+                        compress: true
+                    });
+                    
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`Consent_${apt.client_name.replace(/\s+/g, '_')}.pdf`);
+                    
+                } catch (err) { 
+                    console.error("PDF Error:", err);
+                    alert("שגיאה ביצירת ה-PDF"); 
+                }
+            }
+            setPdfData(null);
+        }, 500); 
     };
+
+    const handleUpdateSettings = async (newSettings: StudioSettings) => { await api.updateSettings(newSettings); fetchData(); }
+    const handleStatusUpdate = async (id: string, status: string) => { await api.updateAppointmentStatus(id, status); fetchData(); }
+    const handleAddService = async (service: any) => { await api.addService(service); fetchData(); }
+    const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); fetchData(); }
+    const handleDeleteService = async (id: string) => { if(window.confirm('האם אתה בטוח?')) { await api.deleteService(id); fetchData(); } }
+    const handleGalleryUpload = async (url: string) => { await api.addToGallery(url); fetchData(); }
+    const handleDeleteGalleryImage = (id: string) => { setImageToDeleteId(id); }
+    const handleConfirmDeleteGalleryImage = async () => { if (imageToDeleteId) { await api.deleteFromGallery(imageToDeleteId); setImageToDeleteId(null); fetchData(); } }
 
     if (!isAuthenticated) {
         return (
@@ -884,13 +953,7 @@ const Admin = () => {
                         <h1 className="text-2xl font-serif text-white">כניסת מנהל</h1>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-6">
-                        <Input 
-                            label="סיסמה" 
-                            type="password" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            autoFocus
-                        />
+                        <Input label="סיסמה" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
                         <Button type="submit" className="w-full">התחבר</Button>
                     </form>
                 </Card>
@@ -905,94 +968,64 @@ const Admin = () => {
     return (
         <div className="min-h-screen bg-brand-dark pb-20 pt-24">
             <div className="container mx-auto px-4 lg:px-8">
-                <div className="flex flex-col md:flex-row gap-8">
-                    {/* Sidebar */}
-                    <div className="w-full md:w-64 shrink-0 space-y-2">
-                         {[
-                             { id: 'dashboard', label: 'לוח בקרה', icon: Activity },
-                             { id: 'calendar', label: 'יומן תורים', icon: CalendarIcon },
-                             { id: 'services', label: 'ניהול שירותים', icon: SettingsIcon },
-                             { id: 'settings', label: 'הגדרות עסק', icon: MapPin },
-                         ].map(item => (
-                             <button
-                                key={item.id}
-                                onClick={() => setActiveTab(item.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-brand-primary text-brand-dark font-medium shadow-lg' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                             >
-                                 <item.icon className="w-5 h-5" />
-                                 {item.label}
-                             </button>
-                         ))}
+                <div className="flex flex-col gap-6 mb-10">
+                    <div>
+                        <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
+                        <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
                     </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                         <AnimatePresence mode="wait">
-                             <m.div
-                                key={activeTab}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                             >
-                                 {activeTab === 'dashboard' && (
-                                     <DashboardTab 
-                                        stats={stats} 
-                                        appointments={appointments} 
-                                        settings={settings}
-                                        onUpdateSettings={(newSettings: StudioSettings) => {
-                                            api.updateSettings(newSettings).then(fetchData);
-                                        }}
-                                        onViewAppointment={(id: string) => {
-                                            setFilterId(id);
-                                            setActiveTab('calendar');
-                                        }}
-                                     />
-                                 )}
-                                 {activeTab === 'calendar' && (
-                                     <CalendarTab 
-                                        appointments={appointments}
-                                        filterId={filterId}
-                                        onClearFilter={() => setFilterId(null)}
-                                        studioAddress={settings.studio_details.address}
-                                        onStatusUpdate={async (id: string, status: string) => {
-                                            await api.updateAppointmentStatus(id, status);
-                                            fetchData();
-                                        }}
-                                        onCancelRequest={(item: any) => setModalData({ isOpen: true, type: 'cancel', item })}
-                                        onDownloadPdf={handleDownloadPdf}
-                                     />
-                                 )}
-                                 {activeTab === 'services' && (
-                                     <ServicesTab 
-                                        services={services}
-                                        onAddService={async (s: Service) => { await api.addService(s); fetchData(); }}
-                                        onUpdateService={async (id: string, s: Partial<Service>) => { await api.updateService(id, s); fetchData(); }}
-                                        onDeleteService={async (id: string) => { await api.deleteService(id); fetchData(); }}
-                                     />
-                                 )}
-                                 {activeTab === 'settings' && (
-                                     <SettingsTab 
-                                        settings={settings}
-                                        onUpdateSettings={async (s: StudioSettings) => { await api.updateSettings(s); fetchData(); }}
-                                     />
-                                 )}
-                             </m.div>
-                         </AnimatePresence>
+                    
+                    {/* Fixed Tabs Row */}
+                    <div className="w-full overflow-x-auto pb-2">
+                        <div className="flex flex-row items-center gap-2 p-1 bg-brand-surface/50 rounded-xl min-w-max">
+                            {[
+                                { id: 'dashboard', icon: Activity, label: 'ראשי' },
+                                { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
+                                { id: 'appointments', icon: Filter, label: 'ניהול תורים' }, // Restored Tab
+                                { id: 'services', icon: Edit2, label: 'שירותים' },
+                                { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
+                                { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => { setActiveTab(tab.id); if(tab.id !== 'appointments') setFilterId(null); }}
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    <tab.icon className="w-4 h-4" />
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
+
+                <AnimatePresence mode="wait">
+                    <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} />}
+                        {activeTab === 'appointments' && (
+                            <AppointmentsList 
+                                appointments={appointments} 
+                                onStatusUpdate={handleStatusUpdate} 
+                                onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} 
+                                filterId={filterId} 
+                                onClearFilter={() => setFilterId(null)} 
+                                studioAddress={settings.studio_details?.address} 
+                                onDownloadPdf={handleDownloadPdf} 
+                            />
+                        )}
+                        {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
+                        {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
+                    </m.div>
+                </AnimatePresence>
             </div>
 
-            {/* Modals */}
-            <ConfirmationModal 
-                isOpen={modalData.isOpen && modalData.type === 'cancel'}
-                onClose={() => setModalData({ ...modalData, isOpen: false })}
-                onConfirm={handleCancelAppointment}
-                title="ביטול תור"
-                description="האם אתה בטוח שברצונך לבטל את התור? פעולה זו תשלח הודעת עדכון ללקוח."
-                confirmText="בטל תור"
-                variant="danger"
-            />
+            <ConfirmationModal isOpen={modalData.isOpen} onClose={() => setModalData({ ...modalData, isOpen: false })} onConfirm={handleCancelAppointment} title="ביטול תור" description="האם אתה בטוח?" confirmText="בטל" variant="danger" />
+            <ConfirmationModal isOpen={!!imageToDeleteId} onClose={() => setImageToDeleteId(null)} onConfirm={handleConfirmDeleteGalleryImage} title="מחיקת תמונה" description="האם למחוק תמונה זו?" confirmText="מחק" variant="danger" />
+
+            <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
+                {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
+            </div>
         </div>
     );
 };

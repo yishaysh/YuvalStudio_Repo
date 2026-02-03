@@ -1,3 +1,4 @@
+
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings } from '../types';
 import { supabase } from './supabaseClient';
@@ -226,28 +227,9 @@ export const api = {
         } as Appointment;
     }
     
-    // Calculate End Time based on Service Duration logic handled in frontend or passed here
-    // But for DB insertion, we need an end_time.
-    // Assuming start_time is valid.
     const startTime = new Date(appt.start_time!);
-    // If no duration passed, default to 30. If multi-service, frontend should ideally calculate or we default.
-    // Since we don't have duration in 'appt' Partial directly unless we add it, let's assume 30 mins as fallback
-    // OR verify if we can fetch service duration.
-    // Simple fix: Frontend passes end_time or we add 30 mins. 
-    // Let's add 30 mins by default if not present, but in multi-service logic frontend should handle it.
-    
-    // NOTE: For multi-service, appt.service_id might be one of them, but we want to block the whole time.
-    // The Frontend will pass a start_time. We need to know how long to block.
-    // We will assume the frontend calls this iteratively OR we make one booking with long duration.
-    // Let's rely on standard 30 min blocks unless specified.
-    
-    // Better: let's fetch the service duration if possible, or just default.
-    // For now, defaulting to 30min is safe for single service. For bundle, we might need a workaround.
-    // Workaround: We will pass 'end_time' from frontend if we can, or just +30m.
-    // The code below assumes 30m.
     const duration = 30; 
     
-    // Hack: If client passed end_time in the object (not in interface but in JS), use it.
     // @ts-ignore
     let endTime = appt.end_time;
     if (!endTime) {
@@ -278,7 +260,8 @@ export const api = {
       start_time: data.start_time,
       status: data.status as Appointment['status'],
       notes: data.notes,
-      signature: data.signature
+      signature: data.signature,
+      created_at: data.created_at
     };
   },
 
@@ -306,7 +289,8 @@ export const api = {
         start_time: item.start_time,
         status: item.status,
         notes: item.notes,
-        signature: item.signature
+        signature: item.signature,
+        created_at: item.created_at
       }));
     } catch (err) {
       console.error(err);
