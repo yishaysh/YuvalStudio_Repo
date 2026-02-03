@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { SectionHeading, Card, Button } from '../components/ui';
 import { api } from '../services/mockApi';
@@ -49,12 +50,12 @@ const ServicesPage: React.FC = () => {
               transition={{ delay: i * 0.05, duration: 0.4 }}
               className="will-change-transform"
             >
-              <Card className="h-full flex flex-col group hover:border-brand-primary/30 transition-colors">
+              <Card className="h-full flex flex-col">
                 <div className="aspect-square w-full mb-6 overflow-hidden rounded-lg bg-brand-dark/50">
                   <SmartImage 
                     src={service.image_url} 
                     alt={service.name} 
-                    className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover opacity-90"
                   />
                 </div>
                 <div className="flex justify-between items-start mb-4">
@@ -67,7 +68,7 @@ const ServicesPage: React.FC = () => {
                 <div className="w-full">
                   <Button 
                     variant="outline" 
-                    className="w-full group-hover:bg-brand-primary group-hover:text-brand-dark"
+                    className="w-full hover:bg-brand-primary hover:text-brand-dark"
                     onClick={() => handleBookService(service)}
                   >
                     הזמן תור
