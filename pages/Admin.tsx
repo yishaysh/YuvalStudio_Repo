@@ -674,6 +674,13 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
     const handleSave = () => { onUpdate(localSettings); };
     
+    // New helper to update state and trigger save silently
+    const updateAndSaveWorkingHours = (newWorkingHours: any) => {
+        const newSettings = { ...localSettings, working_hours: newWorkingHours };
+        setLocalSettings(newSettings);
+        onUpdate(newSettings, true); // True for silent update
+    };
+
     const toggleDay = (dayIndex: string) => {
         const day = localSettings.working_hours[dayIndex] || { isOpen: false, ranges: [] };
         const newState = !day.isOpen;
@@ -683,43 +690,37 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             newRanges = [{ start: 10, end: 18 }];
         }
 
-        setLocalSettings(prev => ({
-            ...prev,
-            working_hours: {
-                ...prev.working_hours,
-                [dayIndex]: {
-                    ...day,
-                    isOpen: newState,
-                    ranges: newRanges
-                }
+        const newWorkingHours = {
+            ...localSettings.working_hours,
+            [dayIndex]: {
+                ...day,
+                isOpen: newState,
+                ranges: newRanges
             }
-        }));
+        };
+        updateAndSaveWorkingHours(newWorkingHours);
     };
 
     const addRange = (dayIndex: string) => {
         const day = localSettings.working_hours[dayIndex];
         const newRanges = [...(day.ranges || []), { start: 10, end: 18 }];
         
-        setLocalSettings(prev => ({
-            ...prev,
-            working_hours: {
-                ...prev.working_hours,
-                [dayIndex]: { ...day, ranges: newRanges }
-            }
-        }));
+        const newWorkingHours = {
+            ...localSettings.working_hours,
+            [dayIndex]: { ...day, ranges: newRanges }
+        };
+        updateAndSaveWorkingHours(newWorkingHours);
     };
 
     const removeRange = (dayIndex: string, rangeIndex: number) => {
         const day = localSettings.working_hours[dayIndex];
         const newRanges = day.ranges.filter((_, i) => i !== rangeIndex);
         
-        setLocalSettings(prev => ({
-            ...prev,
-            working_hours: {
-                ...prev.working_hours,
-                [dayIndex]: { ...day, ranges: newRanges }
-            }
-        }));
+        const newWorkingHours = {
+            ...localSettings.working_hours,
+            [dayIndex]: { ...day, ranges: newRanges }
+        };
+        updateAndSaveWorkingHours(newWorkingHours);
     };
 
     const updateRange = (dayIndex: string, rangeIndex: number, field: 'start' | 'end', value: number) => {
@@ -727,13 +728,11 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
         const newRanges = [...day.ranges];
         newRanges[rangeIndex] = { ...newRanges[rangeIndex], [field]: value };
 
-        setLocalSettings(prev => ({
-            ...prev,
-            working_hours: {
-                ...prev.working_hours,
-                [dayIndex]: { ...day, ranges: newRanges }
-            }
-        }));
+        const newWorkingHours = {
+            ...localSettings.working_hours,
+            [dayIndex]: { ...day, ranges: newRanges }
+        };
+        updateAndSaveWorkingHours(newWorkingHours);
     };
 
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -759,7 +758,11 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             </Card>
 
             <Card>
-                <SectionHeading title="שעות פעילות" />
+                <div className="flex justify-between items-center mb-6">
+                    <SectionHeading title="שעות פעילות" />
+                    {/* Optional: Indicator that changes are saved */}
+                </div>
+                
                 <div className="space-y-4">
                     {days.map((dayName, index) => {
                         const dayKey = index.toString();
@@ -833,7 +836,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             </Card>
 
             <div className="flex justify-end pt-4">
-                <Button onClick={handleSave} className="w-full md:w-auto px-12 py-4 text-lg">שמור שינויים</Button>
+                <Button onClick={handleSave} className="w-full md:w-auto px-12 py-4 text-lg">שמור שינויים (פרטי סטודיו ויעדים)</Button>
             </div>
         </div>
     );
@@ -927,8 +930,8 @@ const Admin: React.FC = () => {
     const [pdfData, setPdfData] = useState<Appointment | null>(null);
     const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
 
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
+    const fetchData = useCallback(async (silent = false) => {
+        if (!silent) setIsLoading(true);
         const [appts, srvs, stgs, sts, gall] = await Promise.all([
             api.getAppointments(),
             api.getServices(),
@@ -941,7 +944,7 @@ const Admin: React.FC = () => {
         setSettings(stgs);
         setStats(sts);
         setGallery(gall);
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
     }, []);
 
     useEffect(() => {
@@ -1003,7 +1006,10 @@ const Admin: React.FC = () => {
         }, 500); 
     };
 
-    const handleUpdateSettings = async (newSettings: StudioSettings) => { await api.updateSettings(newSettings); fetchData(); }
+    const handleUpdateSettings = async (newSettings: StudioSettings, silent = false) => { 
+        await api.updateSettings(newSettings); 
+        fetchData(silent); 
+    }
     const handleStatusUpdate = async (id: string, status: string) => { await api.updateAppointmentStatus(id, status); fetchData(); }
     const handleAddService = async (service: any) => { await api.addService(service); fetchData(); }
     const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); fetchData(); }
@@ -1023,7 +1029,14 @@ const Admin: React.FC = () => {
                         <h1 className="text-2xl font-serif text-white">כניסת מנהל</h1>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-6">
-                        <Input label="סיסמה" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+                        <Input 
+                            label="סיסמה" 
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            autoFocus 
+                            className="text-center tracking-widest text-lg"
+                        />
                         <Button type="submit" className="w-full">התחבר</Button>
                     </form>
                 </Card>

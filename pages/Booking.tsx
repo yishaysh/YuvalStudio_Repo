@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Edit3 } from 'lucide-react';
 import { Service, BookingStep, StudioSettings } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -161,6 +161,9 @@ const Booking: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  
+  // Date Picker Ref
+  const datePickerRef = useRef<HTMLInputElement>(null);
   
   // Mobile Cart State
   const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
@@ -477,7 +480,29 @@ const Booking: React.FC = () => {
                             <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                 {/* ... Date & Time Selection ... */}
                                 <div className="space-y-4">
-                                    <h3 className="text-white font-medium flex items-center gap-2"><Calendar className="w-5 h-5 text-brand-primary"/> בחר תאריך</h3>
+                                    <div className="flex items-center gap-4">
+                                        <button 
+                                            onClick={() => datePickerRef.current?.showPicker()}
+                                            className="text-white font-medium flex items-center gap-2 hover:text-brand-primary transition-colors"
+                                        >
+                                            <Calendar className="w-5 h-5 text-brand-primary"/> 
+                                            בחר תאריך
+                                            <span className="text-xs font-normal text-slate-400">(לחץ לפתיחת יומן)</span>
+                                        </button>
+                                        <input 
+                                            type="date" 
+                                            ref={datePickerRef}
+                                            className="invisible absolute" // Hide it but allow triggering
+                                            min={new Date().toISOString().split('T')[0]}
+                                            onChange={(e) => {
+                                                if(e.target.valueAsDate) {
+                                                    setSelectedDate(e.target.valueAsDate);
+                                                    setSelectedSlot(null);
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    
                                     <div className="flex gap-3 overflow-x-auto pb-4">
                                         {generateCalendarDays().map((date, i) => {
                                             const isSelected = selectedDate?.toDateString() === date.toDateString();
