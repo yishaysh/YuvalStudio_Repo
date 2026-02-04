@@ -3,14 +3,14 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 export const aiStylistService = {
   async analyzeEar(cleanBase64: string): Promise<string> {
-    // --- API KEY CONFIGURATION ---
-    const API_KEY = "AIzaSyCqBjk-ra-8HePt4_sn-fHqCNOkTJ7ap94";
+    // Strict adherence to system rules: Use process.env.API_KEY
+    const API_KEY = process.env.API_KEY;
 
     if (!API_KEY) {
-      throw new Error('חסר מפתח API.');
+      console.error("API Key missing");
+      throw new Error('חסר מפתח API. אנא וודא שהגדרת את process.env.API_KEY');
     }
 
-    // Initialize the SDK
     const ai = new GoogleGenAI({ apiKey: API_KEY });
 
     const prompt = `You are a professional piercing stylist. Analyze the provided image of a human ear.
@@ -21,9 +21,9 @@ export const aiStylistService = {
      * Provide the response in Hebrew, formatted as a bulleted list.`;
 
     try {
-      // The image is already compressed and stripped of the prefix by the caller (Booking.tsx)
+      // Using gemini-3-flash-preview as it supports multimodal input and replaces the deprecated 1.5-flash for this context.
       const response: GenerateContentResponse = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: [
           {
             parts: [
@@ -43,7 +43,7 @@ export const aiStylistService = {
     } catch (error: any) {
       console.error("Gemini Analysis Error:", error);
       if (error.message && (error.message.includes('API key') || error.message.includes('403'))) {
-          throw new Error("מפתח API לא תקין.");
+          throw new Error("מפתח API לא תקין או חסר.");
       }
       throw new Error("נכשלנו בניתוח התמונה. אנא וודא שהתמונה ברורה ונסה שנית.");
     }

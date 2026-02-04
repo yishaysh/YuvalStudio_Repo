@@ -63,9 +63,7 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
     const meta = getMeta(service.category);
     
     return (
-        <m.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+        <div 
             onClick={onClick} 
             className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-200 group h-32 ${isSelected ? 'border-brand-primary bg-brand-primary/10 shadow-[0_0_15px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}
         >
@@ -101,7 +99,7 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
                     </div>
                 </div>
             </div>
-        </m.div>
+        </div>
     );
 });
 
