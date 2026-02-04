@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Edit3, Ticket, X, Camera, Sparkles, Upload, Wand2 } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, ScanLine, BrainCircuit } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -341,6 +341,9 @@ const Booking: React.FC = () => {
   }, [activeCategory, services]);
 
   useEffect(() => {
+      // Logic Fix: Reset slot when date changes to prevent booking invalid slots
+      setSelectedSlot(null);
+      
       if (selectedDate) {
           setIsLoadingSlots(true);
           api.getAvailability(selectedDate).then((slots) => {
@@ -357,6 +360,7 @@ const Booking: React.FC = () => {
       } else {
           setSelectedServices([...selectedServices, service]);
       }
+      // Clear coupon on cart change to re-validate amounts if needed, or keep logic simpler
       if (appliedCoupon) {
           setAppliedCoupon(null);
           setCouponCode('');
@@ -364,7 +368,7 @@ const Booking: React.FC = () => {
       }
   };
 
-  // AI Logic
+  // --- AI Logic Refactor ---
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -382,11 +386,18 @@ const Booking: React.FC = () => {
       if (!aiImage) return;
       setIsAnalyzing(true);
       setAiError(null);
+      
       try {
-          const result = await aiStylistService.analyzeEar(aiImage);
+          // Clean the base64 string to ensure no prefix is sent if not needed by specific service logic,
+          // though modern services often handle Data URIs. We strip it here to be safe and optimize payload.
+          // Note: The service might re-compress, but sending lighter string is better.
+          const cleanBase64 = aiImage.replace(/^data:image\/\w+;base64,/, "");
+          
+          const result = await aiStylistService.analyzeEar(cleanBase64);
           setAiRecommendation(result);
       } catch (err: any) {
-          setAiError(err.message || "שגיאה לא ידועה בניתוח התמונה");
+          console.error("Analysis Failed:", err);
+          setAiError(err.message || "אירעה שגיאה בניתוח התמונה. נסה שוב או העלה תמונה ברורה יותר.");
       } finally {
           setIsAnalyzing(false);
       }
@@ -425,10 +436,15 @@ const Booking: React.FC = () => {
       }
   };
 
+  // --- Booking Logic Fix ---
   const isSlotValid = (startIndex: number) => {
-      if (!availableSlots[startIndex]?.available) return false;
+      // 1. Calculate how many 30-min slots are needed based on duration
       const slotsNeeded = Math.ceil(totalDuration / 30);
+      
+      // 2. Boundary Check
       if (startIndex + slotsNeeded > availableSlots.length) return false;
+      
+      // 3. Check CONSECUTIVE availability
       for (let i = 0; i < slotsNeeded; i++) {
           if (!availableSlots[startIndex + i]?.available) return false;
       }
@@ -452,6 +468,7 @@ const Booking: React.FC = () => {
   const handleBook = async () => {
       if(selectedServices.length === 0 || !selectedDate || !selectedSlot || !signatureData) return;
       setIsSubmitting(true);
+      
       const [hours, minutes] = selectedSlot.split(':').map(Number);
       const date = new Date(selectedDate);
       date.setHours(hours, minutes);
@@ -459,20 +476,30 @@ const Booking: React.FC = () => {
       const primaryService = selectedServices[0];
       const otherServices = selectedServices.slice(1);
       
+      // --- Consolidate Notes ---
       let finalNotes = formData.notes;
-      if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n` + finalNotes;
+      if (formData.nationalId) {
+          finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
+      }
+      
+      if (aiRecommendation) {
+          finalNotes += `\n\n--- AI Stylist Recommendation ---\n${aiRecommendation}`;
+      }
+
       if (otherServices.length > 0) {
           finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
       }
       finalNotes += `\n[חתם על הצהרת בריאות]`;
 
+      // --- Calculate End Time ---
+      // Add duration in ms
       const endTime = new Date(date.getTime() + totalDuration * 60000).toISOString();
 
       try {
         await api.createAppointment({
             service_id: primaryService.id,
             start_time: date.toISOString(),
-            // @ts-ignore
+            // @ts-ignore - Assuming api supports it based on instructions
             end_time: endTime, 
             client_name: formData.name,
             client_phone: formData.phone,
@@ -529,11 +556,12 @@ const Booking: React.FC = () => {
                         </p>
                     </div>
 
+                    {/* Mobile Summary Dropdown - Refactored for better Z-Index handling */}
                     {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
-                        <div className="lg:hidden mb-6 relative z-20">
+                        <div className="lg:hidden mb-6 relative z-50">
                             <button 
                                 onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
-                                className="w-full flex items-center justify-between p-4 bg-brand-surface/80 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-all active:scale-[0.98]"
+                                className="w-full flex items-center justify-between p-4 bg-brand-surface/90 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-all active:scale-[0.98] relative z-20"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
@@ -556,9 +584,9 @@ const Booking: React.FC = () => {
                                         initial={{ opacity: 0, height: 0, y: -10 }}
                                         animate={{ opacity: 1, height: 'auto', y: 0 }}
                                         exit={{ opacity: 0, height: 0, y: -10 }}
-                                        className="overflow-hidden"
+                                        className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden shadow-2xl rounded-xl"
                                     >
-                                        <div className="mt-2 bg-brand-surface border border-white/5 rounded-xl shadow-xl">
+                                        <div className="bg-brand-surface border border-white/10 rounded-xl">
                                             <TicketSummary 
                                                 selectedServices={selectedServices}
                                                 selectedDate={selectedDate}
@@ -669,22 +697,50 @@ const Booking: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="space-y-6">
-                                            <div className="relative w-48 h-64 mx-auto rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl">
+                                            <div className="relative w-full max-w-md mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl">
                                                 <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
+                                                
+                                                {/* HIGH-END SCANNING ANIMATION OVERLAY */}
                                                 {isAnalyzing && (
-                                                    <div className="absolute inset-0 bg-brand-dark/60 flex flex-col items-center justify-center backdrop-blur-sm">
-                                                        <div className="relative">
-                                                            <div className="w-16 h-16 border-2 border-brand-primary border-t-transparent animate-spin rounded-full"></div>
-                                                            <m.div 
-                                                                animate={{ y: [0, 64, 0] }}
-                                                                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                                                                className="absolute top-0 left-0 w-full h-[2px] bg-brand-primary shadow-[0_0_10px_#d4b585] z-10"
-                                                            ></m.div>
+                                                    <div className="absolute inset-0 bg-brand-dark/40 z-20 overflow-hidden">
+                                                        {/* Scanning Laser Line */}
+                                                        <m.div 
+                                                            initial={{ top: 0 }}
+                                                            animate={{ top: "100%" }}
+                                                            transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                                                            className="absolute left-0 right-0 h-1 bg-brand-primary shadow-[0_0_25px_rgba(212,181,133,1)] z-30"
+                                                        />
+                                                        
+                                                        {/* Grid Overlay for 3D Mapping effect */}
+                                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:30px_30px] opacity-20 z-10" />
+
+                                                        {/* Radar/Sonar Pulse from Center */}
+                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                            <m.div
+                                                                animate={{ scale: [0.5, 1.5], opacity: [0.8, 0] }}
+                                                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                                                                className="w-32 h-32 rounded-full border border-brand-primary/50"
+                                                            />
+                                                            <m.div
+                                                                animate={{ scale: [0.5, 1.5], opacity: [0.8, 0] }}
+                                                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
+                                                                className="w-32 h-32 rounded-full border border-brand-primary/50 absolute"
+                                                            />
                                                         </div>
-                                                        <p className="text-white text-xs mt-4 font-medium animate-pulse">סורק אנטומיה...</p>
+
+                                                        {/* Status Label */}
+                                                        <div className="absolute bottom-10 left-0 right-0 text-center z-30">
+                                                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-md rounded-full border border-brand-primary/40">
+                                                                <BrainCircuit className="w-4 h-4 text-brand-primary animate-pulse" />
+                                                                <span className="text-brand-primary text-xs font-mono uppercase tracking-widest animate-pulse">
+                                                                    AI Analyzing Structure...
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 )}
-                                                <button onClick={() => { setAiImage(null); setAiRecommendation(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
+
+                                                <button onClick={() => { setAiImage(null); setAiRecommendation(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -740,13 +796,13 @@ const Booking: React.FC = () => {
                                             בחר תאריך
                                             <span className="text-xs font-normal text-slate-400">(לחץ לפתיחת יומן)</span>
                                         </button>
-                                        <input type="date" ref={datePickerRef} className="invisible absolute" min={new Date().toISOString().split('T')[0]} onChange={(e) => { if(e.target.valueAsDate) { setSelectedDate(e.target.valueAsDate); setSelectedSlot(null); } }} />
+                                        <input type="date" ref={datePickerRef} className="invisible absolute" min={new Date().toISOString().split('T')[0]} onChange={(e) => { if(e.target.valueAsDate) { setSelectedDate(e.target.valueAsDate); } }} />
                                     </div>
                                     <div className="flex gap-3 overflow-x-auto pb-4">
                                         {generateCalendarDays().map((date, i) => {
                                             const isSelected = selectedDate?.toDateString() === date.toDateString();
                                             return (
-                                                <button key={i} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }} className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all shrink-0 ${isSelected ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'}`}>
+                                                <button key={i} onClick={() => { setSelectedDate(date); }} className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all shrink-0 ${isSelected ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'}`}>
                                                     <span className="text-xs">{date.toLocaleDateString('he-IL', { weekday: 'short' })}</span>
                                                     <span className="text-xl font-bold font-serif">{date.getDate()}</span>
                                                 </button>
