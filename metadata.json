@@ -1,5 +1,7 @@
 {
   "name": "הסטודיו של יובל",
   "description": "אפליקציית זימון תורים בעיצוב יוקרתי, עמוק ונעים.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

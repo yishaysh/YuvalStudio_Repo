@@ -1,8 +1,4 @@
-
-import { GoogleGenAI } from "@google/genai";
-
-// Placeholder for the API Key - user will insert their key
-const API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 /**
  * Optimizes the image before sending to API to reduce payload size
@@ -34,6 +30,7 @@ const compressImage = (base64Str: string): Promise<string> => {
       canvas.height = height;
       const ctx = canvas.getContext("2d");
       ctx?.drawImage(img, 0, 0, width, height);
+      // Return base64 without the mime prefix
       resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
     };
   });
@@ -41,11 +38,9 @@ const compressImage = (base64Str: string): Promise<string> => {
 
 export const aiStylistService = {
   async analyzeEar(imageBase64: string): Promise<string> {
-    if (API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-      throw new Error("API Key not configured");
-    }
-
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // Create a new instance right before use as per security guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    
     const compressedBase64 = await compressImage(imageBase64);
 
     const prompt = `You are a professional piercing stylist. Analyze the provided image of a human ear.
@@ -56,7 +51,7 @@ export const aiStylistService = {
      * Provide the response in Hebrew, formatted as a bulleted list.`;
 
     try {
-      const response = await ai.models.generateContent({
+      const response: GenerateContentResponse = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
           {
@@ -76,7 +71,7 @@ export const aiStylistService = {
       return response.text || "לא הצלחנו להפיק המלצה כרגע.";
     } catch (error) {
       console.error("Gemini Analysis Error:", error);
-      throw new Error("נכשלנו בניתוח התמונה. אנא נסה שנית או דלג.");
+      throw new Error("נכשלנו בניתוח התמונה. אנא וודא שהתמונה ברורה ונסה שנית.");
     }
   },
 };
