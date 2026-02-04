@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Edit3, Ticket, X } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Info, Send, FileText, Eraser, Plus, Minus, Trash2, ShoppingBag, ChevronDown, ChevronUp, Edit3, Ticket, X, Camera, Sparkles, Upload, Wand2 } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { aiStylistService } from '../services/aiStylistService';
 
 const m = motion as any;
 
@@ -37,7 +38,6 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
         ctx.lineJoin = 'round';
     }, []);
 
-    // Helper to calculate correct coordinates accounting for CSS resizing
     const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
         const canvas = canvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
@@ -64,13 +64,8 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-        if (e.type === 'touchstart') {
-           // e.preventDefault(); // Managed via CSS
-        }
-
         setIsDrawing(true);
         const { x, y } = getCoordinates(e);
-        
         const ctx = canvasRef.current?.getContext('2d');
         if (ctx) {
             ctx.beginPath();
@@ -80,10 +75,8 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
 
     const draw = (e: React.MouseEvent | React.TouchEvent) => {
         if (!isDrawing) return;
-        
         const { x, y } = getCoordinates(e);
         const ctx = canvasRef.current?.getContext('2d');
-        
         if (ctx) {
             ctx.lineTo(x, y);
             ctx.stroke();
@@ -143,7 +136,6 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     );
 };
 
-// --- Separate Ticket Summary Component (Fixes Focus Issue) ---
 interface TicketSummaryProps {
   selectedServices: Service[];
   selectedDate: Date | null;
@@ -157,7 +149,7 @@ interface TicketSummaryProps {
   finalPrice: number;
   step: BookingStep;
   readOnly?: boolean;
-  
+  aiRecommendation?: string | null;
   onToggleService: (s: Service) => void;
   onSetCouponCode: (code: string) => void;
   onApplyCoupon: () => void;
@@ -177,6 +169,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
   finalPrice,
   step,
   readOnly = false,
+  aiRecommendation,
   onToggleService,
   onSetCouponCode,
   onApplyCoupon,
@@ -204,6 +197,18 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                 )}
             </div>
         </div>
+        
+        {aiRecommendation && (
+            <div className="bg-brand-primary/5 border border-brand-primary/10 p-3 rounded-lg">
+                <div className="flex items-center gap-2 text-brand-primary text-xs font-bold uppercase mb-2">
+                    <Sparkles className="w-3 h-3"/> המלצת הסטייליסט
+                </div>
+                <div className="text-[10px] text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-wrap">
+                    {aiRecommendation}
+                </div>
+            </div>
+        )}
+
         <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
         <div className={`transition-all duration-500 ${selectedDate && selectedSlot ? 'opacity-100' : 'opacity-30'}`}>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">מועד התור</div>
@@ -215,7 +220,6 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
         </div>
         <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
         
-        {/* COUPON SECTION */}
         <div className="space-y-3">
              {appliedCoupon ? (
                  <div className="flex justify-between items-center bg-brand-primary/10 p-2 rounded-lg border border-brand-primary/20">
@@ -273,7 +277,6 @@ const Booking: React.FC = () => {
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   
-  // Selection State (Changed to Array for Multi-Select)
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -286,22 +289,25 @@ const Booking: React.FC = () => {
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   
+  // AI Stylist State
+  const [aiImage, setAiImage] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
 
-  // Date Picker Ref
   const datePickerRef = useRef<HTMLInputElement>(null);
-  
-  // Mobile Cart State
   const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Load initial data and handle navigation state (Get The Look)
   useEffect(() => {
     const init = async () => {
         const fetchedServices = await api.getServices();
@@ -309,23 +315,19 @@ const Booking: React.FC = () => {
         setFilteredServices(fetchedServices);
         setStudioSettings(await api.getSettings());
 
-        // Check if we came from "Get The Look"
         if (location.state && location.state.preSelectedServices) {
             const preSelected = location.state.preSelectedServices as Service[];
-            // Verify IDs exist in fetched services to ensure data consistency
             const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
             if (validPreSelected.length > 0) {
                 setSelectedServices(validPreSelected);
-                setStep(BookingStep.SELECT_DATE);
+                setStep(BookingStep.AI_STYLIST);
             }
-            // Clear state so refresh doesn't keep resetting
             window.history.replaceState({}, document.title);
         }
     };
     init();
-  }, []); // Run only once on mount
+  }, []);
 
-  // Scroll top on step change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
@@ -355,11 +357,37 @@ const Booking: React.FC = () => {
       } else {
           setSelectedServices([...selectedServices, service]);
       }
-      // Reset coupon if services change
       if (appliedCoupon) {
           setAppliedCoupon(null);
           setCouponCode('');
           setCouponError(null);
+      }
+  };
+
+  // AI Logic
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+          setAiImage(reader.result as string);
+          setAiError(null);
+          setAiRecommendation(null);
+      };
+      reader.readAsDataURL(file);
+  };
+
+  const handleAnalyze = async () => {
+      if (!aiImage) return;
+      setIsAnalyzing(true);
+      setAiError(null);
+      try {
+          const result = await aiStylistService.analyzeEar(aiImage);
+          setAiRecommendation(result);
+      } catch (err: any) {
+          setAiError(err.message);
+      } finally {
+          setIsAnalyzing(false);
       }
   };
 
@@ -368,16 +396,10 @@ const Booking: React.FC = () => {
 
   const calculateTotal = () => {
       if (!appliedCoupon) return basePrice;
-      
-      let discount = 0;
-      if (appliedCoupon.discountType === 'percentage') {
-          discount = basePrice * (appliedCoupon.value / 100);
-      } else {
-          discount = appliedCoupon.value;
-      }
-      
-      const final = Math.max(0, basePrice - discount);
-      return Math.round(final);
+      let discount = appliedCoupon.discountType === 'percentage' 
+          ? basePrice * (appliedCoupon.value / 100) 
+          : appliedCoupon.value;
+      return Math.round(Math.max(0, basePrice - discount));
   };
 
   const finalPrice = calculateTotal();
@@ -386,7 +408,6 @@ const Booking: React.FC = () => {
   const handleApplyCoupon = async () => {
       setCouponError(null);
       if (!couponCode) return;
-      
       setIsCheckingCoupon(true);
       try {
           const result = await api.validateCoupon(couponCode, basePrice);
@@ -403,14 +424,10 @@ const Booking: React.FC = () => {
       }
   };
 
-  // Slot Logic for Multi-Duration
-  // Check if enough consecutive slots are available
   const isSlotValid = (startIndex: number) => {
       if (!availableSlots[startIndex]?.available) return false;
-      
-      const slotsNeeded = Math.ceil(totalDuration / 30); // Assuming 30 min slots
+      const slotsNeeded = Math.ceil(totalDuration / 30);
       if (startIndex + slotsNeeded > availableSlots.length) return false;
-
       for (let i = 0; i < slotsNeeded; i++) {
           if (!availableSlots[startIndex + i]?.available) return false;
       }
@@ -426,9 +443,7 @@ const Booking: React.FC = () => {
           d.setDate(today.getDate() + i);
           const dayIndex = d.getDay().toString();
           const dayConfig = workingHours[dayIndex];
-          if (dayConfig && dayConfig.isOpen) {
-              days.push(d);
-          }
+          if (dayConfig && dayConfig.isOpen) days.push(d);
       }
       return days.slice(0, 14);
   };
@@ -440,31 +455,23 @@ const Booking: React.FC = () => {
       const date = new Date(selectedDate);
       date.setHours(hours, minutes);
 
-      // Create booking for the PRIMARY service (usually the most expensive or first)
-      // and append others to notes, or backend logic.
-      // Here we will save the list in notes for the MVP
       const primaryService = selectedServices[0];
       const otherServices = selectedServices.slice(1);
       
-      // Construct notes with National ID
       let finalNotes = formData.notes;
-      if (formData.nationalId) {
-          finalNotes = `ת.ז: ${formData.nationalId}\n` + finalNotes;
-      }
-
+      if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n` + finalNotes;
       if (otherServices.length > 0) {
           finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
       }
       finalNotes += `\n[חתם על הצהרת בריאות]`;
 
-      // Calculate end time based on total duration
       const endTime = new Date(date.getTime() + totalDuration * 60000).toISOString();
 
       try {
         await api.createAppointment({
             service_id: primaryService.id,
             start_time: date.toISOString(),
-            // @ts-ignore - passing custom end time
+            // @ts-ignore
             end_time: endTime, 
             client_name: formData.name,
             client_phone: formData.phone,
@@ -472,7 +479,8 @@ const Booking: React.FC = () => {
             notes: finalNotes,
             signature: signatureData,
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
-            final_price: finalPrice
+            final_price: finalPrice,
+            ai_recommendation_text: aiRecommendation || undefined
         });
         setStep(BookingStep.CONFIRMATION);
       } catch (err) {
@@ -486,45 +494,24 @@ const Booking: React.FC = () => {
       if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
       const phone = studioSettings?.studio_details.phone || DEFAULT_STUDIO_DETAILS.phone;
       const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '972');
-      
       const serviceNames = selectedServices.map(s => s.name).join(' + ');
-      
       const msg = `*היי, קבעתי תור באתר!* 👋\n\n*שם:* ${formData.name}\n*טיפול:* ${serviceNames}\n*תאריך:* ${selectedDate.toLocaleDateString('he-IL')}\n*שעה:* ${selectedSlot}\n\nאשמח לאישור סופי. תודה! 🙏`;
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const PainLevel = ({ level }: { level: number }) => (
-      <div className="flex gap-1">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => {
-              const isActive = i <= level;
-              return (
-                  <div key={i} className={`w-1 h-3 rounded-full transition-all ${isActive ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} />
-              )
-          })}
-      </div>
-  );
-
-  const categories = [
-      { id: 'All', label: 'הכל' },
-      { id: 'Ear', label: 'אוזניים' },
-      { id: 'Face', label: 'פנים' },
-      { id: 'Body', label: 'גוף' },
-  ];
-
-  const showBottomBar = 
-    (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || 
-    (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
+  const categories = [{ id: 'All', label: 'הכל' }, { id: 'Ear', label: 'אוזניים' }, { id: 'Face', label: 'פנים' }, { id: 'Body', label: 'גוף' }];
+  const showBottomBar = (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
 
   return (
     <div className="min-h-screen bg-brand-dark pt-24 pb-32 lg:pb-12">
         <div className="container mx-auto px-4 lg:px-8">
             <div className="flex flex-col lg:flex-row gap-8 relative items-start">
                 
-                {/* LEFT SIDE: MAIN CONTENT */}
                 <div className="flex-1 w-full z-10">
                     <div className="mb-4">
                         <h1 className="text-4xl font-serif text-white mb-2">
                             {step === BookingStep.SELECT_SERVICE && 'בחירת טיפול'}
+                            {step === BookingStep.AI_STYLIST && 'מעצב האוזן האישי (AI)'}
                             {step === BookingStep.SELECT_DATE && 'תאריך ושעה'}
                             {step === BookingStep.DETAILS && 'פרטים אישיים'}
                             {step === BookingStep.CONSENT && 'הצהרת בריאות ואישור'}
@@ -533,16 +520,14 @@ const Booking: React.FC = () => {
                         <p className="text-slate-400 flex items-center gap-2">
                             {step !== BookingStep.CONFIRMATION && (
                                 <span className="bg-brand-primary/10 text-brand-primary text-xs px-2 py-0.5 rounded-full border border-brand-primary/20">
-                                    שלב {step} מתוך 4
+                                    שלב {step} מתוך 5
                                 </span>
                             )}
-                            {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך. ניתן לבחור מספר פריטים.'}
-                            {step === BookingStep.SELECT_DATE && `מתי נוח לך להגיע אלינו? (זמן כולל: ${totalDuration} דק')`}
-                            {step === BookingStep.DETAILS && 'איך נוכל ליצור איתך קשר?'}
+                            {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך.'}
+                            {step === BookingStep.AI_STYLIST && 'העלה תמונה לקבלת המלצות סטיילינג אישיות מה-AI שלנו.'}
                         </p>
                     </div>
 
-                    {/* MOBILE CART SUMMARY (NEW) */}
                     {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
                         <div className="lg:hidden mb-6 relative z-20">
                             <button 
@@ -586,6 +571,7 @@ const Booking: React.FC = () => {
                                                 finalPrice={finalPrice}
                                                 step={step}
                                                 readOnly={step === BookingStep.CONFIRMATION}
+                                                aiRecommendation={aiRecommendation}
                                                 onToggleService={toggleService}
                                                 onSetCouponCode={setCouponCode}
                                                 onApplyCoupon={handleApplyCoupon}
@@ -599,10 +585,8 @@ const Booking: React.FC = () => {
                     )}
 
                     <AnimatePresence mode="wait">
-                        {/* STEPS 1-3 ... (Unchanged logic, just ensure they render correctly) */}
                         {step === BookingStep.SELECT_SERVICE && (
                             <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                                {/* ... Service Selection Content ... */}
                                 <div className="flex gap-3 overflow-x-auto pb-2">
                                     {categories.map(cat => (
                                         <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`px-6 py-2 rounded-full text-sm transition-all whitespace-nowrap border ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
@@ -632,7 +616,11 @@ const Booking: React.FC = () => {
                                                             </div>
                                                             <div className="flex flex-col items-end gap-1">
                                                                 <span className="text-[10px] text-slate-500 uppercase tracking-widest">רמת כאב ({service.pain_level || 1})</span>
-                                                                <PainLevel level={service.pain_level || 1} />
+                                                                <div className="flex gap-1">
+                                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                                                                        <div key={i} className={`w-1 h-3 rounded-full transition-all ${i <= (service.pain_level || 1) ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} />
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -644,33 +632,92 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
+                        {step === BookingStep.AI_STYLIST && (
+                            <m.div key="ai" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                <Card className="bg-brand-surface/50 border-brand-primary/20 p-8 text-center relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 blur-3xl -mr-16 -mt-16 group-hover:bg-brand-primary/20 transition-colors"></div>
+                                    
+                                    {!aiImage ? (
+                                        <div className="py-12 flex flex-col items-center">
+                                            <div className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30">
+                                                <Camera className="w-10 h-10" />
+                                            </div>
+                                            <h3 className="text-2xl font-serif text-white mb-2">גלה את הפוטנציאל שלך</h3>
+                                            <p className="text-slate-400 text-sm mb-8 max-w-sm">העלה תמונה ברורה של האוזן שלך וקבל המלצות סטיילינג מותאמות אישית מהבינה המלאכותית שלנו.</p>
+                                            
+                                            <div className="flex gap-4">
+                                                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                                                <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2">
+                                                    <Upload className="w-4 h-4"/> בחר תמונה
+                                                </Button>
+                                                <Button onClick={() => setStep(BookingStep.SELECT_DATE)} variant="ghost">דלג על השלב</Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-6">
+                                            <div className="relative w-48 h-64 mx-auto rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl">
+                                                <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
+                                                {isAnalyzing && (
+                                                    <div className="absolute inset-0 bg-brand-dark/60 flex flex-col items-center justify-center backdrop-blur-sm">
+                                                        <div className="relative">
+                                                            <div className="w-16 h-16 border-2 border-brand-primary border-t-transparent animate-spin rounded-full"></div>
+                                                            <m.div 
+                                                                animate={{ y: [0, 64, 0] }}
+                                                                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                                                                className="absolute top-0 left-0 w-full h-[2px] bg-brand-primary shadow-[0_0_10px_#d4b585] z-10"
+                                                            ></m.div>
+                                                        </div>
+                                                        <p className="text-white text-xs mt-4 font-medium animate-pulse">סורק אנטומיה...</p>
+                                                    </div>
+                                                )}
+                                                <button onClick={() => { setAiImage(null); setAiRecommendation(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+
+                                            <AnimatePresence mode="wait">
+                                                {aiRecommendation ? (
+                                                    <m.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-brand-dark/40 border border-brand-primary/20 rounded-2xl p-6 text-right relative overflow-hidden">
+                                                        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                                            <Sparkles className="w-24 h-24 text-brand-primary"/>
+                                                        </div>
+                                                        <h4 className="text-brand-primary font-bold flex items-center gap-2 mb-4">
+                                                            <Sparkles className="w-5 h-5"/> המלצות הסטייליסט
+                                                        </h4>
+                                                        <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                                            {aiRecommendation}
+                                                        </div>
+                                                        <Button onClick={() => setStep(BookingStep.SELECT_DATE)} className="w-full mt-6 gap-2">
+                                                            נשמע מעולה, המשך לקביעת תור <ArrowLeft className="w-4 h-4"/>
+                                                        </Button>
+                                                    </m.div>
+                                                ) : aiError ? (
+                                                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                                                        {aiError}
+                                                    </div>
+                                                ) : !isAnalyzing && (
+                                                    <Button onClick={handleAnalyze} className="w-full py-4 text-lg shadow-xl shadow-brand-primary/20 gap-2">
+                                                        <Wand2 className="w-5 h-5"/> נתח וקבל המלצות
+                                                    </Button>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    )}
+                                </Card>
+                            </m.div>
+                        )}
+
                         {step === BookingStep.SELECT_DATE && (
                             <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                {/* ... Date & Time Selection ... */}
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-4">
-                                        <button 
-                                            onClick={() => datePickerRef.current?.showPicker()}
-                                            className="text-white font-medium flex items-center gap-2 hover:text-brand-primary transition-colors"
-                                        >
+                                        <button onClick={() => datePickerRef.current?.showPicker()} className="text-white font-medium flex items-center gap-2 hover:text-brand-primary transition-colors">
                                             <Calendar className="w-5 h-5 text-brand-primary"/> 
                                             בחר תאריך
                                             <span className="text-xs font-normal text-slate-400">(לחץ לפתיחת יומן)</span>
                                         </button>
-                                        <input 
-                                            type="date" 
-                                            ref={datePickerRef}
-                                            className="invisible absolute" // Hide it but allow triggering
-                                            min={new Date().toISOString().split('T')[0]}
-                                            onChange={(e) => {
-                                                if(e.target.valueAsDate) {
-                                                    setSelectedDate(e.target.valueAsDate);
-                                                    setSelectedSlot(null);
-                                                }
-                                            }}
-                                        />
+                                        <input type="date" ref={datePickerRef} className="invisible absolute" min={new Date().toISOString().split('T')[0]} onChange={(e) => { if(e.target.valueAsDate) { setSelectedDate(e.target.valueAsDate); setSelectedSlot(null); } }} />
                                     </div>
-                                    
                                     <div className="flex gap-3 overflow-x-auto pb-4">
                                         {generateCalendarDays().map((date, i) => {
                                             const isSelected = selectedDate?.toDateString() === date.toDateString();
@@ -694,12 +741,7 @@ const Booking: React.FC = () => {
                                             {availableSlots.length > 0 ? availableSlots.map((slot, i) => {
                                                 const valid = isSlotValid(i);
                                                 return (
-                                                    <button 
-                                                        key={i} 
-                                                        disabled={!valid} 
-                                                        onClick={() => setSelectedSlot(selectedSlot === slot.time ? null : slot.time)} 
-                                                        className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}
-                                                    >
+                                                    <button key={i} disabled={!valid} onClick={() => setSelectedSlot(selectedSlot === slot.time ? null : slot.time)} className={`py-2 rounded-lg text-sm border transition-all ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}>
                                                         {slot.time}
                                                     </button>
                                                 )
@@ -717,34 +759,11 @@ const Booking: React.FC = () => {
                                 <Card className="border-none bg-white/5 space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <Input label="שם מלא" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                        <Input 
-                                            label="טלפון" 
-                                            type="tel" 
-                                            inputMode="numeric"
-                                            dir="ltr"
-                                            className="text-right"
-                                            value={formData.phone} 
-                                            onChange={e => setFormData({...formData, phone: e.target.value})} 
-                                        />
+                                        <Input label="טלפון" type="tel" inputMode="numeric" dir="ltr" className="text-right" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <Input 
-                                            label="אימייל" 
-                                            type="email" 
-                                            inputMode="email"
-                                            dir="ltr"
-                                            className="text-right"
-                                            value={formData.email} 
-                                            onChange={e => setFormData({...formData, email: e.target.value})} 
-                                        />
-                                        <Input 
-                                            label="תעודת זהות" 
-                                            type="tel" 
-                                            inputMode="numeric"
-                                            maxLength={9}
-                                            value={formData.nationalId} 
-                                            onChange={e => setFormData({...formData, nationalId: e.target.value})} 
-                                        />
+                                        <Input label="אימייל" type="email" inputMode="email" dir="ltr" className="text-right" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                                        <Input label="תעודת זהות" type="tel" inputMode="numeric" maxLength={9} value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-slate-400 ms-1">הערות נוספות</label>
@@ -754,7 +773,6 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
-                        {/* STEP 4: CONSENT - Updated to remove bullets */}
                         {step === BookingStep.CONSENT && (
                             <m.div key="consent" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <Card className="bg-white/5 border-none p-6">
@@ -764,22 +782,19 @@ const Booking: React.FC = () => {
                                     </div>
                                     <div className="text-sm text-slate-300 space-y-3 h-64 overflow-y-auto pr-2 custom-scrollbar mb-6 bg-brand-dark/20 p-4 rounded-xl leading-relaxed border border-white/5">
                                         <p className="font-medium mb-2 text-white">אני מצהיר בזאת כי:</p>
-                                        
                                         <div className="space-y-2 text-slate-300">
                                             <p>- אני מעל גיל 16 (או מלווה באישור הורה/אפוטרופוס).</p>
                                             <p>- איני סובל ממחלות דם, סוכרת לא מאוזנת או מחלות זיהומיות.</p>
-                                            <p>- איני נוטל תרופות המדללות את הדם (אספירין, קומדין וכו').</p>
+                                            <p>- איני נוטל תרופות המדללות את הדם.</p>
                                             <p>- איני בהריון או מניקה (לפירסינג בפטמה/טבור).</p>
                                             <p>- אני מבין כי הפירסינג דורש טיפול יומיומי והקפדה על היגיינה.</p>
                                             <p>- אני מבין את הסיכונים הכרוכים (זיהום, צלקות, רגישות למתכת).</p>
                                             <p>- קראתי והבנתי את הוראות הטיפול שניתנו לי.</p>
                                         </div>
-
                                         <p className="font-medium text-brand-primary border-t border-white/5 pt-4 mt-4">
                                             אני מאשר לסטודיו לבצע את הנקיב ומסיר כל אחריות במקרה של אי-מילוי אחר הוראות הטיפול.
                                         </p>
                                     </div>
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                                         <div className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setHasAgreedToTerms(!hasAgreedToTerms)}>
                                             <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${hasAgreedToTerms ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
@@ -787,36 +802,30 @@ const Booking: React.FC = () => {
                                             </div>
                                             <span className="text-sm text-slate-200 select-none">אני מאשר כי קראתי את כל הסעיפים ומסכים לתוכן.</span>
                                         </div>
-
-                                        <SignaturePad 
-                                            onSave={(data) => setSignatureData(data)} 
-                                            onClear={() => setSignatureData(null)} 
-                                        />
+                                        <SignaturePad onSave={(data) => setSignatureData(data)} onClear={() => setSignatureData(null)} />
                                     </div>
                                 </Card>
                             </m.div>
                         )}
 
-                        {/* STEP 5: CONFIRMATION ... */}
                         {step === BookingStep.CONFIRMATION && (
-                            <m.div key="step5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
+                            <m.div key="step6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
                                 <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                                     <Check className="w-10 h-10" />
                                 </div>
                                 <h2 className="text-4xl font-serif text-white mb-4">בקשתך התקבלה בהצלחה!</h2>
-                                <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">התור שלך ל{selectedServices.map(s => s.name).join(', ')} נקלט במערכת כממתין לאישור. הסטודיו ייצור איתך קשר בהקדם.</p>
+                                <p className="text-slate-400 text-lg mb-8 max-w-md mx-auto">התור שלך נקלט במערכת כממתין לאישור. הסטודיו ייצור איתך קשר בהקדם.</p>
                                 <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-8">
                                     <Button onClick={sendConfirmationWhatsapp} className="bg-green-600 hover:bg-green-700 text-white border-none flex items-center gap-2">
                                         <Send className="w-4 h-4" /> שלח אישור לסטודיו בוואטסאפ
                                     </Button>
-                                    <Button variant="ghost" onClick={() => window.location.href = '/'}>חזרה לדף הבית</Button>
+                                    <Button variant="ghost" onClick={() => navigate('/')}>חזרה לדף הבית</Button>
                                 </div>
                             </m.div>
                         )}
                     </AnimatePresence>
                 </div>
 
-                {/* RIGHT SIDE: TICKET ... */}
                 <div className={`hidden lg:block w-80 relative shrink-0 ${step === BookingStep.CONSENT ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                     <div className="sticky top-28">
                         <div className="relative bg-brand-surface/80 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
@@ -837,6 +846,7 @@ const Booking: React.FC = () => {
                                 finalPrice={finalPrice}
                                 step={step}
                                 readOnly={step === BookingStep.CONFIRMATION}
+                                aiRecommendation={aiRecommendation}
                                 onToggleService={toggleService}
                                 onSetCouponCode={setCouponCode}
                                 onApplyCoupon={handleApplyCoupon}
@@ -851,16 +861,9 @@ const Booking: React.FC = () => {
             </div>
         </div>
 
-        {/* FLOATING ACTION BAR */}
         <AnimatePresence>
             {showBottomBar && (
-                <m.div 
-                    initial={{ y: 100, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 100, opacity: 0 }}
-                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    className="fixed bottom-0 left-0 right-0 p-4 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]"
-                >
+                <m.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 p-4 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]">
                     <div className="container max-w-4xl flex items-center gap-4 w-full">
                         {step > 1 && (
                             <button onClick={() => setStep(step - 1)} className="px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
@@ -870,7 +873,8 @@ const Booking: React.FC = () => {
                         )}
                         <Button 
                             onClick={() => {
-                                if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.SELECT_DATE);
+                                if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.AI_STYLIST);
+                                else if(step === BookingStep.AI_STYLIST) setStep(BookingStep.SELECT_DATE);
                                 else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
                                 else if(step === BookingStep.DETAILS) setStep(BookingStep.CONSENT);
                                 else if(step === BookingStep.CONSENT) handleBook();
@@ -880,7 +884,7 @@ const Booking: React.FC = () => {
                                 (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
                                 (step === BookingStep.DETAILS && (!formData.name || !formData.phone || !formData.nationalId)) ||
                                 (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||
-                                isSubmitting
+                                isSubmitting || isAnalyzing
                             }
                             isLoading={isSubmitting}
                             className="flex-1 py-4 text-lg shadow-xl shadow-brand-primary/20"

@@ -1,5 +1,4 @@
 
-
 export interface Service {
   id: string;
   name: string;
@@ -26,6 +25,7 @@ export interface Appointment {
   created_at?: string; // Added for sorting/display
   coupon_code?: string; // Optional coupon code
   final_price?: number; // Final price after discount
+  ai_recommendation_text?: string; // AI Styling advice
 }
 
 export interface DayAvailability {
@@ -80,8 +80,9 @@ export interface StudioSettings {
 
 export enum BookingStep {
   SELECT_SERVICE = 1,
-  SELECT_DATE = 2,
-  DETAILS = 3,
-  CONSENT = 4,
-  CONFIRMATION = 5
+  AI_STYLIST = 2,
+  SELECT_DATE = 3,
+  DETAILS = 4,
+  CONSENT = 5,
+  CONFIRMATION = 6
 }
