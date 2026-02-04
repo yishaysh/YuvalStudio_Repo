@@ -15,7 +15,7 @@ import { jsPDF } from 'jspdf';
 // @ts-ignore
 import html2canvas from 'html2canvas';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
-import { googleCalendarService } from '../services/googleCalendar';
+import { calendarService } from '../services/calendarService';
 
 const m = motion as any;
 
@@ -102,7 +102,6 @@ const AppointmentsList = ({
     showFilters = true, 
     allServices = [],
     onSyncToCalendar,
-    isGoogleAuth,
     onBulkSync
 }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
@@ -274,7 +273,7 @@ const AppointmentsList = ({
                     )}
 
                     {/* Google Bulk Sync */}
-                    {isGoogleAuth && onBulkSync && (
+                    {onBulkSync && (
                         <button
                             onClick={() => onBulkSync(sortedAppointments)}
                             className="ml-auto flex items-center gap-2 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs transition-colors"
@@ -431,7 +430,7 @@ const AppointmentsList = ({
                                     </div>
 
                                     {/* Google Calendar Sync Button */}
-                                    {isGoogleAuth && apt.status !== 'cancelled' && (
+                                    {apt.status !== 'cancelled' && (
                                         <button 
                                             onClick={() => onSyncToCalendar(apt)} 
                                             className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors mr-1"
@@ -630,7 +629,7 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
 };
 
 // --- Dashboard Tab ---
-const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, isGoogleAuth }: any) => {
+const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar }: any) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -678,7 +677,6 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                     onDownloadPdf={() => {}}
                     allServices={services}
                     onSyncToCalendar={onSyncToCalendar}
-                    isGoogleAuth={isGoogleAuth}
                 />
             </div>
         </div>
@@ -686,7 +684,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
 };
 
 // --- Calendar Tab ---
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, isGoogleAuth }: any) => {
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const appointmentsRef = useRef<HTMLDivElement>(null);
@@ -781,7 +779,6 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         showFilters={false}
                         allServices={services}
                         onSyncToCalendar={onSyncToCalendar}
-                        isGoogleAuth={isGoogleAuth}
                     />
                 </div>
             </div>
@@ -1256,7 +1253,6 @@ const Admin: React.FC = () => {
     const [settings, setSettings] = useState<StudioSettings | null>(null);
     const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
     const [isLoading, setIsLoading] = useState(true);
-    const [isGoogleAuth, setIsGoogleAuth] = useState(googleCalendarService.isAuthenticated());
     
     // Filters & Modals
     const [filterId, setFilterId] = useState<string | null>(null);
@@ -1284,39 +1280,22 @@ const Admin: React.FC = () => {
     useEffect(() => {
         if (isAuthenticated) {
             fetchData();
-            // Init Google Calendar
-            googleCalendarService.init(() => {
-                setIsGoogleAuth(true);
-            });
+            // Init Google Calendar Client
+            calendarService.initClient();
         }
     }, [isAuthenticated, fetchData]);
 
-    const handleGoogleLogin = () => {
-        googleCalendarService.login();
-    };
-
-    const handleGoogleLogout = () => {
-        googleCalendarService.logout();
-        setIsGoogleAuth(false);
-    };
-
     const handleSyncToCalendar = async (apt: Appointment) => {
-        if (!isGoogleAuth) return;
         try {
             // Find service duration
             const service = services.find(s => s.id === apt.service_id);
             const duration = service ? service.duration_minutes : 30;
             
-            await googleCalendarService.createEvent(apt, duration);
+            await calendarService.syncAppointment(apt, duration);
             alert(`האירוע עבור ${apt.client_name} סונכרן ליומן בהצלחה!`);
         } catch (error: any) {
             console.error(error);
-            if (error.message === 'AUTH_EXPIRED') {
-                setIsGoogleAuth(false);
-                alert('פג תוקף החיבור לגוגל. אנא התחבר מחדש.');
-            } else {
-                alert('שגיאה בסנכרון ליומן: ' + error.message);
-            }
+            alert('שגיאה בסנכרון ליומן: ' + error.message);
         }
     };
 
@@ -1330,7 +1309,7 @@ const Admin: React.FC = () => {
             try {
                 const service = services.find(s => s.id === apt.service_id);
                 const duration = service ? service.duration_minutes : 30;
-                await googleCalendarService.createEvent(apt, duration);
+                await calendarService.syncAppointment(apt, duration);
                 successCount++;
             } catch (e) {
                 failCount++;
@@ -1441,25 +1420,9 @@ const Admin: React.FC = () => {
         <div className="min-h-screen bg-brand-dark pb-20 pt-24">
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex flex-col gap-6 mb-10">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
-                            <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
-                        </div>
-                        {/* Google Auth Button */}
-                        <div className="flex flex-col items-end gap-1">
-                            <button 
-                                onClick={isGoogleAuth ? handleGoogleLogout : handleGoogleLogin}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                                    isGoogleAuth 
-                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                                }`}
-                            >
-                                <Calendar className="w-3.5 h-3.5" />
-                                {isGoogleAuth ? 'יומן גוגל מחובר' : 'חבר יומן גוגל'}
-                            </button>
-                        </div>
+                    <div>
+                        <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
+                        <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
                     </div>
                     
                     {/* Fixed Tabs Row */}
@@ -1489,8 +1452,8 @@ const Admin: React.FC = () => {
 
                 <AnimatePresence mode="wait">
                     <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} isGoogleAuth={isGoogleAuth} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} isGoogleAuth={isGoogleAuth} />}
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} />}
                         {activeTab === 'appointments' && (
                             <AppointmentsList 
                                 appointments={appointments} 
@@ -1502,7 +1465,6 @@ const Admin: React.FC = () => {
                                 onDownloadPdf={handleDownloadPdf} 
                                 allServices={services}
                                 onSyncToCalendar={handleSyncToCalendar}
-                                isGoogleAuth={isGoogleAuth}
                                 onBulkSync={handleBulkSync}
                             />
                         )}
