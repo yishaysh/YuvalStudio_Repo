@@ -368,6 +368,7 @@ const Booking: React.FC = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      
       const reader = new FileReader();
       reader.onloadend = () => {
           setAiImage(reader.result as string);
@@ -385,7 +386,7 @@ const Booking: React.FC = () => {
           const result = await aiStylistService.analyzeEar(aiImage);
           setAiRecommendation(result);
       } catch (err: any) {
-          setAiError(err.message);
+          setAiError(err.message || "שגיאה לא ידועה בניתוח התמונה");
       } finally {
           setIsAnalyzing(false);
       }
@@ -639,14 +640,25 @@ const Booking: React.FC = () => {
                                     
                                     {!aiImage ? (
                                         <div className="py-12 flex flex-col items-center">
-                                            <div className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30">
+                                            {/* Made clickable wrapper for image upload */}
+                                            <div 
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30 cursor-pointer hover:bg-brand-primary/20 transition-all hover:scale-105 active:scale-95"
+                                                title="לחץ להעלאת תמונה"
+                                            >
                                                 <Camera className="w-10 h-10" />
                                             </div>
                                             <h3 className="text-2xl font-serif text-white mb-2">גלה את הפוטנציאל שלך</h3>
                                             <p className="text-slate-400 text-sm mb-8 max-w-sm">העלה תמונה ברורה של האוזן שלך וקבל המלצות סטיילינג מותאמות אישית מהבינה המלאכותית שלנו.</p>
                                             
                                             <div className="flex gap-4">
-                                                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    ref={fileInputRef} 
+                                                    onChange={handleImageUpload} 
+                                                />
                                                 <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2">
                                                     <Upload className="w-4 h-4"/> בחר תמונה
                                                 </Button>
@@ -670,7 +682,7 @@ const Booking: React.FC = () => {
                                                         <p className="text-white text-xs mt-4 font-medium animate-pulse">סורק אנטומיה...</p>
                                                     </div>
                                                 )}
-                                                <button onClick={() => { setAiImage(null); setAiRecommendation(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
+                                                <button onClick={() => { setAiImage(null); setAiRecommendation(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors">
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -691,14 +703,22 @@ const Booking: React.FC = () => {
                                                             נשמע מעולה, המשך לקביעת תור <ArrowLeft className="w-4 h-4"/>
                                                         </Button>
                                                     </m.div>
-                                                ) : aiError ? (
-                                                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
-                                                        {aiError}
+                                                ) : (
+                                                    <div className="space-y-4">
+                                                        {/* Error Message Display */}
+                                                        {aiError && (
+                                                            <m.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
+                                                                <p className="font-bold mb-1">שגיאה בניתוח</p>
+                                                                {aiError}
+                                                            </m.div>
+                                                        )}
+                                                        
+                                                        {!isAnalyzing && (
+                                                            <Button onClick={handleAnalyze} className="w-full py-4 text-lg shadow-xl shadow-brand-primary/20 gap-2">
+                                                                <Wand2 className="w-5 h-5"/> נתח וקבל המלצות
+                                                            </Button>
+                                                        )}
                                                     </div>
-                                                ) : !isAnalyzing && (
-                                                    <Button onClick={handleAnalyze} className="w-full py-4 text-lg shadow-xl shadow-brand-primary/20 gap-2">
-                                                        <Wand2 className="w-5 h-5"/> נתח וקבל המלצות
-                                                    </Button>
                                                 )}
                                             </AnimatePresence>
                                         </div>
@@ -707,6 +727,7 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
+                        {/* ... Rest of steps ... */}
                         {step === BookingStep.SELECT_DATE && (
                             <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                 <div className="space-y-4">
