@@ -8,7 +8,7 @@ import {
   Activity, Calendar as CalendarIcon, DollarSign, 
   Lock, Check, X, Clock, Plus, 
   Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Filter, ChevronRight, ChevronLeft, Loader2, FileText, Tag, ArrowUpDown, Ticket,
-  Users
+  Users, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
@@ -153,6 +153,21 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
         return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortConfig.direction === 'asc' ? 'text-brand-primary' : 'text-brand-primary rotate-180'}`} />;
     };
 
+    // Helper to extract services from notes if available (hack for MVP data structure)
+    const getServicesList = (apt: any) => {
+        const services = [{ name: apt.service_name || 'שירות כללי' }];
+        
+        // Try to find "extras" in notes based on Booking.tsx format
+        if (apt.notes && apt.notes.includes('תוספות:')) {
+            const match = apt.notes.match(/תוספות: (.*?)(?:\n|$)/);
+            if (match && match[1]) {
+                const extras = match[1].split(', ').map((s: string) => ({ name: s.trim() }));
+                services.push(...extras);
+            }
+        }
+        return services;
+    };
+
     return (
         <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
             {/* Filter Bar */}
@@ -219,7 +234,8 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                     <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('created_at')}>
                         נוצר ב <SortIcon column="created_at" />
                     </th>
-                    <th className="py-4 px-6 font-medium whitespace-nowrap">שירות ומחיר</th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap">שירותים</th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap text-center">מחיר כולל</th>
                     <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('status')}>
                         סטטוס <SortIcon column="status" />
                     </th>
@@ -229,48 +245,81 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                 <tbody className="text-slate-300 divide-y divide-white/5">
                 {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
                     const isHighlighted = apt.id === filterId;
+                    const servicesList = getServicesList(apt);
+                    const basePrice = apt.service_price || 0;
+                    const finalPrice = apt.final_price !== undefined ? apt.final_price : basePrice;
+                    const discount = basePrice - finalPrice;
+
                     return (
                         <tr 
                             key={apt.id} 
                             ref={(el) => { rowRefs.current[apt.id] = el; }}
                             className={`transition-colors duration-300 ${isHighlighted ? 'bg-brand-primary/20 hover:bg-brand-primary/25 shadow-[inset_3px_0_0_0_#d4b585]' : 'hover:bg-white/[0.02]'}`}
                         >
-                            <td className="py-4 px-6">
+                            <td className="py-4 px-6 align-top">
                                 <div className={`font-medium ${isHighlighted ? 'text-brand-primary' : 'text-white'}`}>{apt.client_name}</div>
                                 <div className="text-xs text-slate-500">{apt.client_phone}</div>
                             </td>
-                            <td className="py-4 px-6 text-slate-400">
+                            <td className="py-4 px-6 text-slate-400 align-top">
                                 <div>{new Date(apt.start_time).toLocaleDateString('he-IL')}</div>
                                 <div className="text-xs">{new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}</div>
                             </td>
-                            <td className="py-4 px-6 text-slate-500 text-xs">
+                            <td className="py-4 px-6 text-slate-500 text-xs align-top">
                                 {apt.created_at ? new Date(apt.created_at).toLocaleDateString('he-IL') : '-'}
                             </td>
-                            <td className="py-4 px-6">
-                                <div className="flex flex-col items-start gap-1">
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-white/5 border border-white/10 whitespace-nowrap">
-                                        {apt.service_name || 'שירות כללי'}
-                                    </span>
-                                    
-                                    {/* Price & Coupon Display */}
-                                    <div className="flex items-center gap-2 text-xs mt-0.5">
-                                        {apt.coupon_code ? (
-                                            <>
-                                                <span className="text-slate-500 line-through">₪{apt.service_price}</span>
-                                                <span className="text-emerald-400 font-bold">₪{apt.final_price}</span>
-                                                <span className="flex items-center gap-1 bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded text-[10px] border border-brand-primary/20" title="קוד קופון">
-                                                    <Ticket className="w-3 h-3" /> {apt.coupon_code}
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <span className="text-slate-400">₪{apt.service_price || 0}</span>
-                                        )}
-                                    </div>
-
-                                    {apt.notes && <div className="text-xs text-slate-500 mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>}
+                            <td className="py-4 px-6 align-top">
+                                <div className="flex flex-col gap-1.5">
+                                    {servicesList.map((svc: any, idx: number) => (
+                                        <div key={idx} className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs bg-white/5 border border-white/10 w-fit">
+                                            {svc.name}
+                                        </div>
+                                    ))}
+                                    {apt.notes && !apt.notes.includes('--- חבילת שירותים משולבת ---') && (
+                                         <div className="text-[10px] text-slate-500 mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>
+                                    )}
                                 </div>
                             </td>
-                            <td className="py-4 px-6">
+                            <td className="py-4 px-6 text-center align-top relative">
+                                <div className="group inline-block cursor-help relative">
+                                    <div className="flex flex-col items-center">
+                                         <span className="font-bold text-emerald-400 text-sm">₪{finalPrice}</span>
+                                         {apt.coupon_code && (
+                                            <span className="text-[10px] text-brand-primary bg-brand-primary/10 px-1.5 rounded mt-1 flex items-center gap-1">
+                                                <Ticket className="w-2 h-2" /> {apt.coupon_code}
+                                            </span>
+                                         )}
+                                    </div>
+
+                                    {/* Price Breakdown Tooltip */}
+                                    <div className="absolute top-full right-1/2 translate-x-1/2 mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-3 pointer-events-none text-right">
+                                        <div className="text-xs space-y-2">
+                                            <div className="flex justify-between text-slate-400">
+                                                <span>מחיר מחירון:</span>
+                                                <span>₪{basePrice}</span>
+                                            </div>
+                                            {discount > 0 && (
+                                                <div className="flex justify-between text-emerald-400">
+                                                    <span>הנחה:</span>
+                                                    <span>-₪{discount}</span>
+                                                </div>
+                                            )}
+                                            {apt.coupon_code && (
+                                                <div className="flex justify-between text-brand-primary text-[10px] border-t border-white/5 pt-1 mt-1">
+                                                    <span>קופון:</span>
+                                                    <span>{apt.coupon_code}</span>
+                                                </div>
+                                            )}
+                                            <div className="border-t border-white/10 pt-2 mt-1 flex justify-between font-bold text-white">
+                                                <span>סה"כ לתשלום:</span>
+                                                <span>₪{finalPrice}</span>
+                                            </div>
+                                        </div>
+                                        {/* Arrow */}
+                                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-brand-surface border-l border-t border-white/10 rotate-45"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="py-4 px-6 align-top">
                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                                 apt.status === 'confirmed' 
                                     ? 'bg-emerald-500/10 text-emerald-400' 
@@ -281,7 +330,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                 {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
                                 </span>
                             </td>
-                            <td className="py-4 px-6">
+                            <td className="py-4 px-6 align-top">
                                 <div className="flex items-center justify-end gap-2">
                                     <div className="flex bg-white/5 rounded-lg mr-2">
                                         <button 
@@ -336,7 +385,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                     );
                 }) : (
                     <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                        <td colSpan={7} className="py-12 text-center text-slate-500">
                             לא נמצאו תורים
                         </td>
                     </tr>
