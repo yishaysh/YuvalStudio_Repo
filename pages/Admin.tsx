@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket, 
   Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
   ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw
+  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
@@ -18,6 +18,33 @@ import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { calendarService } from '../services/calendarService';
 
 const m = motion as any;
+
+// --- Toast Component ---
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 4000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
+
+    return (
+        <m.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl backdrop-blur-md border ${
+                type === 'success' 
+                    ? 'bg-emerald-500/90 text-white border-emerald-400/50' 
+                    : 'bg-red-500/90 text-white border-red-400/50'
+            }`}
+        >
+            {type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            <span className="font-medium text-sm">{message}</span>
+            <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors">
+                <X className="w-4 h-4" />
+            </button>
+        </m.div>
+    );
+};
 
 // --- Helper Functions ---
 const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -468,12 +495,13 @@ const AppointmentsList = ({
     );
 };
 
-// --- Coupons Tab ---
+// ... CouponsTab, DashboardTab, CalendarTab, ServicesTab, GalleryTab, SettingsTab ...
+// Keeping other tabs components exactly as is since they don't contain alerts directly, except for confirm logic which is in handlers
+
 const CouponsTab = ({ settings, onUpdate }: any) => {
     const [coupons, setCoupons] = useState<Coupon[]>(settings.coupons || []);
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    // Sync when settings change
     useEffect(() => { setCoupons(settings.coupons || []); }, [settings.coupons]);
 
     const handleSilentSave = (newCoupons: Coupon[]) => {
@@ -496,17 +524,14 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
         handleSilentSave(newCoupons);
     };
 
-    // Update local state ONLY (prevents re-render jumps during typing)
     const updateLocal = (id: string, field: keyof Coupon, value: any) => {
         setCoupons(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
     };
 
-    // Trigger save to server (onBlur)
     const handleBlur = () => {
         handleSilentSave(coupons);
     };
 
-    // Immediate update and save (for Select/Toggle)
     const updateImmediate = (id: string, field: keyof Coupon, value: any) => {
         const newCoupons = coupons.map(c => c.id === id ? { ...c, [field]: value } : c);
         setCoupons(newCoupons);
@@ -628,7 +653,6 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
     );
 };
 
-// --- Dashboard Tab ---
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar }: any) => {
     return (
         <div className="space-y-6">
@@ -683,7 +707,6 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
     );
 };
 
-// --- Calendar Tab ---
 const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -711,7 +734,6 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[calc(100vh-200px)]">
-            {/* Calendar View */}
             <div className="flex-1 flex flex-col h-full bg-brand-surface/30 rounded-2xl border border-white/5 overflow-hidden">
                 <div className="flex items-center justify-between p-4 border-b border-white/5">
                     <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="p-2 hover:bg-white/5 rounded-full"><ChevronRight/></button>
@@ -735,7 +757,6 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                                 key={day} 
                                 onClick={() => {
                                     setSelectedDate(new Date(year, month, day));
-                                    // Scroll to appointments list on mobile
                                     if (window.innerWidth < 1024) {
                                         setTimeout(() => {
                                             appointmentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -759,14 +780,12 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                 </div>
             </div>
 
-            {/* Side Panel for Selected Day */}
             <div ref={appointmentsRef} className="w-full lg:w-96 bg-brand-surface rounded-2xl border border-white/5 flex flex-col h-full overflow-hidden">
                 <div className="p-4 border-b border-white/5 bg-brand-dark/50">
                     <h3 className="text-lg font-medium text-white">{selectedDate?.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                     <p className="text-sm text-slate-400">{selectedDateAppointments.length} תורים רשומים</p>
                 </div>
                 
-                {/* Replaced manual list with reusable AppointmentsList */}
                 <div className="flex-1 overflow-hidden">
                     <AppointmentsList 
                         appointments={selectedDateAppointments} 
@@ -785,8 +804,6 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
         </div>
     );
 };
-
-// ... ServicesTab, GalleryTab, SettingsTab, ConsentPdfTemplate ... (keeping them for brevity, assume they are unchanged or inserted below)
 
 const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -911,7 +928,6 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
                     <div key={item.id} className="relative group aspect-square rounded-xl overflow-hidden bg-brand-dark/50 border border-white/5">
                         <img src={item.image_url} alt="Gallery" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                         
-                        {/* Overlay Actions */}
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
                              <button 
                                 onClick={() => setTaggingImageId(item.id)}
@@ -927,7 +943,6 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
                             </button>
                         </div>
 
-                        {/* Tag Indicator */}
                         {item.taggedServices?.length > 0 && (
                             <div className="absolute top-2 right-2 w-6 h-6 bg-brand-primary text-brand-dark rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
                                 {item.taggedServices.length}
@@ -937,7 +952,6 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
                 ))}
             </div>
 
-            {/* Upload Modal */}
             <Modal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} title="העלאת תמונה">
                 <div className="space-y-4">
                     <Input label="כתובת תמונה (URL)" value={uploadUrl} onChange={e => setUploadUrl(e.target.value)} placeholder="https://..." />
@@ -945,7 +959,6 @@ const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateS
                 </div>
             </Modal>
 
-            {/* Tagging Modal */}
             <Modal isOpen={!!taggingImageId} onClose={() => setTaggingImageId(null)} title="תיוג מוצרים בתמונה">
                 <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {services.map((s: Service) => {
@@ -977,11 +990,10 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
     const handleSilentSave = () => { onUpdate(localSettings, true); };
     
-    // New helper to update state and trigger save silently
     const updateAndSaveWorkingHours = (newWorkingHours: any) => {
         const newSettings = { ...localSettings, working_hours: newWorkingHours };
         setLocalSettings(newSettings);
-        onUpdate(newSettings, true); // True for silent update
+        onUpdate(newSettings, true);
     };
 
     const toggleDay = (dayIndex: string) => {
@@ -1095,7 +1107,6 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             <Card>
                 <div className="flex justify-between items-center mb-6">
                     <SectionHeading title="שעות פעילות" />
-                    {/* Optional: Indicator that changes are saved */}
                 </div>
                 
                 <div className="space-y-4">
@@ -1174,7 +1185,6 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 };
 
 const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
-    // Extract ID from notes if present (simple regex)
     const extractId = (notes?: string) => {
         const match = notes?.match(/ת\.ז: (\d+)/);
         return match ? match[1] : null;
@@ -1204,7 +1214,6 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
             <div className="mb-8 text-sm leading-relaxed">
                 <h3 className="font-bold text-lg mb-4 underline">הצהרת הלקוח/ה:</h3>
                 
-                {/* Manual List using Paragraphs to avoid Bullet RTL Issues */}
                 <div className="space-y-3 text-justify">
                     <p>- אני מצהיר/ה כי אני מעל גיל 16, או מלווה ע"י הורה/אפוטרופוס חוקי שחתם על אישור זה.</p>
                     <p>- אני מצהיר/ה כי איני תחת השפעת אלכוהול או סמים.</p>
@@ -1246,6 +1255,7 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
 const Admin: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState(''); // New State for Login Error
     const [activeTab, setActiveTab] = useState('dashboard');
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [services, setServices] = useState<Service[]>([]);
@@ -1254,11 +1264,18 @@ const Admin: React.FC = () => {
     const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
     const [isLoading, setIsLoading] = useState(true);
     
+    // Toast Notification State
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
     // Filters & Modals
     const [filterId, setFilterId] = useState<string | null>(null);
     const [modalData, setModalData] = useState<{ isOpen: boolean, type: 'cancel' | null, item: any | null }>({ isOpen: false, type: null, item: null });
     const [pdfData, setPdfData] = useState<Appointment | null>(null);
     const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
+
+    const showNotification = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+    };
 
     const fetchData = useCallback(async (silent = false) => {
         if (!silent) setIsLoading(true);
@@ -1292,10 +1309,10 @@ const Admin: React.FC = () => {
             const duration = service ? service.duration_minutes : 30;
             
             await calendarService.syncAppointment(apt, duration);
-            alert(`האירוע עבור ${apt.client_name} סונכרן ליומן בהצלחה!`);
+            showNotification(`האירוע עבור ${apt.client_name} סונכרן ליומן בהצלחה!`, 'success');
         } catch (error: any) {
             console.error(error);
-            alert('שגיאה בסנכרון ליומן: ' + error.message);
+            showNotification('שגיאה בסנכרון ליומן: ' + error.message, 'error');
         }
     };
 
@@ -1316,15 +1333,16 @@ const Admin: React.FC = () => {
                 console.error(e);
             }
         }
-        alert(`סנכרון הסתיים.\nהצלחות: ${successCount}\nכישלונות: ${failCount}`);
+        showNotification(`סנכרון הסתיים. הצלחות: ${successCount}, כישלונות: ${failCount}`, failCount > 0 ? 'error' : 'success');
     };
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
+        setLoginError(''); // Clear previous error
         if (password === '2007') {
             setIsAuthenticated(true);
         } else {
-            alert('סיסמה שגויה');
+            setLoginError('סיסמה שגויה'); // Set error message
         }
     };
 
@@ -1367,7 +1385,7 @@ const Admin: React.FC = () => {
                     
                 } catch (err) { 
                     console.error("PDF Error:", err);
-                    alert("שגיאה ביצירת ה-PDF"); 
+                    showNotification("שגיאה ביצירת ה-PDF", 'error');
                 }
             }
             setPdfData(null);
@@ -1401,10 +1419,13 @@ const Admin: React.FC = () => {
                             label="סיסמה" 
                             type="password" 
                             value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
+                            onChange={(e) => { setPassword(e.target.value); setLoginError(''); }} 
                             autoFocus 
-                            className="text-center tracking-widest text-lg"
+                            className={`text-center tracking-widest text-lg ${loginError ? 'border-red-500/50 focus:border-red-500' : ''}`}
                         />
+                        {loginError && (
+                            <p className="text-red-400 text-sm text-center -mt-4">{loginError}</p>
+                        )}
                         <Button type="submit" className="w-full">התחבר</Button>
                     </form>
                 </Card>
@@ -1417,7 +1438,11 @@ const Admin: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-brand-dark pb-20 pt-24">
+        <div className="min-h-screen bg-brand-dark pb-20 pt-24 relative">
+            <AnimatePresence>
+                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+            </AnimatePresence>
+
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex flex-col gap-6 mb-10">
                     <div>

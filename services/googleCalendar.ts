@@ -1,3 +1,4 @@
+
 import { Appointment } from '../types';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -36,7 +37,7 @@ export const googleCalendarService = {
 
   login: () => {
     if (!CLIENT_ID) {
-      alert('חסר מזהה לקוח של גוגל (VITE_GOOGLE_CLIENT_ID)');
+      console.error('חסר מזהה לקוח של גוגל (VITE_GOOGLE_CLIENT_ID)');
       return;
     }
     if (googleCalendarService.tokenClient) {
@@ -47,7 +48,7 @@ export const googleCalendarService = {
       if (googleCalendarService.tokenClient) {
          googleCalendarService.tokenClient.requestAccessToken({ prompt: 'consent' });
       } else {
-         alert('רכיב ההתחברות של גוגל טרם נטען. אנא רענן את הדף.');
+         console.error('רכיב ההתחברות של גוגל טרם נטען. אנא רענן את הדף.');
       }
     }
   },
