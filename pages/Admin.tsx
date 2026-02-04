@@ -90,7 +90,7 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 
 // --- SHARED COMPONENTS ---
 
-const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf, showFilters = true }: any) => {
+const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filterId, onClearFilter, studioAddress, onDownloadPdf, showFilters = true, allServices = [] }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -153,19 +153,38 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
         return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortConfig.direction === 'asc' ? 'text-brand-primary' : 'text-brand-primary rotate-180'}`} />;
     };
 
-    // Helper to extract services from notes if available (hack for MVP data structure)
-    const getServicesList = (apt: any) => {
-        const services = [{ name: apt.service_name || 'שירות כללי' }];
-        
-        // Try to find "extras" in notes based on Booking.tsx format
+    // --- Enhanced Logic to Calculate Full Price including Extras ---
+    const getCalculatedData = (apt: any) => {
+        const servicesList = [];
+        let calculatedBasePrice = 0;
+
+        // 1. Add Primary Service
+        servicesList.push({ name: apt.service_name || 'שירות כללי' });
+        calculatedBasePrice += (apt.service_price || 0);
+
+        // 2. Parse Notes for Extras
         if (apt.notes && apt.notes.includes('תוספות:')) {
             const match = apt.notes.match(/תוספות: (.*?)(?:\n|$)/);
             if (match && match[1]) {
-                const extras = match[1].split(', ').map((s: string) => ({ name: s.trim() }));
-                services.push(...extras);
+                const extras = match[1].split(', ').map((s: string) => s.trim());
+                extras.forEach((extraName: string) => {
+                    servicesList.push({ name: extraName });
+                    // Find price in global services list
+                    const serviceObj = allServices.find((s: Service) => s.name === extraName);
+                    if (serviceObj) {
+                        calculatedBasePrice += serviceObj.price;
+                    }
+                });
             }
         }
-        return services;
+
+        // 3. Determine Final Price (Use stored final_price if available, otherwise calculated base)
+        const finalPrice = apt.final_price !== undefined ? apt.final_price : calculatedBasePrice;
+        
+        // 4. Calculate Discount
+        const discount = Math.max(0, calculatedBasePrice - finalPrice);
+
+        return { servicesList, calculatedBasePrice, finalPrice, discount };
     };
 
     return (
@@ -245,10 +264,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                 <tbody className="text-slate-300 divide-y divide-white/5">
                 {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
                     const isHighlighted = apt.id === filterId;
-                    const servicesList = getServicesList(apt);
-                    const basePrice = apt.service_price || 0;
-                    const finalPrice = apt.final_price !== undefined ? apt.final_price : basePrice;
-                    const discount = basePrice - finalPrice;
+                    const { servicesList, calculatedBasePrice, finalPrice, discount } = getCalculatedData(apt);
 
                     return (
                         <tr 
@@ -294,8 +310,8 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                     <div className="absolute top-full right-1/2 translate-x-1/2 mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-3 pointer-events-none text-right">
                                         <div className="text-xs space-y-2">
                                             <div className="flex justify-between text-slate-400">
-                                                <span>מחיר מחירון:</span>
-                                                <span>₪{basePrice}</span>
+                                                <span>שווי הזמנה כולל:</span>
+                                                <span className="line-through">₪{calculatedBasePrice}</span>
                                             </div>
                                             {discount > 0 && (
                                                 <div className="flex justify-between text-emerald-400">
@@ -558,7 +574,7 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
 };
 
 // --- Dashboard Tab ---
-const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings }: any) => {
+const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services }: any) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -604,6 +620,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                     onClearFilter={() => {}}
                     studioAddress={settings.studio_details.address}
                     onDownloadPdf={() => {}}
+                    allServices={services}
                 />
             </div>
         </div>
@@ -611,7 +628,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
 };
 
 // --- Calendar Tab ---
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf }: any) => {
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const appointmentsRef = useRef<HTMLDivElement>(null);
@@ -704,6 +721,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         studioAddress={studioAddress}
                         onDownloadPdf={onDownloadPdf}
                         showFilters={false}
+                        allServices={services}
                     />
                 </div>
             </div>
@@ -1341,8 +1359,8 @@ const Admin: React.FC = () => {
 
                 <AnimatePresence mode="wait">
                     <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} />}
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} />}
                         {activeTab === 'appointments' && (
                             <AppointmentsList 
                                 appointments={appointments} 
@@ -1352,6 +1370,7 @@ const Admin: React.FC = () => {
                                 onClearFilter={() => setFilterId(null)} 
                                 studioAddress={settings.studio_details?.address} 
                                 onDownloadPdf={handleDownloadPdf} 
+                                allServices={services}
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
