@@ -24,7 +24,7 @@ const getMeta = (category: string) => SERVICE_META[category] || { healing: 'מש
 
 /**
  * Compresses an image file to a max width of 800px and 0.7 quality jpeg.
- * Returns a Data URL string.
+ * This fixes URI_TOO_LONG errors by ensuring the base64 string is manageable.
  */
 const compressImage = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -48,6 +48,7 @@ const compressImage = async (file: File): Promise<string> => {
                 canvas.width = width;
                 canvas.height = height;
                 ctx?.drawImage(img, 0, 0, width, height);
+                // 0.7 Quality provides good balance for AI analysis without huge payload
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
             img.onerror = (err) => reject(err);
@@ -58,7 +59,7 @@ const compressImage = async (file: File): Promise<string> => {
 
 // --- Sub-Components ---
 
-// 1. Memoized Service Card
+// 1. Memoized Service Card (Prevents list re-renders)
 const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Service, isSelected: boolean, onClick: () => void }) => {
     const meta = getMeta(service.category);
     
@@ -442,7 +443,7 @@ const Booking: React.FC = () => {
       setCouponError(null);
   }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       
@@ -456,9 +457,9 @@ const Booking: React.FC = () => {
           console.error(err);
           setAiError("שגיאה בטעינת התמונה. נסה קובץ אחר.");
       }
-  };
+  }, []);
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = useCallback(async () => {
       if (!aiImage) return;
       setIsAnalyzing(true);
       setAiError(null);
@@ -475,9 +476,9 @@ const Booking: React.FC = () => {
       } finally {
           setIsAnalyzing(false);
       }
-  };
+  }, [aiImage]);
 
-  const handleApplyCoupon = async () => {
+  const handleApplyCoupon = useCallback(async () => {
       setCouponError(null);
       if (!couponCode) return;
       setIsCheckingCoupon(true);
@@ -494,7 +495,7 @@ const Booking: React.FC = () => {
       } finally {
           setIsCheckingCoupon(false);
       }
-  };
+  }, [couponCode, basePrice]);
 
   const isSlotValid = useCallback((startIndex: number) => {
       const slotsNeeded = Math.ceil(totalDuration / 30);
@@ -564,14 +565,14 @@ const Booking: React.FC = () => {
       }
   }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiRecommendation, appliedCoupon, finalPrice, totalDuration]);
 
-  const sendConfirmationWhatsapp = () => {
+  const sendConfirmationWhatsapp = useCallback(() => {
       if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
       const phone = studioSettings?.studio_details.phone || DEFAULT_STUDIO_DETAILS.phone;
       const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '972');
       const serviceNames = selectedServices.map(s => s.name).join(' + ');
       const msg = `*היי, קבעתי תור באתר!* 👋\n\n*שם:* ${formData.name}\n*טיפול:* ${serviceNames}\n*תאריך:* ${selectedDate.toLocaleDateString('he-IL')}\n*שעה:* ${selectedSlot}\n\nאשמח לאישור סופי. תודה! 🙏`;
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-  };
+  }, [selectedServices, selectedDate, selectedSlot, formData, studioSettings]);
 
   const categories = useMemo(() => [{ id: 'All', label: 'הכל' }, { id: 'Ear', label: 'אוזניים' }, { id: 'Face', label: 'פנים' }, { id: 'Body', label: 'גוף' }], []);
   const showBottomBar = (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
