@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, ScanLine } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -11,7 +11,7 @@ import { aiStylistService } from '../services/aiStylistService';
 
 const m = motion as any;
 
-// --- Helper Data & Components ---
+// --- Helper Utilities ---
 
 const SERVICE_META: Record<string, { healing: string }> = {
     'Ear': { healing: '4-8 שבועות' },
@@ -22,14 +22,48 @@ const SERVICE_META: Record<string, { healing: string }> = {
 
 const getMeta = (category: string) => SERVICE_META[category] || { healing: 'משתנה' };
 
-// --- Memoized Service Card for Performance ---
-// Extracting this prevents the entire list from re-rendering when one item changes
+/**
+ * Compresses an image file to a max width of 800px and 0.7 quality jpeg.
+ * Returns a Data URL string.
+ */
+const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const maxWidth = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx?.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+};
+
+// --- Sub-Components ---
+
+// 1. Memoized Service Card
 const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Service, isSelected: boolean, onClick: () => void }) => {
     const meta = getMeta(service.category);
     
     return (
         <m.div 
-            // Removed 'layout' prop to improve performance
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             onClick={onClick} 
@@ -37,7 +71,6 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
         >
             <div className="flex h-full">
                 <div className="w-32 shrink-0 relative overflow-hidden bg-brand-dark/50">
-                    {/* Lazy loading and placeholder logic via simple bg color */}
                     <img 
                         src={service.image_url} 
                         alt={service.name} 
@@ -72,7 +105,40 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
     );
 });
 
-// --- Signature Pad Component ---
+// 2. Scanning Animation Overlay
+const ScanningOverlay = () => (
+    <div className="absolute inset-0 z-20 pointer-events-none rounded-2xl overflow-hidden">
+        {/* Grid Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
+        
+        {/* Moving Laser Line */}
+        <m.div 
+            initial={{ top: "-10%" }}
+            animate={{ top: "110%" }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.8)] opacity-90"
+        />
+
+        {/* Pulsating Radial Overlay */}
+        <m.div 
+            animate={{ opacity: [0, 0.4, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay"
+        />
+
+        {/* Status Badge */}
+        <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+            <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-brand-primary/40 flex items-center gap-3 shadow-lg">
+                <BrainCircuit className="w-4 h-4 text-brand-primary animate-pulse" />
+                <span className="text-brand-primary text-xs font-mono uppercase tracking-widest animate-pulse">
+                    AI Structure Analysis...
+                </span>
+            </div>
+        </div>
+    </div>
+);
+
+// 3. Signature Pad
 const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => void }> = ({ onSave, onClear }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -92,14 +158,10 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
         const canvas = canvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
-        
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-
-        let clientX = 0;
-        let clientY = 0;
-
+        let clientX = 0, clientY = 0;
         if ('touches' in e) {
              clientX = e.touches[0].clientX;
              clientY = e.touches[0].clientY;
@@ -107,21 +169,15 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
              clientX = (e as React.MouseEvent).clientX;
              clientY = (e as React.MouseEvent).clientY;
         }
-
-        return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
-        };
+        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
     };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
         setIsDrawing(true);
         const { x, y } = getCoordinates(e);
         const ctx = canvasRef.current?.getContext('2d');
-        if (ctx) {
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        }
+        ctx?.beginPath();
+        ctx?.moveTo(x, y);
     };
 
     const draw = (e: React.MouseEvent | React.TouchEvent) => {
@@ -139,21 +195,18 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     const stopDrawing = () => {
         if (isDrawing) {
             setIsDrawing(false);
-            const canvas = canvasRef.current;
-            if (canvas) {
-                onSave(canvas.toDataURL());
-            }
+            onSave(canvasRef.current?.toDataURL() || '');
         }
     };
 
     const clearCanvas = () => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.beginPath();
-        onClear();
+        const ctx = canvas?.getContext('2d');
+        if (ctx && canvas) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            onClear();
+        }
     };
 
     return (
@@ -171,14 +224,8 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
                     onTouchEnd={stopDrawing}
                     onTouchMove={draw}
                     className="w-full h-[150px] cursor-crosshair touch-none"
-                    style={{ touchAction: 'none' }}
                 />
-                <button 
-                    onClick={clearCanvas}
-                    type="button"
-                    className="absolute top-2 left-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                    title="נקה חתימה"
-                >
+                <button onClick={clearCanvas} type="button" className="absolute top-2 left-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
                     <Eraser className="w-4 h-4" />
                 </button>
             </div>
@@ -187,51 +234,16 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     );
 };
 
-interface TicketSummaryProps {
-  selectedServices: Service[];
-  selectedDate: Date | null;
-  selectedSlot: string | null;
-  totalDuration: number;
-  appliedCoupon: Coupon | null;
-  couponCode: string;
-  couponError: string | null;
-  isCheckingCoupon: boolean;
-  discountAmount: number;
-  finalPrice: number;
-  step: BookingStep;
-  readOnly?: boolean;
-  aiRecommendation?: string | null;
-  onToggleService: (s: Service) => void;
-  onSetCouponCode: (code: string) => void;
-  onApplyCoupon: () => void;
-  onClearCoupon: () => void;
-}
-
-const TicketSummary: React.FC<TicketSummaryProps> = ({
-  selectedServices,
-  selectedDate,
-  selectedSlot,
-  totalDuration,
-  appliedCoupon,
-  couponCode,
-  couponError,
-  isCheckingCoupon,
-  discountAmount,
-  finalPrice,
-  step,
-  readOnly = false,
-  aiRecommendation,
-  onToggleService,
-  onSetCouponCode,
-  onApplyCoupon,
-  onClearCoupon
+// 4. Ticket Summary
+const TicketSummary: React.FC<any> = ({
+  selectedServices, selectedDate, selectedSlot, totalDuration, appliedCoupon, couponCode, couponError, isCheckingCoupon, discountAmount, finalPrice, step, readOnly, aiRecommendation, onToggleService, onSetCouponCode, onApplyCoupon, onClearCoupon
 }) => {
   return (
       <div className="p-6 space-y-6">
-        <div className={`transition-all duration-500 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
+        <div className={`transition-opacity duration-300 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">טיפולים שנבחרו</div>
             <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
-                {selectedServices.length > 0 ? selectedServices.map((s, idx) => (
+                {selectedServices.length > 0 ? selectedServices.map((s: Service, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-sm">
                         <span className="text-white truncate max-w-[150px]">{s.name}</span>
                         <div className="flex items-center gap-2">
@@ -254,14 +266,13 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                 <div className="flex items-center gap-2 text-brand-primary text-xs font-bold uppercase mb-2">
                     <Sparkles className="w-3 h-3"/> המלצת הסטייליסט
                 </div>
-                <div className="text-[10px] text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-wrap">
-                    {aiRecommendation}
-                </div>
+                <div className="text-[10px] text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-wrap">{aiRecommendation}</div>
             </div>
         )}
 
         <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
-        <div className={`transition-all duration-500 ${selectedDate && selectedSlot ? 'opacity-100' : 'opacity-30'}`}>
+        
+        <div className={`transition-opacity duration-300 ${selectedDate && selectedSlot ? 'opacity-100' : 'opacity-30'}`}>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">מועד התור</div>
             <div className="font-medium text-white text-lg">{selectedDate ? selectedDate.toLocaleDateString('he-IL', {day:'numeric', month:'long'}) : '---'}</div>
             <div className="text-slate-300 flex justify-between">
@@ -269,6 +280,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                 <span className="text-xs text-slate-500 mt-1">({totalDuration} דק')</span>
             </div>
         </div>
+        
         <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
         
         <div className="space-y-3">
@@ -279,9 +291,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                          <span className="text-sm text-brand-primary font-medium">{appliedCoupon.code}</span>
                      </div>
                      {!readOnly && (
-                         <button onClick={onClearCoupon} className="text-slate-500 hover:text-white">
-                             <X className="w-4 h-4" />
-                         </button>
+                         <button onClick={onClearCoupon} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
                      )}
                  </div>
              ) : (
@@ -289,7 +299,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                      <input 
                          type="text" 
                          placeholder="קוד קופון" 
-                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase disabled:opacity-50"
                          value={couponCode}
                          onChange={(e) => onSetCouponCode(e.target.value)}
                          disabled={readOnly || selectedServices.length === 0}
@@ -297,7 +307,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                      <button 
                         onClick={onApplyCoupon}
                         disabled={readOnly || !couponCode || isCheckingCoupon || selectedServices.length === 0}
-                        className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50"
                      >
                          {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'הפעל'}
                      </button>
@@ -322,43 +332,43 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
   );
 };
 
+// --- Main Component ---
+
 const Booking: React.FC = () => {
+  // State
   const [step, setStep] = useState<BookingStep>(BookingStep.SELECT_SERVICE);
   const [services, setServices] = useState<Service[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
-  
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  
   const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', nationalId: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   
-  // AI Stylist State
+  // AI State
   const [aiImage, setAiImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
-
-  const datePickerRef = useRef<HTMLInputElement>(null);
   const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const datePickerRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
-  // --- Initial Data Fetch ---
+  // --- Initialization ---
   useEffect(() => {
     const init = async () => {
         try {
@@ -389,81 +399,12 @@ const Booking: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
 
-  // --- Performance: Memoize Filtered Services ---
+  // --- Memoized Values ---
   const filteredServices = useMemo(() => {
       if (activeCategory === 'All') return services;
       return services.filter(s => s.category === activeCategory);
   }, [activeCategory, services]);
 
-  // --- Logic: Reset Slot on Date Change ---
-  useEffect(() => {
-      setSelectedSlot(null);
-      if (selectedDate) {
-          setIsLoadingSlots(true);
-          api.getAvailability(selectedDate).then((slots) => {
-              setAvailableSlots(slots);
-              setIsLoadingSlots(false);
-          });
-      }
-  }, [selectedDate]);
-
-  // --- Performance: Callback for Toggling Services ---
-  const toggleService = useCallback((service: Service) => {
-      setSelectedServices(prev => {
-          const exists = prev.find(s => s.id === service.id);
-          if (exists) {
-              return prev.filter(s => s.id !== service.id);
-          } else {
-              return [...prev, service];
-          }
-      });
-      
-      // Clear coupon when cart changes to force re-validation
-      setAppliedCoupon(null);
-      setCouponCode('');
-      setCouponError(null);
-  }, []);
-
-  // --- AI Logic ---
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      
-      // Simple client-side size check (2MB limit)
-      if (file.size > 2 * 1024 * 1024) {
-          setAiError("התמונה גדולה מדי (מקסימום 2MB). אנא נסה תמונה קטנה יותר.");
-          return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-          setAiImage(reader.result as string);
-          setAiError(null);
-          setAiRecommendation(null);
-      };
-      reader.readAsDataURL(file);
-  };
-
-  const handleAnalyze = async () => {
-      if (!aiImage) return;
-      setIsAnalyzing(true);
-      setAiError(null);
-      
-      try {
-          // Strip Base64 prefix to ensure clean payload
-          const cleanBase64 = aiImage.replace(/^data:image\/\w+;base64,/, "");
-          
-          const result = await aiStylistService.analyzeEar(cleanBase64);
-          setAiRecommendation(result);
-      } catch (err: any) {
-          console.error("Analysis Failed:", err);
-          setAiError(err.message || "אירעה שגיאה בניתוח התמונה. נסה שוב או העלה תמונה ברורה יותר.");
-      } finally {
-          setIsAnalyzing(false);
-      }
-  };
-
-  // --- Pricing Logic ---
   const totalDuration = useMemo(() => selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0), [selectedServices]);
   const basePrice = useMemo(() => selectedServices.reduce((acc, s) => acc + s.price, 0), [selectedServices]);
 
@@ -476,6 +417,67 @@ const Booking: React.FC = () => {
   }, [basePrice, appliedCoupon]);
 
   const discountAmount = basePrice - finalPrice;
+
+  // --- Handlers ---
+  
+  // Date Change Handler (Auto-Reset Slot)
+  useEffect(() => {
+      setSelectedSlot(null);
+      if (selectedDate) {
+          setIsLoadingSlots(true);
+          api.getAvailability(selectedDate).then((slots) => {
+              setAvailableSlots(slots);
+              setIsLoadingSlots(false);
+          });
+      }
+  }, [selectedDate]);
+
+  const toggleService = useCallback((service: Service) => {
+      setSelectedServices(prev => {
+          const exists = prev.find(s => s.id === service.id);
+          if (exists) return prev.filter(s => s.id !== service.id);
+          return [...prev, service];
+      });
+      // Reset coupon
+      setAppliedCoupon(null);
+      setCouponCode('');
+      setCouponError(null);
+  }, []);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      try {
+          // Compress immediately for performance and strict payload sizing
+          const compressedDataUrl = await compressImage(file);
+          setAiImage(compressedDataUrl);
+          setAiError(null);
+          setAiRecommendation(null);
+      } catch (err) {
+          console.error(err);
+          setAiError("שגיאה בטעינת התמונה. נסה קובץ אחר.");
+      }
+  };
+
+  const handleAnalyze = async () => {
+      if (!aiImage) return;
+      setIsAnalyzing(true);
+      setAiError(null);
+      
+      try {
+          // Strip prefix before sending to avoid double-processing or "URI Too Long" in certain contexts
+          // The service now expects a CLEAN base64 string
+          const cleanBase64 = aiImage.split(',')[1];
+          const result = await aiStylistService.analyzeEar(cleanBase64);
+          setAiRecommendation(result);
+      } catch (err: any) {
+          console.error("Analysis Failed:", err);
+          setAiError(err.message || "אירעה שגיאה בניתוח התמונה.");
+      } finally {
+          setIsAnalyzing(false);
+      }
+  };
 
   const handleApplyCoupon = async () => {
       setCouponError(null);
@@ -496,19 +498,15 @@ const Booking: React.FC = () => {
       }
   };
 
-  // --- Slot Validation Logic ---
   const isSlotValid = useCallback((startIndex: number) => {
       const slotsNeeded = Math.ceil(totalDuration / 30);
-      
       if (startIndex + slotsNeeded > availableSlots.length) return false;
-      
       for (let i = 0; i < slotsNeeded; i++) {
           if (!availableSlots[startIndex + i]?.available) return false;
       }
       return true;
   }, [availableSlots, totalDuration]);
 
-  // --- Memoize Calendar Generation ---
   const calendarDays = useMemo(() => {
       const today = new Date();
       const days = [];
@@ -523,8 +521,7 @@ const Booking: React.FC = () => {
       return days.slice(0, 14);
   }, [studioSettings]);
 
-  // --- Booking Submission ---
-  const handleBook = async () => {
+  const handleBook = useCallback(async () => {
       if(selectedServices.length === 0 || !selectedDate || !selectedSlot || !signatureData) return;
       setIsSubmitting(true);
       
@@ -535,16 +532,10 @@ const Booking: React.FC = () => {
       const primaryService = selectedServices[0];
       const otherServices = selectedServices.slice(1);
       
-      // Consolidate Notes
+      // Notes Construction
       let finalNotes = formData.notes;
-      if (formData.nationalId) {
-          finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
-      }
-      
-      if (aiRecommendation) {
-          finalNotes += `\n\n--- AI Stylist Recommendation ---\n${aiRecommendation}`;
-      }
-
+      if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
+      if (aiRecommendation) finalNotes += `\n\n--- AI Stylist Recommendation ---\n${aiRecommendation}`;
       if (otherServices.length > 0) {
           finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
       }
@@ -573,7 +564,7 @@ const Booking: React.FC = () => {
       } finally {
           setIsSubmitting(false);
       }
-  };
+  }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiRecommendation, appliedCoupon, finalPrice, totalDuration]);
 
   const sendConfirmationWhatsapp = () => {
       if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
@@ -593,6 +584,7 @@ const Booking: React.FC = () => {
             <div className="flex flex-col lg:flex-row gap-8 relative items-start">
                 
                 <div className="flex-1 w-full z-10">
+                    {/* Header */}
                     <div className="mb-4">
                         <h1 className="text-4xl font-serif text-white mb-2">
                             {step === BookingStep.SELECT_SERVICE && 'בחירת טיפול'}
@@ -613,7 +605,7 @@ const Booking: React.FC = () => {
                         </p>
                     </div>
 
-                    {/* Mobile Summary Dropdown - Improved positioning */}
+                    {/* Mobile Summary - Fixed Z-Index */}
                     {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
                         <div className="lg:hidden mb-6 relative z-50">
                             <button 
@@ -727,38 +719,7 @@ const Booking: React.FC = () => {
                                         <div className="space-y-6">
                                             <div className="relative w-full max-w-md mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black">
                                                 <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
-                                                
-                                                {/* Advanced AI Scanning Overlay */}
-                                                {isAnalyzing && (
-                                                    <div className="absolute inset-0 z-20 pointer-events-none">
-                                                        {/* Grid Overlay */}
-                                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
-                                                        
-                                                        {/* Scanning Laser Line */}
-                                                        <m.div 
-                                                            initial={{ top: "-10%" }}
-                                                            animate={{ top: "110%" }}
-                                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                                            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.8)] opacity-80"
-                                                        />
-
-                                                        {/* Pulsating Overlay */}
-                                                        <m.div 
-                                                            animate={{ opacity: [0, 0.3, 0] }}
-                                                            transition={{ duration: 2, repeat: Infinity }}
-                                                            className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay"
-                                                        />
-
-                                                        {/* Status Badge */}
-                                                        <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-                                                            <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-brand-primary/40 flex items-center gap-3 shadow-lg">
-                                                                <BrainCircuit className="w-4 h-4 text-brand-primary animate-pulse" />
-                                                                <span className="text-brand-primary text-xs font-mono uppercase tracking-widest animate-pulse">Structure Analysis...</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-
+                                                {isAnalyzing && <ScanningOverlay />}
                                                 <button onClick={() => { setAiImage(null); setAiRecommendation(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
                                                     <X className="w-4 h-4" />
                                                 </button>
