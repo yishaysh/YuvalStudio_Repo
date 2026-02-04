@@ -156,6 +156,7 @@ interface TicketSummaryProps {
   discountAmount: number;
   finalPrice: number;
   step: BookingStep;
+  readOnly?: boolean;
   
   onToggleService: (s: Service) => void;
   onSetCouponCode: (code: string) => void;
@@ -175,6 +176,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
   discountAmount,
   finalPrice,
   step,
+  readOnly = false,
   onToggleService,
   onSetCouponCode,
   onApplyCoupon,
@@ -190,7 +192,7 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                         <span className="text-white truncate max-w-[150px]">{s.name}</span>
                         <div className="flex items-center gap-2">
                             <span className="text-brand-primary">₪{s.price}</span>
-                            {step === BookingStep.SELECT_SERVICE && (
+                            {step === BookingStep.SELECT_SERVICE && !readOnly && (
                                 <button onClick={(e) => { e.stopPropagation(); onToggleService(s); }} className="text-red-400 hover:text-red-300">
                                     <Trash2 className="w-3 h-3"/>
                                 </button>
@@ -221,30 +223,32 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
                          <Ticket className="w-4 h-4 text-brand-primary" />
                          <span className="text-sm text-brand-primary font-medium">{appliedCoupon.code}</span>
                      </div>
-                     <button onClick={onClearCoupon} className="text-slate-500 hover:text-white">
-                         <X className="w-4 h-4" />
-                     </button>
+                     {!readOnly && (
+                         <button onClick={onClearCoupon} className="text-slate-500 hover:text-white">
+                             <X className="w-4 h-4" />
+                         </button>
+                     )}
                  </div>
              ) : (
                  <div className="flex gap-2">
                      <input 
                          type="text" 
                          placeholder="קוד קופון" 
-                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase"
+                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase disabled:opacity-50 disabled:cursor-not-allowed"
                          value={couponCode}
                          onChange={(e) => onSetCouponCode(e.target.value)}
-                         disabled={selectedServices.length === 0}
+                         disabled={readOnly || selectedServices.length === 0}
                      />
                      <button 
                         onClick={onApplyCoupon}
-                        disabled={!couponCode || isCheckingCoupon || selectedServices.length === 0}
-                        className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50"
+                        disabled={readOnly || !couponCode || isCheckingCoupon || selectedServices.length === 0}
+                        className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                      >
                          {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'הפעל'}
                      </button>
                  </div>
              )}
-             {couponError && <p className="text-xs text-red-400">{couponError}</p>}
+             {couponError && !readOnly && <p className="text-xs text-red-400">{couponError}</p>}
         </div>
 
         <div>
@@ -581,6 +585,7 @@ const Booking: React.FC = () => {
                                                 discountAmount={discountAmount}
                                                 finalPrice={finalPrice}
                                                 step={step}
+                                                readOnly={step === BookingStep.CONFIRMATION}
                                                 onToggleService={toggleService}
                                                 onSetCouponCode={setCouponCode}
                                                 onApplyCoupon={handleApplyCoupon}
@@ -831,6 +836,7 @@ const Booking: React.FC = () => {
                                 discountAmount={discountAmount}
                                 finalPrice={finalPrice}
                                 step={step}
+                                readOnly={step === BookingStep.CONFIRMATION}
                                 onToggleService={toggleService}
                                 onSetCouponCode={setCouponCode}
                                 onApplyCoupon={handleApplyCoupon}
