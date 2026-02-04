@@ -231,7 +231,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                 type="date" 
                                 value={dateRange.start}
                                 onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
+                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full min-w-0"
                             />
                         </div>
                         <div className="flex flex-col gap-1 flex-1">
@@ -240,7 +240,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                 type="date" 
                                 value={dateRange.end}
                                 onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
+                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full min-w-0"
                             />
                         </div>
                     </div>
