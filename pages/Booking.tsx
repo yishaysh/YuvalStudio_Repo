@@ -652,9 +652,11 @@ const Booking: React.FC = () => {
                                             <p className="text-slate-400 text-sm mb-8 max-w-sm">העלה תמונה ברורה של האוזן שלך וקבל המלצות סטיילינג מותאמות אישית מהבינה המלאכותית שלנו.</p>
                                             
                                             <div className="flex gap-4">
+                                                {/* ADDED capture="user" and accept="image/*" for mobile camera */}
                                                 <input 
                                                     type="file" 
                                                     accept="image/*" 
+                                                    capture="user"
                                                     className="hidden" 
                                                     ref={fileInputRef} 
                                                     onChange={handleImageUpload} 
@@ -713,6 +715,7 @@ const Booking: React.FC = () => {
                                                             </m.div>
                                                         )}
                                                         
+                                                        {/* Analyze Button - Visible only when image is present and not analyzing */}
                                                         {!isAnalyzing && (
                                                             <Button onClick={handleAnalyze} className="w-full py-4 text-lg shadow-xl shadow-brand-primary/20 gap-2">
                                                                 <Wand2 className="w-5 h-5"/> נתח וקבל המלצות
