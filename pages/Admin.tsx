@@ -1,20 +1,20 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { api } from '../services/mockApi';
-import { Card, Button, Input, ConfirmationModal, Modal, SectionHeading } from '../components/ui';
-import { Appointment, Service, StudioSettings, Coupon } from '../types';
-import { DEFAULT_STUDIO_DETAILS } from '../constants';
-import { 
-  Activity, Calendar as CalendarIcon, DollarSign, 
-  Lock, Check, X, Clock, Plus, 
-  Trash2, Image as ImageIcon, Settings as SettingsIcon, Edit2, Send, Filter, ChevronRight, ChevronLeft, Loader2, FileText, Tag, ArrowUpDown, Ticket,
-  Users, Info
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket, 
+  Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
+  ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
+  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock
+} from 'lucide-react';
+import { api } from '../services/mockApi';
+import { Appointment, Service, StudioSettings, Coupon } from '../types';
+import { Button, Card, Input, Modal, ConfirmationModal, SectionHeading } from '../components/ui';
 // @ts-ignore
 import { jsPDF } from 'jspdf';
 // @ts-ignore
 import html2canvas from 'html2canvas';
+import { DEFAULT_STUDIO_DETAILS } from '../constants';
 
 const m = motion as any;
 
@@ -209,13 +209,13 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
         <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
             {/* Filter Bar */}
             {showFilters && (
-                <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-wrap gap-4 items-end">
-                    <div className="flex flex-col gap-1">
+                <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-col sm:flex-row sm:flex-wrap gap-4 items-end">
+                    <div className="flex flex-col gap-1 w-full sm:w-auto">
                         <label className="text-xs text-slate-400">סטטוס</label>
                         <select 
                             value={statusFilter} 
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
+                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
                         >
                             <option value="all">הכל</option>
                             <option value="pending">ממתין</option>
@@ -223,23 +223,26 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                             <option value="cancelled">בוטל</option>
                         </select>
                     </div>
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-400">מתאריך</label>
-                        <input 
-                            type="date" 
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
-                        />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-400">עד תאריך</label>
-                        <input 
-                            type="date" 
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50"
-                        />
+
+                    <div className="flex flex-row gap-2 w-full sm:w-auto">
+                        <div className="flex flex-col gap-1 flex-1">
+                            <label className="text-xs text-slate-400">מתאריך</label>
+                            <input 
+                                type="date" 
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1 flex-1">
+                            <label className="text-xs text-slate-400">עד תאריך</label>
+                            <input 
+                                type="date" 
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
+                            />
+                        </div>
                     </div>
                     
                     {/* Clear Filters */}
@@ -1355,12 +1358,12 @@ const Admin: React.FC = () => {
                         <div className="flex flex-row items-center gap-2 p-1 bg-brand-surface/50 rounded-xl min-w-max">
                             {[
                                 { id: 'dashboard', icon: Activity, label: 'ראשי' },
-                                { id: 'calendar', icon: CalendarIcon, label: 'יומן' },
+                                { id: 'calendar', icon: Calendar, label: 'יומן' },
                                 { id: 'appointments', icon: Filter, label: 'ניהול תורים' }, // Restored Tab
                                 { id: 'services', icon: Edit2, label: 'שירותים' },
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
                                 { id: 'coupons', icon: Ticket, label: 'קופונים' },
-                                { id: 'settings', icon: SettingsIcon, label: 'הגדרות' }
+                                { id: 'settings', icon: Settings, label: 'הגדרות' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
