@@ -219,7 +219,7 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                     <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('created_at')}>
                         נוצר ב <SortIcon column="created_at" />
                     </th>
-                    <th className="py-4 px-6 font-medium whitespace-nowrap">שירות</th>
+                    <th className="py-4 px-6 font-medium whitespace-nowrap">שירות ומחיר</th>
                     <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('status')}>
                         סטטוס <SortIcon column="status" />
                     </th>
@@ -247,10 +247,28 @@ const AppointmentsList = ({ appointments, onStatusUpdate, onCancelRequest, filte
                                 {apt.created_at ? new Date(apt.created_at).toLocaleDateString('he-IL') : '-'}
                             </td>
                             <td className="py-4 px-6">
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-white/5 border border-white/10 whitespace-nowrap">
-                                {apt.service_name || 'שירות כללי'}
-                                </span>
-                                {apt.notes && <div className="text-xs text-brand-primary mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>}
+                                <div className="flex flex-col items-start gap-1">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-white/5 border border-white/10 whitespace-nowrap">
+                                        {apt.service_name || 'שירות כללי'}
+                                    </span>
+                                    
+                                    {/* Price & Coupon Display */}
+                                    <div className="flex items-center gap-2 text-xs mt-0.5">
+                                        {apt.coupon_code ? (
+                                            <>
+                                                <span className="text-slate-500 line-through">₪{apt.service_price}</span>
+                                                <span className="text-emerald-400 font-bold">₪{apt.final_price}</span>
+                                                <span className="flex items-center gap-1 bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded text-[10px] border border-brand-primary/20" title="קוד קופון">
+                                                    <Ticket className="w-3 h-3" /> {apt.coupon_code}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="text-slate-400">₪{apt.service_price || 0}</span>
+                                        )}
+                                    </div>
+
+                                    {apt.notes && <div className="text-xs text-slate-500 mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>}
+                                </div>
                             </td>
                             <td className="py-4 px-6">
                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
