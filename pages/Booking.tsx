@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, ScanLine, BrainCircuit } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, ScanLine } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -11,7 +11,8 @@ import { aiStylistService } from '../services/aiStylistService';
 
 const m = motion as any;
 
-// --- Local Data Enhancements ---
+// --- Helper Data & Components ---
+
 const SERVICE_META: Record<string, { healing: string }> = {
     'Ear': { healing: '4-8 שבועות' },
     'Face': { healing: '2-4 חודשים' },
@@ -20,6 +21,56 @@ const SERVICE_META: Record<string, { healing: string }> = {
 };
 
 const getMeta = (category: string) => SERVICE_META[category] || { healing: 'משתנה' };
+
+// --- Memoized Service Card for Performance ---
+// Extracting this prevents the entire list from re-rendering when one item changes
+const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Service, isSelected: boolean, onClick: () => void }) => {
+    const meta = getMeta(service.category);
+    
+    return (
+        <m.div 
+            // Removed 'layout' prop to improve performance
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={onClick} 
+            className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-200 group h-32 ${isSelected ? 'border-brand-primary bg-brand-primary/10 shadow-[0_0_15px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}
+        >
+            <div className="flex h-full">
+                <div className="w-32 shrink-0 relative overflow-hidden bg-brand-dark/50">
+                    {/* Lazy loading and placeholder logic via simple bg color */}
+                    <img 
+                        src={service.image_url} 
+                        alt={service.name} 
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
+                    <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors" />
+                    {isSelected && <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center"><Check className="w-8 h-8 text-brand-primary drop-shadow-md"/></div>}
+                </div>
+                <div className="flex-1 p-4 flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                        <h3 className={`font-medium text-base sm:text-lg leading-tight ${isSelected ? 'text-brand-primary' : 'text-white'}`}>{service.name}</h3>
+                        <span className="text-brand-primary font-serif font-bold">₪{service.price}</span>
+                    </div>
+                    <div className="flex items-end justify-between mt-1">
+                        <div className="text-xs text-slate-400 space-y-0.5">
+                            <div className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {service.duration_minutes} דק'</div>
+                            <div className="flex items-center gap-1.5"><Droplets className="w-3 h-3" /> {meta.healing}</div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-widest">כאב ({service.pain_level || 1})</span>
+                            <div className="flex gap-0.5">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                                    <div key={i} className={`w-0.5 sm:w-1 h-2 sm:h-3 rounded-full ${i <= (service.pain_level || 1) ? 'bg-brand-primary' : 'bg-white/10'}`} />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </m.div>
+    );
+});
 
 // --- Signature Pad Component ---
 const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => void }> = ({ onSave, onClear }) => {
@@ -274,7 +325,6 @@ const TicketSummary: React.FC<TicketSummaryProps> = ({
 const Booking: React.FC = () => {
   const [step, setStep] = useState<BookingStep>(BookingStep.SELECT_SERVICE);
   const [services, setServices] = useState<Service[]>([]);
-  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
@@ -308,21 +358,28 @@ const Booking: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // --- Initial Data Fetch ---
   useEffect(() => {
     const init = async () => {
-        const fetchedServices = await api.getServices();
-        setServices(fetchedServices);
-        setFilteredServices(fetchedServices);
-        setStudioSettings(await api.getSettings());
+        try {
+            const [fetchedServices, fetchedSettings] = await Promise.all([
+                api.getServices(),
+                api.getSettings()
+            ]);
+            setServices(fetchedServices);
+            setStudioSettings(fetchedSettings);
 
-        if (location.state && location.state.preSelectedServices) {
-            const preSelected = location.state.preSelectedServices as Service[];
-            const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
-            if (validPreSelected.length > 0) {
-                setSelectedServices(validPreSelected);
-                setStep(BookingStep.AI_STYLIST);
+            if (location.state && location.state.preSelectedServices) {
+                const preSelected = location.state.preSelectedServices as Service[];
+                const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
+                if (validPreSelected.length > 0) {
+                    setSelectedServices(validPreSelected);
+                    setStep(BookingStep.AI_STYLIST);
+                }
+                window.history.replaceState({}, document.title);
             }
-            window.history.replaceState({}, document.title);
+        } catch (e) {
+            console.error("Failed to initialize booking:", e);
         }
     };
     init();
@@ -332,18 +389,15 @@ const Booking: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
 
-  useEffect(() => {
-      if (activeCategory === 'All') {
-          setFilteredServices(services);
-      } else {
-          setFilteredServices(services.filter(s => s.category === activeCategory));
-      }
+  // --- Performance: Memoize Filtered Services ---
+  const filteredServices = useMemo(() => {
+      if (activeCategory === 'All') return services;
+      return services.filter(s => s.category === activeCategory);
   }, [activeCategory, services]);
 
+  // --- Logic: Reset Slot on Date Change ---
   useEffect(() => {
-      // Logic Fix: Reset slot when date changes to prevent booking invalid slots
       setSelectedSlot(null);
-      
       if (selectedDate) {
           setIsLoadingSlots(true);
           api.getAvailability(selectedDate).then((slots) => {
@@ -353,26 +407,34 @@ const Booking: React.FC = () => {
       }
   }, [selectedDate]);
 
-  const toggleService = (service: Service) => {
-      const exists = selectedServices.find(s => s.id === service.id);
-      if (exists) {
-          setSelectedServices(selectedServices.filter(s => s.id !== service.id));
-      } else {
-          setSelectedServices([...selectedServices, service]);
-      }
-      // Clear coupon on cart change to re-validate amounts if needed, or keep logic simpler
-      if (appliedCoupon) {
-          setAppliedCoupon(null);
-          setCouponCode('');
-          setCouponError(null);
-      }
-  };
+  // --- Performance: Callback for Toggling Services ---
+  const toggleService = useCallback((service: Service) => {
+      setSelectedServices(prev => {
+          const exists = prev.find(s => s.id === service.id);
+          if (exists) {
+              return prev.filter(s => s.id !== service.id);
+          } else {
+              return [...prev, service];
+          }
+      });
+      
+      // Clear coupon when cart changes to force re-validation
+      setAppliedCoupon(null);
+      setCouponCode('');
+      setCouponError(null);
+  }, []);
 
-  // --- AI Logic Refactor ---
+  // --- AI Logic ---
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       
+      // Simple client-side size check (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+          setAiError("התמונה גדולה מדי (מקסימום 2MB). אנא נסה תמונה קטנה יותר.");
+          return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
           setAiImage(reader.result as string);
@@ -388,9 +450,7 @@ const Booking: React.FC = () => {
       setAiError(null);
       
       try {
-          // Clean the base64 string to ensure no prefix is sent if not needed by specific service logic,
-          // though modern services often handle Data URIs. We strip it here to be safe and optimize payload.
-          // Note: The service might re-compress, but sending lighter string is better.
+          // Strip Base64 prefix to ensure clean payload
           const cleanBase64 = aiImage.replace(/^data:image\/\w+;base64,/, "");
           
           const result = await aiStylistService.analyzeEar(cleanBase64);
@@ -403,18 +463,18 @@ const Booking: React.FC = () => {
       }
   };
 
-  const totalDuration = selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0);
-  const basePrice = selectedServices.reduce((acc, s) => acc + s.price, 0);
+  // --- Pricing Logic ---
+  const totalDuration = useMemo(() => selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0), [selectedServices]);
+  const basePrice = useMemo(() => selectedServices.reduce((acc, s) => acc + s.price, 0), [selectedServices]);
 
-  const calculateTotal = () => {
+  const finalPrice = useMemo(() => {
       if (!appliedCoupon) return basePrice;
       let discount = appliedCoupon.discountType === 'percentage' 
           ? basePrice * (appliedCoupon.value / 100) 
           : appliedCoupon.value;
       return Math.round(Math.max(0, basePrice - discount));
-  };
+  }, [basePrice, appliedCoupon]);
 
-  const finalPrice = calculateTotal();
   const discountAmount = basePrice - finalPrice;
 
   const handleApplyCoupon = async () => {
@@ -436,22 +496,20 @@ const Booking: React.FC = () => {
       }
   };
 
-  // --- Booking Logic Fix ---
-  const isSlotValid = (startIndex: number) => {
-      // 1. Calculate how many 30-min slots are needed based on duration
+  // --- Slot Validation Logic ---
+  const isSlotValid = useCallback((startIndex: number) => {
       const slotsNeeded = Math.ceil(totalDuration / 30);
       
-      // 2. Boundary Check
       if (startIndex + slotsNeeded > availableSlots.length) return false;
       
-      // 3. Check CONSECUTIVE availability
       for (let i = 0; i < slotsNeeded; i++) {
           if (!availableSlots[startIndex + i]?.available) return false;
       }
       return true;
-  };
+  }, [availableSlots, totalDuration]);
 
-  const generateCalendarDays = () => {
+  // --- Memoize Calendar Generation ---
+  const calendarDays = useMemo(() => {
       const today = new Date();
       const days = [];
       const workingHours = studioSettings?.working_hours || DEFAULT_WORKING_HOURS;
@@ -463,8 +521,9 @@ const Booking: React.FC = () => {
           if (dayConfig && dayConfig.isOpen) days.push(d);
       }
       return days.slice(0, 14);
-  };
+  }, [studioSettings]);
 
+  // --- Booking Submission ---
   const handleBook = async () => {
       if(selectedServices.length === 0 || !selectedDate || !selectedSlot || !signatureData) return;
       setIsSubmitting(true);
@@ -476,7 +535,7 @@ const Booking: React.FC = () => {
       const primaryService = selectedServices[0];
       const otherServices = selectedServices.slice(1);
       
-      // --- Consolidate Notes ---
+      // Consolidate Notes
       let finalNotes = formData.notes;
       if (formData.nationalId) {
           finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
@@ -491,15 +550,13 @@ const Booking: React.FC = () => {
       }
       finalNotes += `\n[חתם על הצהרת בריאות]`;
 
-      // --- Calculate End Time ---
-      // Add duration in ms
       const endTime = new Date(date.getTime() + totalDuration * 60000).toISOString();
 
       try {
         await api.createAppointment({
             service_id: primaryService.id,
             start_time: date.toISOString(),
-            // @ts-ignore - Assuming api supports it based on instructions
+            // @ts-ignore
             end_time: endTime, 
             client_name: formData.name,
             client_phone: formData.phone,
@@ -527,7 +584,7 @@ const Booking: React.FC = () => {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const categories = [{ id: 'All', label: 'הכל' }, { id: 'Ear', label: 'אוזניים' }, { id: 'Face', label: 'פנים' }, { id: 'Body', label: 'גוף' }];
+  const categories = useMemo(() => [{ id: 'All', label: 'הכל' }, { id: 'Ear', label: 'אוזניים' }, { id: 'Face', label: 'פנים' }, { id: 'Body', label: 'גוף' }], []);
   const showBottomBar = (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
 
   return (
@@ -556,7 +613,7 @@ const Booking: React.FC = () => {
                         </p>
                     </div>
 
-                    {/* Mobile Summary Dropdown - Refactored for better Z-Index handling */}
+                    {/* Mobile Summary Dropdown - Improved positioning */}
                     {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
                         <div className="lg:hidden mb-6 relative z-50">
                             <button 
@@ -584,7 +641,7 @@ const Booking: React.FC = () => {
                                         initial={{ opacity: 0, height: 0, y: -10 }}
                                         animate={{ opacity: 1, height: 'auto', y: 0 }}
                                         exit={{ opacity: 0, height: 0, y: -10 }}
-                                        className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden shadow-2xl rounded-xl"
+                                        className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[70] overflow-hidden shadow-2xl rounded-xl"
                                     >
                                         <div className="bg-brand-surface border border-white/10 rounded-xl">
                                             <TicketSummary 
@@ -613,7 +670,7 @@ const Booking: React.FC = () => {
                         </div>
                     )}
 
-                    <AnimatePresence mode="wait">
+                    <AnimatePresence mode="wait" initial={false}>
                         {step === BookingStep.SELECT_SERVICE && (
                             <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -622,41 +679,14 @@ const Booking: React.FC = () => {
                                     ))}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {filteredServices.map((service) => {
-                                        const meta = getMeta(service.category);
-                                        const isSelected = selectedServices.some(s => s.id === service.id);
-                                        return (
-                                            <m.div layout key={service.id} onClick={() => toggleService(service)} className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 group ${isSelected ? 'border-brand-primary bg-brand-primary/10 shadow-[0_0_30px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}>
-                                                <div className="flex h-32">
-                                                    <div className="w-32 shrink-0 relative overflow-hidden">
-                                                        <img src={service.image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                                        <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors" />
-                                                        {isSelected && <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center"><Check className="w-8 h-8 text-brand-primary drop-shadow-md"/></div>}
-                                                    </div>
-                                                    <div className="flex-1 p-4 flex flex-col justify-between">
-                                                        <div className="flex justify-between items-start">
-                                                            <h3 className={`font-medium text-lg ${isSelected ? 'text-brand-primary' : 'text-white'}`}>{service.name}</h3>
-                                                            <span className="text-brand-primary font-serif font-bold">₪{service.price}</span>
-                                                        </div>
-                                                        <div className="flex items-end justify-between mt-2">
-                                                            <div className="text-xs text-slate-400 space-y-1">
-                                                                <div className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {service.duration_minutes} דקות</div>
-                                                                <div className="flex items-center gap-1.5"><Droplets className="w-3 h-3" /> החלמה: {meta.healing}</div>
-                                                            </div>
-                                                            <div className="flex flex-col items-end gap-1">
-                                                                <span className="text-[10px] text-slate-500 uppercase tracking-widest">רמת כאב ({service.pain_level || 1})</span>
-                                                                <div className="flex gap-1">
-                                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                                                                        <div key={i} className={`w-1 h-3 rounded-full transition-all ${i <= (service.pain_level || 1) ? 'bg-brand-primary shadow-[0_0_8px_rgba(212,181,133,0.6)]' : 'bg-white/10'}`} />
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </m.div>
-                                        );
-                                    })}
+                                    {filteredServices.map((service) => (
+                                        <ServiceCard 
+                                            key={service.id} 
+                                            service={service} 
+                                            isSelected={selectedServices.some(s => s.id === service.id)} 
+                                            onClick={() => toggleService(service)} 
+                                        />
+                                    ))}
                                 </div>
                             </m.div>
                         )}
@@ -668,7 +698,6 @@ const Booking: React.FC = () => {
                                     
                                     {!aiImage ? (
                                         <div className="py-12 flex flex-col items-center">
-                                            {/* Made clickable wrapper for image upload */}
                                             <div 
                                                 onClick={() => fileInputRef.current?.click()}
                                                 className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30 cursor-pointer hover:bg-brand-primary/20 transition-all hover:scale-105 active:scale-95"
@@ -680,7 +709,6 @@ const Booking: React.FC = () => {
                                             <p className="text-slate-400 text-sm mb-8 max-w-sm">העלה תמונה ברורה של האוזן שלך וקבל המלצות סטיילינג מותאמות אישית מהבינה המלאכותית שלנו.</p>
                                             
                                             <div className="flex gap-4">
-                                                {/* ADDED capture="user" and accept="image/*" for mobile camera */}
                                                 <input 
                                                     type="file" 
                                                     accept="image/*" 
@@ -697,44 +725,35 @@ const Booking: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="space-y-6">
-                                            <div className="relative w-full max-w-md mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl">
+                                            <div className="relative w-full max-w-md mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black">
                                                 <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
                                                 
-                                                {/* HIGH-END SCANNING ANIMATION OVERLAY */}
+                                                {/* Advanced AI Scanning Overlay */}
                                                 {isAnalyzing && (
-                                                    <div className="absolute inset-0 bg-brand-dark/40 z-20 overflow-hidden">
+                                                    <div className="absolute inset-0 z-20 pointer-events-none">
+                                                        {/* Grid Overlay */}
+                                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
+                                                        
                                                         {/* Scanning Laser Line */}
                                                         <m.div 
-                                                            initial={{ top: 0 }}
-                                                            animate={{ top: "100%" }}
-                                                            transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                                                            className="absolute left-0 right-0 h-1 bg-brand-primary shadow-[0_0_25px_rgba(212,181,133,1)] z-30"
+                                                            initial={{ top: "-10%" }}
+                                                            animate={{ top: "110%" }}
+                                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                                            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.8)] opacity-80"
                                                         />
-                                                        
-                                                        {/* Grid Overlay for 3D Mapping effect */}
-                                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:30px_30px] opacity-20 z-10" />
 
-                                                        {/* Radar/Sonar Pulse from Center */}
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <m.div
-                                                                animate={{ scale: [0.5, 1.5], opacity: [0.8, 0] }}
-                                                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
-                                                                className="w-32 h-32 rounded-full border border-brand-primary/50"
-                                                            />
-                                                            <m.div
-                                                                animate={{ scale: [0.5, 1.5], opacity: [0.8, 0] }}
-                                                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
-                                                                className="w-32 h-32 rounded-full border border-brand-primary/50 absolute"
-                                                            />
-                                                        </div>
+                                                        {/* Pulsating Overlay */}
+                                                        <m.div 
+                                                            animate={{ opacity: [0, 0.3, 0] }}
+                                                            transition={{ duration: 2, repeat: Infinity }}
+                                                            className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay"
+                                                        />
 
-                                                        {/* Status Label */}
-                                                        <div className="absolute bottom-10 left-0 right-0 text-center z-30">
-                                                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/70 backdrop-blur-md rounded-full border border-brand-primary/40">
+                                                        {/* Status Badge */}
+                                                        <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+                                                            <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-brand-primary/40 flex items-center gap-3 shadow-lg">
                                                                 <BrainCircuit className="w-4 h-4 text-brand-primary animate-pulse" />
-                                                                <span className="text-brand-primary text-xs font-mono uppercase tracking-widest animate-pulse">
-                                                                    AI Analyzing Structure...
-                                                                </span>
+                                                                <span className="text-brand-primary text-xs font-mono uppercase tracking-widest animate-pulse">Structure Analysis...</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -763,7 +782,6 @@ const Booking: React.FC = () => {
                                                     </m.div>
                                                 ) : (
                                                     <div className="space-y-4">
-                                                        {/* Error Message Display */}
                                                         {aiError && (
                                                             <m.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
                                                                 <p className="font-bold mb-1">שגיאה בניתוח</p>
@@ -771,7 +789,6 @@ const Booking: React.FC = () => {
                                                             </m.div>
                                                         )}
                                                         
-                                                        {/* Analyze Button - Visible only when image is present and not analyzing */}
                                                         {!isAnalyzing && (
                                                             <Button onClick={handleAnalyze} className="w-full py-4 text-lg shadow-xl shadow-brand-primary/20 gap-2">
                                                                 <Wand2 className="w-5 h-5"/> נתח וקבל המלצות
@@ -786,7 +803,6 @@ const Booking: React.FC = () => {
                             </m.div>
                         )}
 
-                        {/* ... Rest of steps ... */}
                         {step === BookingStep.SELECT_DATE && (
                             <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                 <div className="space-y-4">
@@ -799,7 +815,7 @@ const Booking: React.FC = () => {
                                         <input type="date" ref={datePickerRef} className="invisible absolute" min={new Date().toISOString().split('T')[0]} onChange={(e) => { if(e.target.valueAsDate) { setSelectedDate(e.target.valueAsDate); } }} />
                                     </div>
                                     <div className="flex gap-3 overflow-x-auto pb-4">
-                                        {generateCalendarDays().map((date, i) => {
+                                        {calendarDays.map((date, i) => {
                                             const isSelected = selectedDate?.toDateString() === date.toDateString();
                                             return (
                                                 <button key={i} onClick={() => { setSelectedDate(date); }} className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all shrink-0 ${isSelected ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'}`}>
