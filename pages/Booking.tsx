@@ -143,6 +143,126 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     );
 };
 
+// --- Separate Ticket Summary Component (Fixes Focus Issue) ---
+interface TicketSummaryProps {
+  selectedServices: Service[];
+  selectedDate: Date | null;
+  selectedSlot: string | null;
+  totalDuration: number;
+  appliedCoupon: Coupon | null;
+  couponCode: string;
+  couponError: string | null;
+  isCheckingCoupon: boolean;
+  discountAmount: number;
+  finalPrice: number;
+  step: BookingStep;
+  
+  onToggleService: (s: Service) => void;
+  onSetCouponCode: (code: string) => void;
+  onApplyCoupon: () => void;
+  onClearCoupon: () => void;
+}
+
+const TicketSummary: React.FC<TicketSummaryProps> = ({
+  selectedServices,
+  selectedDate,
+  selectedSlot,
+  totalDuration,
+  appliedCoupon,
+  couponCode,
+  couponError,
+  isCheckingCoupon,
+  discountAmount,
+  finalPrice,
+  step,
+  onToggleService,
+  onSetCouponCode,
+  onApplyCoupon,
+  onClearCoupon
+}) => {
+  return (
+      <div className="p-6 space-y-6">
+        <div className={`transition-all duration-500 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">טיפולים שנבחרו</div>
+            <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
+                {selectedServices.length > 0 ? selectedServices.map((s, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                        <span className="text-white truncate max-w-[150px]">{s.name}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-brand-primary">₪{s.price}</span>
+                            {step === BookingStep.SELECT_SERVICE && (
+                                <button onClick={(e) => { e.stopPropagation(); onToggleService(s); }} className="text-red-400 hover:text-red-300">
+                                    <Trash2 className="w-3 h-3"/>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )) : (
+                    <div className="text-slate-600 italic">לא נבחרו טיפולים</div>
+                )}
+            </div>
+        </div>
+        <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
+        <div className={`transition-all duration-500 ${selectedDate && selectedSlot ? 'opacity-100' : 'opacity-30'}`}>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">מועד התור</div>
+            <div className="font-medium text-white text-lg">{selectedDate ? selectedDate.toLocaleDateString('he-IL', {day:'numeric', month:'long'}) : '---'}</div>
+            <div className="text-slate-300 flex justify-between">
+                <span>{selectedSlot || '--:--'}</span>
+                <span className="text-xs text-slate-500 mt-1">({totalDuration} דק')</span>
+            </div>
+        </div>
+        <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
+        
+        {/* COUPON SECTION */}
+        <div className="space-y-3">
+             {appliedCoupon ? (
+                 <div className="flex justify-between items-center bg-brand-primary/10 p-2 rounded-lg border border-brand-primary/20">
+                     <div className="flex items-center gap-2">
+                         <Ticket className="w-4 h-4 text-brand-primary" />
+                         <span className="text-sm text-brand-primary font-medium">{appliedCoupon.code}</span>
+                     </div>
+                     <button onClick={onClearCoupon} className="text-slate-500 hover:text-white">
+                         <X className="w-4 h-4" />
+                     </button>
+                 </div>
+             ) : (
+                 <div className="flex gap-2">
+                     <input 
+                         type="text" 
+                         placeholder="קוד קופון" 
+                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase"
+                         value={couponCode}
+                         onChange={(e) => onSetCouponCode(e.target.value)}
+                         disabled={selectedServices.length === 0}
+                     />
+                     <button 
+                        onClick={onApplyCoupon}
+                        disabled={!couponCode || isCheckingCoupon || selectedServices.length === 0}
+                        className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50"
+                     >
+                         {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'הפעל'}
+                     </button>
+                 </div>
+             )}
+             {couponError && <p className="text-xs text-red-400">{couponError}</p>}
+        </div>
+
+        <div>
+            {appliedCoupon && (
+                <div className="flex justify-between items-end mb-1">
+                     <span className="text-slate-400 text-xs">הנחה</span>
+                     <span className="text-sm text-brand-primary">-₪{discountAmount}</span>
+                </div>
+            )}
+            <div className="flex justify-between items-end">
+                <span className="text-slate-400 text-sm">סה"כ לתשלום</span>
+                <span className="text-3xl font-serif text-white">₪{finalPrice}</span>
+            </div>
+        </div>
+    </div>
+  );
+};
+
 const Booking: React.FC = () => {
   const [step, setStep] = useState<BookingStep>(BookingStep.SELECT_SERVICE);
   const [services, setServices] = useState<Service[]>([]);
@@ -390,90 +510,6 @@ const Booking: React.FC = () => {
   const showBottomBar = 
     (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || 
     (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
-    
-  // Reusable Ticket Summary Content (Render Function)
-  // Converted from component to function to prevent unmounting/focus loss on re-render
-  const renderTicketContent = () => (
-      <div className="p-6 space-y-6">
-        <div className={`transition-all duration-500 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
-            <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">טיפולים שנבחרו</div>
-            <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
-                {selectedServices.length > 0 ? selectedServices.map((s, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-sm">
-                        <span className="text-white truncate max-w-[150px]">{s.name}</span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-brand-primary">₪{s.price}</span>
-                            {step === BookingStep.SELECT_SERVICE && (
-                                <button onClick={(e) => { e.stopPropagation(); toggleService(s); }} className="text-red-400 hover:text-red-300">
-                                    <Trash2 className="w-3 h-3"/>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )) : (
-                    <div className="text-slate-600 italic">לא נבחרו טיפולים</div>
-                )}
-            </div>
-        </div>
-        <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
-        <div className={`transition-all duration-500 ${selectedDate && selectedSlot ? 'opacity-100' : 'opacity-30'}`}>
-            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">מועד התור</div>
-            <div className="font-medium text-white text-lg">{selectedDate ? selectedDate.toLocaleDateString('he-IL', {day:'numeric', month:'long'}) : '---'}</div>
-            <div className="text-slate-300 flex justify-between">
-                <span>{selectedSlot || '--:--'}</span>
-                <span className="text-xs text-slate-500 mt-1">({totalDuration} דק')</span>
-            </div>
-        </div>
-        <div className="w-full h-[1px] bg-white/10 border-t border-dashed border-white/20"></div>
-        
-        {/* COUPON SECTION */}
-        <div className="space-y-3">
-             {appliedCoupon ? (
-                 <div className="flex justify-between items-center bg-brand-primary/10 p-2 rounded-lg border border-brand-primary/20">
-                     <div className="flex items-center gap-2">
-                         <Ticket className="w-4 h-4 text-brand-primary" />
-                         <span className="text-sm text-brand-primary font-medium">{appliedCoupon.code}</span>
-                     </div>
-                     <button onClick={() => { setAppliedCoupon(null); setCouponCode(''); }} className="text-slate-500 hover:text-white">
-                         <X className="w-4 h-4" />
-                     </button>
-                 </div>
-             ) : (
-                 <div className="flex gap-2">
-                     <input 
-                         type="text" 
-                         placeholder="קוד קופון" 
-                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase"
-                         value={couponCode}
-                         onChange={(e) => setCouponCode(e.target.value)}
-                         disabled={selectedServices.length === 0}
-                     />
-                     <button 
-                        onClick={handleApplyCoupon}
-                        disabled={!couponCode || isCheckingCoupon || selectedServices.length === 0}
-                        className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50"
-                     >
-                         {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'הפעל'}
-                     </button>
-                 </div>
-             )}
-             {couponError && <p className="text-xs text-red-400">{couponError}</p>}
-        </div>
-
-        <div>
-            {appliedCoupon && (
-                <div className="flex justify-between items-end mb-1">
-                     <span className="text-slate-400 text-xs">הנחה</span>
-                     <span className="text-sm text-brand-primary">-₪{discountAmount}</span>
-                </div>
-            )}
-            <div className="flex justify-between items-end">
-                <span className="text-slate-400 text-sm">סה"כ לתשלום</span>
-                <span className="text-3xl font-serif text-white">₪{finalPrice}</span>
-            </div>
-        </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-brand-dark pt-24 pb-32 lg:pb-12">
@@ -533,7 +569,23 @@ const Booking: React.FC = () => {
                                         className="overflow-hidden"
                                     >
                                         <div className="mt-2 bg-brand-surface border border-white/5 rounded-xl shadow-xl">
-                                            {renderTicketContent()}
+                                            <TicketSummary 
+                                                selectedServices={selectedServices}
+                                                selectedDate={selectedDate}
+                                                selectedSlot={selectedSlot}
+                                                totalDuration={totalDuration}
+                                                appliedCoupon={appliedCoupon}
+                                                couponCode={couponCode}
+                                                couponError={couponError}
+                                                isCheckingCoupon={isCheckingCoupon}
+                                                discountAmount={discountAmount}
+                                                finalPrice={finalPrice}
+                                                step={step}
+                                                onToggleService={toggleService}
+                                                onSetCouponCode={setCouponCode}
+                                                onApplyCoupon={handleApplyCoupon}
+                                                onClearCoupon={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                                            />
                                         </div>
                                     </m.div>
                                 )}
@@ -767,7 +819,23 @@ const Booking: React.FC = () => {
                                 <h2 className="text-brand-dark font-serif font-bold text-xl relative z-10">סיכום הזמנה</h2>
                                 <div className="text-brand-dark/70 text-xs font-medium uppercase tracking-widest relative z-10">Yuval Studio</div>
                             </div>
-                            {renderTicketContent()}
+                            <TicketSummary 
+                                selectedServices={selectedServices}
+                                selectedDate={selectedDate}
+                                selectedSlot={selectedSlot}
+                                totalDuration={totalDuration}
+                                appliedCoupon={appliedCoupon}
+                                couponCode={couponCode}
+                                couponError={couponError}
+                                isCheckingCoupon={isCheckingCoupon}
+                                discountAmount={discountAmount}
+                                finalPrice={finalPrice}
+                                step={step}
+                                onToggleService={toggleService}
+                                onSetCouponCode={setCouponCode}
+                                onApplyCoupon={handleApplyCoupon}
+                                onClearCoupon={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                            />
                             <div className="bg-brand-dark h-3 w-full relative">
                                 <div className="absolute -top-3 w-full h-3 bg-[radial-gradient(circle,transparent_50%,#1e293b_50%)] bg-[length:12px_12px] rotate-180"></div>
                             </div>
