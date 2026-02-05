@@ -389,8 +389,7 @@ const Booking: React.FC = () => {
             setServices(fetchedServices);
             setStudioSettings(fetchedSettings);
             
-            // Check for AI Setting (Assuming it might be added to studio_details or root)
-            // For now, we default to true, but if the API returns a flag, we use it.
+            // Check for AI Setting
             const aiSetting = (fetchedSettings as any).enable_ai;
             setIsAiEnabled(aiSetting !== false);
 
@@ -607,23 +606,19 @@ const Booking: React.FC = () => {
       // Serialize Visual Plan for Admin
       if (isAiEnabled && aiResult && aiImage) {
           const visualPlan = {
-              original_image: aiImage, // Base64 could be heavy, ideally this would be an uploaded URL
+              original_image: aiImage, 
               recommendations: aiResult.recommendations.map(rec => ({
                   jewelry_id: rec.jewelry_id,
                   x: rec.x,
                   y: rec.y,
-                  location: rec.location
+                  location: rec.location,
+                  description: rec.description
               })),
               selected_items: selectedJewelry.map(j => j.id)
           };
           
-          // Stringify the JSON plan into the recommendation text field for admin parsing
-          // We also include readable text in notes
-          const planString = JSON.stringify(visualPlan);
-          
           finalNotes += `\n\n--- AI Stylist Plan ---\n`;
           finalNotes += selectedJewelry.map(j => `+ ${j.name} (${j.category}) - ₪${j.price}`).join('\n');
-          finalNotes += `\n\n(Visual Plan Data embedded in AI field)`;
       }
 
       if (selectedServices.length > 1) {
@@ -646,9 +641,8 @@ const Booking: React.FC = () => {
             signature: signatureData,
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
             final_price: finalPrice,
-            // Pass the serialized plan if AI was used, else null
             ai_recommendation_text: (isAiEnabled && aiResult && aiImage) ? JSON.stringify({
-                original_image: aiImage, // Warning: Large payload if full base64
+                original_image: aiImage,
                 recommendations: aiResult.recommendations,
                 selected_items: selectedJewelry
             }) : undefined
@@ -819,13 +813,17 @@ const Booking: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="space-y-6">
-                                            <div className="relative w-full max-w-md mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black">
-                                                <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
-                                                {isAnalyzing && <ScanningOverlay />}
+                                            {/* Container wrapper for positioning */}
+                                            <div className="relative w-full max-w-md mx-auto aspect-[3/4]">
+                                                {/* Image Layer - Clipped for rounded corners */}
+                                                <div className="absolute inset-0 rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black">
+                                                    <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
+                                                    {isAnalyzing && <ScanningOverlay />}
+                                                </div>
                                                 
-                                                {/* Visual Jewelry Try-On Overlays */}
+                                                {/* Visual Jewelry Try-On Overlays - Unclipped to allow popups to overflow */}
                                                 {!isAnalyzing && aiResult && (
-                                                    <div className="absolute inset-0" onClick={() => setActiveHotspot(null)}>
+                                                    <div className="absolute inset-0 z-20" onClick={() => setActiveHotspot(null)}>
                                                         {aiResult.recommendations.map((rec, i) => {
                                                             const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
                                                             if (!jewelry) return null;
