@@ -123,24 +123,6 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
-	// חישוב מחיר כולל (שירותים + תכשיטים)
-	const totalPrice = useMemo(() => {
-		const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
-		const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
-		
-		let total = servicesSum + jewelrySum;
-		
-		// החלת קופון אם קיים
-		if (appliedCoupon) {
-			if (appliedCoupon.discountType === 'percentage') {
-				total -= (total * appliedCoupon.value) / 100;
-			} else {
-				total -= appliedCoupon.value;
-			}
-		}
-		
-		return Math.max(0, total);
-	}, [selectedServices, selectedJewelry, appliedCoupon]);
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -361,7 +343,7 @@ const Booking: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
-  const [selectedJewelry, setSelectedJewelry] = useState<any[]>([]); // New state for AI selections
+  const [selectedJewelry, setSelectedJewelry] = useState<any[]>([]); 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
@@ -379,7 +361,9 @@ const Booking: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [activeHotspot, setActiveHotspot] = useState<number | null>(null);
+  
+  // Renamed state variable to match user request
+  const [selectedRecommendation, setSelectedRecommendation] = useState<number | null>(null);
   
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -546,7 +530,7 @@ const Booking: React.FC = () => {
           setAiImage(compressedDataUrl);
           setAiError(null);
           setAiResult(null);
-          setActiveHotspot(null);
+          setSelectedRecommendation(null);
           setSelectedJewelry([]); 
       } catch (err) {
           console.error(err);
@@ -621,53 +605,54 @@ const Booking: React.FC = () => {
       return days.slice(0, 14);
   }, [studioSettings]);
 
-	  const handleBook = useCallback(async () => {
-			// 1. הגדרת המשתנים מתוך ה-State הקיים
-			const service = selectedServices[0]; // לוקח את השירות הראשון שנבחר
-			const visualPlanString = JSON.stringify({
-				original_image: aiResult?.original_image,
-				recommendations: aiResult?.recommendations,
-				selected_items: selectedJewelry.map(j => j.id)
-			});
+  const handleBook = useCallback(async () => {
+      // 1. הגדרת המשתנים מתוך ה-State הקיים
+      const service = selectedServices[0]; // לוקח את השירות הראשון שנבחר
+      const visualPlanString = JSON.stringify({
+          original_image: aiResult?.original_image || aiImage,
+          recommendations: aiResult?.recommendations,
+          selected_items: selectedJewelry.map(j => j.id)
+      });
 
-			// 2. חישוב מחיר סופי (כולל תכשיטים וקופון)
-			const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
-			const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
-			let total = servicesSum + jewelrySum;
-			if (appliedCoupon) {
-				if (appliedCoupon.discountType === 'percentage') total -= (total * appliedCoupon.value) / 100;
-				else total -= appliedCoupon.value;
-			}
-			const finalPriceToSave = Math.max(0, total);
+      // 2. חישוב מחיר סופי (כולל תכשיטים וקופון) - Duplicate logic for safety in payload construction
+      const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
+      const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
+      let total = servicesSum + jewelrySum;
+      if (appliedCoupon) {
+          if (appliedCoupon.discountType === 'percentage') total -= (total * appliedCoupon.value) / 100;
+          else total -= appliedCoupon.value;
+      }
+      const finalPriceToSave = Math.max(0, total);
 
-			setIsSubmitting(true);
-			
-			// חישוב זמן סיום (ברירת מחדל 30 דקות אם אין שירות)
-			const duration = service?.duration_minutes || 30;
-			const endTime = new Date(selectedDate!.getTime() + duration * 60000).toISOString();
+      setIsSubmitting(true);
+      
+      // חישוב זמן סיום (ברירת מחדל 30 דקות אם אין שירות)
+      const duration = service?.duration_minutes || 30;
+      const endTime = new Date(selectedDate!.getTime() + duration * 60000).toISOString();
 
-			try {
-				await api.createAppointment({
-					service_id: service?.id || 'combined',
-					start_time: selectedDate!.toISOString(),
-					end_time: endTime,
-					client_name: formData.name,
-					client_phone: formData.phone,
-					client_email: formData.email,
-					notes: formData.notes,
-					signature: signatureData!,
-					coupon_code: appliedCoupon?.code,
-					final_price: finalPriceToSave,
-					visual_plan: visualPlanString
-				});
-				
-				setStep(BookingStep.CONFIRMATION);
-			} catch (error) {
-				console.error("Booking error:", error);
-			} finally {
-				setIsSubmitting(false);
-			}
-		}, [selectedServices, selectedDate, formData, signatureData, appliedCoupon, aiResult, selectedJewelry, setStep]);
+      try {
+          await api.createAppointment({
+              service_id: service?.id || 'combined',
+              start_time: selectedDate!.toISOString(),
+              end_time: endTime,
+              client_name: formData.name,
+              client_phone: formData.phone,
+              client_email: formData.email,
+              notes: formData.notes,
+              signature: signatureData!,
+              coupon_code: appliedCoupon?.code,
+              final_price: finalPriceToSave,
+              visual_plan: visualPlanString,
+              ai_recommendation_text: visualPlanString // Ensure backward compatibility for admin
+          });
+          
+          setStep(BookingStep.CONFIRMATION);
+      } catch (error) {
+          console.error("Booking error:", error);
+      } finally {
+          setIsSubmitting(false);
+      }
+  }, [selectedServices, selectedDate, formData, signatureData, appliedCoupon, aiResult, selectedJewelry, setStep, aiImage]);
 
   const sendConfirmationWhatsapp = useCallback(() => {
       if ((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot) return;
@@ -837,7 +822,7 @@ const Booking: React.FC = () => {
                                                 
                                                 {/* Visual Jewelry Try-On Overlays - Unclipped to allow popups to overflow */}
                                                 {!isAnalyzing && aiResult && (
-                                                    <div className="absolute inset-0 z-20" onClick={() => setActiveHotspot(null)}>
+                                                    <div className="absolute inset-0 z-20" onClick={() => setSelectedRecommendation(null)}>
                                                         {aiResult.recommendations.map((rec, i) => {
                                                             const jewelry = jewelryCatalog.find(j => j.id === rec.jewelry_id);
                                                             if (!jewelry) return null;
@@ -854,66 +839,60 @@ const Booking: React.FC = () => {
                                                                 >
                                                                     {/* Jewelry Render Marker - using actual image */}
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); setActiveHotspot(i); }}
-                                                                        className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${activeHotspot === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
+                                                                        onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(i); }}
+                                                                        className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${selectedRecommendation === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
                                                                     >
                                                                         <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
-                                                                        {!activeHotspot && activeHotspot !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
+                                                                        {!selectedRecommendation && selectedRecommendation !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
                                                                     </button>
                                                                     
-                                                                    {/* Tooltip Popup */}
-																	<AnimatePresence>
-																	  {activeRecommendation === index && (
-																		<m.div
-																		  initial={{ opacity: 0, scale: 0.9, y: 10 }}
-																		  animate={{ opacity: 1, scale: 1, y: 0 }}
-																		  exit={{ opacity: 0, scale: 0.9, y: 10 }}
-																		  className="absolute z-[100] min-w-[220px] bg-black/95 backdrop-blur-xl border border-brand-primary/30 p-4 rounded-2xl shadow-2xl pointer-events-auto"
-																		  style={{
-																			bottom: 'calc(100% + 15px)', // מעל הנקודה
-																			// לוגיקת צדדים: אם מעל 70% מהרוחב - הצמד לימין (ייפתח שמאלה), אחרת הצמד לשמאל (ייפתח ימינה)
-																			left: rec.x > 70 ? 'auto' : '0',
-																			right: rec.x > 70 ? '0' : 'auto',
-																		  }}
-																		>
-																		  <div className="relative">
-																			{/* חץ קטן שזז לפי הצד */}
-																			<div 
-																			  className="absolute -bottom-5 w-4 h-4 bg-black/95 border-r border-b border-brand-primary/30 rotate-45"
-																			  style={{
-																				left: rec.x > 70 ? 'auto' : '15px',
-																				right: rec.x > 70 ? '15px' : 'auto'
-																			  }}
-																			/>
-																			
-																			<div className="flex items-start gap-3">
-																			  <div className="w-12 h-12 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex-shrink-0 overflow-hidden">
-																				{JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.image_url ? (
-																				  <img 
-																					src={JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.image_url} 
-																					className="w-full h-full object-cover"
-																					alt=""
-																				  />
-																				) : (
-																				  <Sparkles className="w-full h-full p-3 text-brand-primary" />
-																				)}
-																			  </div>
-																			  <div className="flex-1 text-right">
-																				<h4 className="text-white font-bold text-sm">
-																				  {JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.name || 'תכשיט מומלץ'}
-																				</h4>
-																				<p className="text-brand-primary font-mono text-xs mt-0.5">
-																				  ₪{JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.price || 0}
-																				</p>
-																			  </div>
-																			</div>
-																			<p className="text-gray-400 text-xs mt-3 leading-relaxed border-t border-white/10 pt-2">
-																			  {rec.description}
-																			</p>
-																		  </div>
-																		</m.div>
-																	  )}
-																	</AnimatePresence>
+                                                                    {/* Smart Popup - Edge Aware */}
+                                                                    <AnimatePresence>
+                                                                        {selectedRecommendation === i && (
+                                                                            <m.div
+                                                                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                                                className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 
+                                                                                    ${isRightEdge ? 'right-full mr-3' : isLeftEdge ? 'left-full ml-3' : 'left-1/2 -translate-x-1/2 mt-3'} 
+                                                                                    ${isBottomEdge ? 'bottom-0' : 'top-0'}`}
+                                                                            >
+                                                                                <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">
+                                                                                    <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="text-xs text-brand-primary font-bold uppercase mb-0.5">{rec.location}</div>
+                                                                                    <div className="text-sm font-medium text-white mb-1">{jewelry.name}</div>
+                                                                                    <div className="text-[10px] text-slate-400 mb-2 leading-tight line-clamp-2">{jewelry.description}</div>
+                                                                                    <div className="flex items-center justify-between mt-2">
+                                                                                        <span className="text-brand-primary font-serif font-bold">₪{jewelry.price}</span>
+                                                                                        {selectedJewelry.find(j => j.id === jewelry.id) ? (
+                                                                                            <button 
+                                                                                                onClick={() => toggleJewelry(jewelry)}
+                                                                                                className="px-3 py-1 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500 hover:text-white transition-colors"
+                                                                                            >
+                                                                                                הסר
+                                                                                            </button>
+                                                                                        ) : (
+                                                                                            <button 
+                                                                                                onClick={() => toggleJewelry(jewelry)}
+                                                                                                className="px-3 py-1 bg-brand-primary text-brand-dark text-xs font-bold rounded hover:bg-white transition-colors"
+                                                                                            >
+                                                                                                הוסף לתור
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <button 
+                                                                                    onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(null); }}
+                                                                                    className="absolute top-2 right-2 p-1 bg-black/40 rounded-full text-white/80 hover:text-white md:hidden"
+                                                                                >
+                                                                                    <X className="w-3 h-3" />
+                                                                                </button>
+                                                                            </m.div>
+                                                                        )}
+                                                                    </AnimatePresence>
                                                                 </div>
                                                             );
                                                         })}

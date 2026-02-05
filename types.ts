@@ -1,3 +1,4 @@
+
 export interface Service {
   id: string;
   name: string;
@@ -17,7 +18,8 @@ export interface Appointment {
   service_id: string;
   service_name?: string; 
   service_price?: number; 
-  start_time: string; 
+  start_time: string;
+  end_time?: string; 
   status: 'pending' | 'confirmed' | 'cancelled';
   notes?: string;
   signature?: string; 

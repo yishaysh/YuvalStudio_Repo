@@ -14,6 +14,7 @@ export interface AIRecommendation {
 export interface AIAnalysisResult {
   style_summary: string;
   recommendations: AIRecommendation[];
+  original_image?: string;
 }
 
 export const aiStylistService = {

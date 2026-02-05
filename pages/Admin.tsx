@@ -357,7 +357,7 @@ const AppointmentsList = ({
                 {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
                     const isHighlighted = apt.id === filterId;
                     const { servicesList, calculatedBasePrice, finalPrice, couponCode, discount, jewelryPrice } = getCalculatedData(apt);
-                    const hasVisualPlan = !!apt.ai_recommendation_text;
+                    const hasVisualPlan = !!(apt.visual_plan || apt.ai_recommendation_text);
 
                     return (
                         <tr 
@@ -452,17 +452,7 @@ const AppointmentsList = ({
                                         {/* AI Visual Plan Button */}
                                         {hasVisualPlan && (
 											<button 
-												onClick={() => {
-													try {
-														const rawData = apt.visual_plan || apt.ai_recommendation_text || '{}';
-														const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-														setVisualPlanData(data);
-														setIsVisualModalOpen(true);
-													} catch (e) {
-														console.error("Visual plan error", e);
-														onViewVisualPlan(apt); // fallback לפונקציה המקורית
-													}
-												}} 
+												onClick={() => onViewVisualPlan(apt)} 
 												className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
 												title="צפה בתוכנית AI ותמונה"
 											>
@@ -548,7 +538,10 @@ const AppointmentsList = ({
     );
 };
 
-// --- Inventory Tab ---
+// ... (InventoryTab, CouponsTab, etc. remain the same) ...
+// To ensure the file is complete and correct, I am only including the modified parts if I can, but instruction says "Full content of file".
+// I will include the full content of Admin.tsx with the fixes applied.
+
 const InventoryTab = ({ settings, onUpdate }: any) => {
     // Local state for items list, initialized from settings
     const [items, setItems] = useState<any[]>([]);
@@ -654,14 +647,14 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
 									<span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
 									<div className="flex gap-1 ml-2 border-l border-white/10 pl-2">
 										<button 
-											onClick={() => {/* פונקציית עריכה */}}
+											onClick={() => openModal(item)}
 											className="p-1 text-slate-400 hover:text-white transition-colors"
 											title="ערוך תכשיט"
 										>
 											<Edit2 className="w-3.5 h-3.5" />
 										</button>
 										<button 
-											onClick={() => { if(confirm('למחוק תכשיט זה?')) {/* פונקציית מחיקה */}} }
+											onClick={() => handleDelete(item.id)}
 											className="p-1 text-slate-400 hover:text-red-400 transition-colors"
 											title="מחק תכשיט"
 										>
@@ -726,7 +719,6 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
     );
 };
 
-// ... Existing Tabs (CouponsTab, DashboardTab, CalendarTab, ServicesTab, GalleryTab, SettingsTab) ...
 const CouponsTab = ({ settings, onUpdate }: any) => {
     const [coupons, setCoupons] = useState<Coupon[]>(settings.coupons || []);
     const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -1667,6 +1659,16 @@ const Admin: React.FC = () => {
     const handleDeleteGalleryImage = (id: string) => { setImageToDeleteId(id); }
     const handleConfirmDeleteGalleryImage = async () => { if (imageToDeleteId) { await api.deleteFromGallery(imageToDeleteId); setImageToDeleteId(null); fetchData(); } }
 
+    const handleViewVisualPlan = (apt: Appointment) => {
+        const rawData = apt.visual_plan || apt.ai_recommendation_text;
+        if (rawData) {
+            try {
+                const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+                setVisualPlanData(data);
+            } catch (e) { console.error(e); }
+        }
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
@@ -1741,20 +1743,8 @@ const Admin: React.FC = () => {
 
                 <AnimatePresence mode="wait">
                     <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={(apt: Appointment) => {
-                            if (apt.ai_recommendation_text) {
-                                try {
-                                    setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
-                                } catch (e) { console.error(e); }
-                            }
-                        }} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={(apt: Appointment) => {
-                            if (apt.ai_recommendation_text) {
-                                try {
-                                    setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
-                                } catch (e) { console.error(e); }
-                            }
-                        }} />}
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} />}
                         {activeTab === 'appointments' && (
                             <AppointmentsList 
                                 appointments={appointments} 
@@ -1767,13 +1757,7 @@ const Admin: React.FC = () => {
                                 allServices={services}
                                 onSyncToCalendar={handleSyncToCalendar}
                                 onBulkSync={handleBulkSync}
-                                onViewVisualPlan={(apt: Appointment) => {
-                                    if (apt.ai_recommendation_text) {
-                                        try {
-                                            setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
-                                        } catch (e) { console.error(e); }
-                                    }
-                                }}
+                                onViewVisualPlan={handleViewVisualPlan}
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
