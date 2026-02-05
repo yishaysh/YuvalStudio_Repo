@@ -1,9 +1,22 @@
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
+
+// Define the shape of the AI response for TypeScript usage in the UI
+export interface AIRecommendation {
+  location: string;
+  jewelry_type: string;
+  description: string;
+  x: number; // Percentage 0-100
+  y: number; // Percentage 0-100
+}
+
+export interface AIAnalysisResult {
+  style_summary: string;
+  recommendations: AIRecommendation[];
+}
 
 export const aiStylistService = {
-  async analyzeEar(cleanBase64: string): Promise<string> {
-    // API Key is now injected via vite.config.ts 'define'
+  async analyzeEar(cleanBase64: string): Promise<AIAnalysisResult> {
     const API_KEY = process.env.API_KEY;
 
     if (!API_KEY) {
@@ -13,16 +26,41 @@ export const aiStylistService = {
 
     const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-    const prompt = `You are a professional piercing stylist. Analyze the provided image of a human ear.
-     * Identify any existing piercings.
-     * Based on the unique anatomy of the ear (helix, tragus, conch, etc.), suggest 3-4 specific styling additions.
-     * For each suggestion, describe the jewelry type (e.g., '14k Gold Clicker for the Daith').
-     * Keep the tone professional, encouraging, and luxurious.
-     * Provide the response in Hebrew, formatted as a bulleted list.`;
+    // Define the schema to ensure we get coordinates for the UI
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        style_summary: {
+          type: Type.STRING,
+          description: "A short, luxurious title for the styling concept (Hebrew)",
+        },
+        recommendations: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              location: { type: Type.STRING, description: "Anatomy name (e.g., Helix)" },
+              jewelry_type: { type: Type.STRING, description: "Type of jewelry (e.g., Gold Hoop)" },
+              description: { type: Type.STRING, description: "Why this fits (Hebrew)" },
+              x: { type: Type.NUMBER, description: "Horizontal position percentage (0-100) from left" },
+              y: { type: Type.NUMBER, description: "Vertical position percentage (0-100) from top" },
+            },
+            required: ["location", "jewelry_type", "description", "x", "y"],
+          },
+        },
+      },
+      required: ["style_summary", "recommendations"],
+    };
+
+    const prompt = `You are a professional piercing stylist. Analyze this ear image.
+    1. Identify anatomical opportunities for piercing.
+    2. Suggest 3-4 specific styling additions.
+    3. Return X/Y coordinates (0-100 scale) for where the piercing should be placed on the image.
+    4. Provide descriptions in Hebrew.
+    `;
 
     try {
-      // Using gemini-3-flash-preview as gemini-1.5-flash is deprecated/404
-      const response: GenerateContentResponse = await ai.models.generateContent({
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
           {
@@ -37,16 +75,24 @@ export const aiStylistService = {
             ],
           },
         ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
       });
 
-      return response.text || "לא הצלחנו להפיק המלצה כרגע.";
+      const text = response.text;
+      if (!text) throw new Error("Empty response from AI");
+
+      // Parse JSON output
+      return JSON.parse(text) as AIAnalysisResult;
     } catch (error: any) {
       console.error("Gemini Analysis Error:", error);
       if (error.message && (error.message.includes('API key') || error.message.includes('403'))) {
-          throw new Error("מפתח API לא תקין או חסר.");
+        throw new Error("מפתח API לא תקין או חסר.");
       }
       if (error.message && error.message.includes('404')) {
-          throw new Error("המודל אינו זמין כרגע (404). אנא נסה שוב.");
+        throw new Error("המודל אינו זמין כרגע. אנא נסה שוב.");
       }
       throw new Error("נכשלנו בניתוח התמונה. אנא וודא שהתמונה ברורה ונסה שנית.");
     }

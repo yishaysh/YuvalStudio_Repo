@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, PlusCircle } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { aiStylistService } from '../services/aiStylistService';
+import { aiStylistService, AIAnalysisResult, AIRecommendation } from '../services/aiStylistService';
 
 const m = motion as any;
 
@@ -24,7 +24,7 @@ const getMeta = (category: string) => SERVICE_META[category] || { healing: 'מש
 
 /**
  * Compresses an image file to a max width of 800px and 0.7 quality jpeg.
- * This fixes URI_TOO_LONG errors by ensuring the base64 string is manageable.
+ * Prevents 414 URI Too Long errors and improves upload speed.
  */
 const compressImage = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -48,7 +48,6 @@ const compressImage = async (file: File): Promise<string> => {
                 canvas.width = width;
                 canvas.height = height;
                 ctx?.drawImage(img, 0, 0, width, height);
-                // 0.7 Quality provides good balance for AI analysis without huge payload
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
             img.onerror = (err) => reject(err);
@@ -59,7 +58,7 @@ const compressImage = async (file: File): Promise<string> => {
 
 // --- Sub-Components ---
 
-// 1. Memoized Service Card (Prevents list re-renders)
+// 1. Memoized Service Card (Crucial for performance with many items)
 const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Service, isSelected: boolean, onClick: () => void }) => {
     const meta = getMeta(service.category);
     
@@ -110,11 +109,11 @@ const ScanningOverlay = () => (
         {/* Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
         
-        {/* Moving Laser Line */}
+        {/* Moving Laser Line - Loop animation */}
         <m.div 
             initial={{ top: "-10%" }}
             animate={{ top: "110%" }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.8)] opacity-90"
         />
 
@@ -237,6 +236,8 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
 const TicketSummary: React.FC<any> = ({
   selectedServices, selectedDate, selectedSlot, totalDuration, appliedCoupon, couponCode, couponError, isCheckingCoupon, discountAmount, finalPrice, step, readOnly, aiRecommendation, onToggleService, onSetCouponCode, onApplyCoupon, onClearCoupon
 }) => {
+  const result: AIAnalysisResult | null = aiRecommendation;
+
   return (
       <div className="p-6 space-y-6">
         <div className={`transition-opacity duration-300 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
@@ -260,12 +261,14 @@ const TicketSummary: React.FC<any> = ({
             </div>
         </div>
         
-        {aiRecommendation && (
+        {result && (
             <div className="bg-brand-primary/5 border border-brand-primary/10 p-3 rounded-lg">
                 <div className="flex items-center gap-2 text-brand-primary text-xs font-bold uppercase mb-2">
-                    <Sparkles className="w-3 h-3"/> המלצת הסטייליסט
+                    <Sparkles className="w-3 h-3"/> {result.style_summary || "המלצת הסטייליסט"}
                 </div>
-                <div className="text-[10px] text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-wrap">{aiRecommendation}</div>
+                <div className="text-[10px] text-slate-400 leading-relaxed">
+                    {result.recommendations.length} המלצות זוהו. לחץ לפרטים.
+                </div>
             </div>
         )}
 
@@ -352,8 +355,9 @@ const Booking: React.FC = () => {
   // AI State
   const [aiImage, setAiImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [activeHotspot, setActiveHotspot] = useState<number | null>(null);
   
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -443,16 +447,34 @@ const Booking: React.FC = () => {
       setCouponError(null);
   }, []);
 
+  // Add dummy service from AI recommendation
+  const addServiceFromRecommendation = (rec: AIRecommendation) => {
+      // Logic to add a "custom" service or match with existing service
+      // For MVP, we add a placeholder service if no exact match
+      const matchingService = services.find(s => s.name.includes(rec.jewelry_type)) || {
+          id: `ai-${Math.random()}`,
+          name: `${rec.jewelry_type} (${rec.location})`,
+          price: 100, // Default estimate
+          duration_minutes: 30,
+          category: 'Ear',
+          description: rec.description,
+          image_url: 'https://picsum.photos/400/400',
+          pain_level: 3
+      } as Service;
+      
+      toggleService(matchingService);
+  };
+
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       
       try {
-          // Compress immediately for performance and strict payload sizing
           const compressedDataUrl = await compressImage(file);
           setAiImage(compressedDataUrl);
           setAiError(null);
-          setAiRecommendation(null);
+          setAiResult(null);
+          setActiveHotspot(null);
       } catch (err) {
           console.error(err);
           setAiError("שגיאה בטעינת התמונה. נסה קובץ אחר.");
@@ -465,11 +487,9 @@ const Booking: React.FC = () => {
       setAiError(null);
       
       try {
-          // Strip prefix before sending to avoid double-processing or "URI Too Long" in certain contexts
-          // The service now expects a CLEAN base64 string
           const cleanBase64 = aiImage.split(',')[1];
           const result = await aiStylistService.analyzeEar(cleanBase64);
-          setAiRecommendation(result);
+          setAiResult(result);
       } catch (err: any) {
           console.error("Analysis Failed:", err);
           setAiError(err.message || "אירעה שגיאה בניתוח התמונה.");
@@ -531,10 +551,17 @@ const Booking: React.FC = () => {
       const primaryService = selectedServices[0];
       const otherServices = selectedServices.slice(1);
       
-      // Notes Construction
       let finalNotes = formData.notes;
       if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
-      if (aiRecommendation) finalNotes += `\n\n--- AI Stylist Recommendation ---\n${aiRecommendation}`;
+      
+      // Formatting AI recommendation into text for the backend
+      if (aiResult) {
+          const recommendationsText = aiResult.recommendations
+              .map(r => `- ${r.location}: ${r.jewelry_type} (${r.description})`)
+              .join('\n');
+          finalNotes += `\n\n--- AI Stylist Recommendation (${aiResult.style_summary}) ---\n${recommendationsText}`;
+      }
+
       if (otherServices.length > 0) {
           finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
       }
@@ -555,7 +582,8 @@ const Booking: React.FC = () => {
             signature: signatureData,
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
             final_price: finalPrice,
-            ai_recommendation_text: aiRecommendation || undefined
+            // Pass the plain text summary for legacy support, logic handles full object in notes
+            ai_recommendation_text: aiResult ? aiResult.style_summary : undefined
         });
         setStep(BookingStep.CONFIRMATION);
       } catch (err) {
@@ -563,7 +591,7 @@ const Booking: React.FC = () => {
       } finally {
           setIsSubmitting(false);
       }
-  }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiRecommendation, appliedCoupon, finalPrice, totalDuration]);
+  }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiResult, appliedCoupon, finalPrice, totalDuration]);
 
   const sendConfirmationWhatsapp = useCallback(() => {
       if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
@@ -606,7 +634,7 @@ const Booking: React.FC = () => {
 
                     {/* Mobile Summary - Fixed Z-Index */}
                     {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
-                        <div className="lg:hidden mb-6 relative z-50">
+                        <div className="lg:hidden mb-6 relative z-[70]">
                             <button 
                                 onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
                                 className="w-full flex items-center justify-between p-4 bg-brand-surface/90 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-all active:scale-[0.98] relative z-20"
@@ -648,7 +676,7 @@ const Booking: React.FC = () => {
                                                 finalPrice={finalPrice}
                                                 step={step}
                                                 readOnly={step === BookingStep.CONFIRMATION}
-                                                aiRecommendation={aiRecommendation}
+                                                aiRecommendation={aiResult}
                                                 onToggleService={toggleService}
                                                 onSetCouponCode={setCouponCode}
                                                 onApplyCoupon={handleApplyCoupon}
@@ -719,24 +747,67 @@ const Booking: React.FC = () => {
                                             <div className="relative w-full max-w-md mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black">
                                                 <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
                                                 {isAnalyzing && <ScanningOverlay />}
-                                                <button onClick={() => { setAiImage(null); setAiRecommendation(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
+                                                
+                                                {/* Hotspots Overlay */}
+                                                {!isAnalyzing && aiResult && (
+                                                    <div className="absolute inset-0">
+                                                        {aiResult.recommendations.map((rec, i) => (
+                                                            <div
+                                                                key={i}
+                                                                style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
+                                                                className="absolute w-0 h-0"
+                                                            >
+                                                                <button
+                                                                    onClick={() => setActiveHotspot(i)}
+                                                                    className={`relative -ml-3 -mt-3 w-6 h-6 rounded-full border-2 transition-all duration-300 ${activeHotspot === i ? 'bg-brand-primary border-white scale-125' : 'bg-white/20 border-brand-primary/80 hover:bg-brand-primary/80'}`}
+                                                                >
+                                                                    <div className="absolute inset-0 rounded-full animate-ping bg-brand-primary opacity-30"></div>
+                                                                </button>
+                                                                
+                                                                {/* Tooltip Card */}
+                                                                <AnimatePresence>
+                                                                    {activeHotspot === i && (
+                                                                        <m.div
+                                                                            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                                                                            className="absolute z-50 top-8 left-1/2 -translate-x-1/2 w-48 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl"
+                                                                        >
+                                                                            <div className="text-xs text-brand-primary font-bold uppercase mb-1">{rec.location}</div>
+                                                                            <div className="text-sm font-medium text-white mb-1">{rec.jewelry_type}</div>
+                                                                            <div className="text-[10px] text-slate-400 mb-3 leading-tight">{rec.description}</div>
+                                                                            <button 
+                                                                                onClick={() => addServiceFromRecommendation(rec)}
+                                                                                className="w-full py-1.5 bg-brand-primary text-brand-dark text-xs font-bold rounded-lg flex items-center justify-center gap-1 hover:bg-white transition-colors"
+                                                                            >
+                                                                                <PlusCircle className="w-3 h-3"/> הוסף לתור
+                                                                            </button>
+                                                                        </m.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <button onClick={() => { setAiImage(null); setAiResult(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
 
                                             <AnimatePresence mode="wait">
-                                                {aiRecommendation ? (
+                                                {aiResult ? (
                                                     <m.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-brand-dark/40 border border-brand-primary/20 rounded-2xl p-6 text-right relative overflow-hidden">
                                                         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                                                             <Sparkles className="w-24 h-24 text-brand-primary"/>
                                                         </div>
-                                                        <h4 className="text-brand-primary font-bold flex items-center gap-2 mb-4">
-                                                            <Sparkles className="w-5 h-5"/> המלצות הסטייליסט
+                                                        <h4 className="text-brand-primary font-bold flex items-center gap-2 mb-2">
+                                                            <Sparkles className="w-5 h-5"/> {aiResult.style_summary}
                                                         </h4>
-                                                        <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
-                                                            {aiRecommendation}
-                                                        </div>
-                                                        <Button onClick={() => setStep(BookingStep.SELECT_DATE)} className="w-full mt-6 gap-2">
+                                                        <p className="text-sm text-slate-400 mb-4">
+                                                            לחץ על הנקודות בתמונה כדי לראות את ההמלצות ולהוסיף אותן לתור.
+                                                        </p>
+                                                        <Button onClick={() => setStep(BookingStep.SELECT_DATE)} className="w-full mt-2 gap-2">
                                                             נשמע מעולה, המשך לקביעת תור <ArrowLeft className="w-4 h-4"/>
                                                         </Button>
                                                     </m.div>
@@ -902,7 +973,7 @@ const Booking: React.FC = () => {
                                 finalPrice={finalPrice}
                                 step={step}
                                 readOnly={step === BookingStep.CONFIRMATION}
-                                aiRecommendation={aiRecommendation}
+                                aiRecommendation={aiResult}
                                 onToggleService={toggleService}
                                 onSetCouponCode={setCouponCode}
                                 onApplyCoupon={handleApplyCoupon}
