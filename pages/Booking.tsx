@@ -621,75 +621,53 @@ const Booking: React.FC = () => {
       return days.slice(0, 14);
   }, [studioSettings]);
 
-  const handleBook = useCallback(async () => {
-    if((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot || !signatureData) return;
-    setIsSubmitting(true);
-    
-    const [hours, minutes] = selectedSlot.split(':').map(Number);
-    const date = new Date(selectedDate);
-    date.setHours(hours, minutes);
+	  const handleBook = useCallback(async () => {
+		// 1. חישוב המחיר בתוך הפונקציה כדי למנוע שגיאת ReferenceError
+		const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
+		const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
+		let calculatedTotal = servicesSum + jewelrySum;
 
-    const primaryService = selectedServices[0] || { id: 'custom-jewelry', name: 'Jewelry Purchase', price: 0 };
-    
-    let finalNotes = formData.notes;
-    if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
-    
-    // --- תיקון 1: מבנה ה-Visual Plan ---
-    let aiRecommendationPayload = undefined;
-    
-    if (isAiEnabled && aiResult && aiImage) {
-        const visualPlan = {
-            original_image: aiImage, 
-            // אנחנו מוודאים שכל המידע הנדרש לשחזור עובר כאן
-            recommendations: aiResult.recommendations.map(rec => ({
-                jewelry_id: rec.jewelry_id,
-                x: rec.x,
-                y: rec.y,
-                location: rec.location,
-                description: rec.description
-            })),
-            // חשוב: השתמשנו ב-selectedJewelry כדי לדעת מה הלקוח בחר בפועל
-            selected_items: selectedJewelry.map(j => j.id) 
-        };
-        
-        aiRecommendationPayload = JSON.stringify(visualPlan);
-        
-        finalNotes += `\n\n--- AI Stylist Plan --- (ראה לשונית ויזואלית)\n`;
-        finalNotes += selectedJewelry.map(j => `+ ${j.name} - ₪${j.price}`).join('\n');
-    }
+		if (appliedCoupon) {
+			if (appliedCoupon.discountType === 'percentage') {
+				calculatedTotal -= (calculatedTotal * appliedCoupon.value) / 100;
+			} else {
+				calculatedTotal -= appliedCoupon.value;
+			}
+		}
+		const finalPriceToPay = Math.max(0, calculatedTotal);
 
-    if (selectedServices.length > 1) {
-        finalNotes += `\n\n--- חבילת שירותים משולבת ---\nתוספות: ${selectedServices.slice(1).map(s => s.name).join(', ')}`;
-    }
-    finalNotes += `\n[חתם על הצהרת בריאות]`;
+		// 2. הכנת ה-Visual Plan (מה שקראת לו Q בקוד המכווץ)
+		const visualPlanString = JSON.stringify({
+			original_image: aiResult?.original_image,
+			recommendations: aiResult?.recommendations,
+			selected_items: selectedJewelry.map(j => j.id)
+		});
 
-    const endTime = new Date(date.getTime() + (totalDuration || 30) * 60000).toISOString();
+		setIsSubmitting(true);
+		const endTime = new Date(selectedDate!.getTime() + (selectedService?.duration_minutes || 30) * 60000).toISOString();
 
-    try {
-      await api.createAppointment({
-          service_id: primaryService.id,
-          start_time: date.toISOString(),
-          // @ts-ignore
-          end_time: endTime, 
-          client_name: formData.name,
-          client_phone: formData.phone,
-          client_email: formData.email,
-          notes: finalNotes,
-          signature: signatureData,
-          coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
-          // --- תיקון 2: שימוש במחיר המחושב כולל התכשיטים ---
-          final_price: totalPrice, 
-          // --- תיקון 3: השדה שה-Admin יחפש ---
-          visual_plan: aiRecommendationPayload 
-      });
-      setStep(BookingStep.CONFIRMATION);
-    } catch (err) {
-        console.error(err);
-    } finally {
-        setIsSubmitting(false);
-    }
-}, [selectedServices, selectedJewelry, selectedDate, selectedSlot, signatureData, formData, aiResult, aiImage, appliedCoupon, totalPrice, totalDuration, isAiEnabled]);
-// ^ שים לב שהחלפתי את finalPrice ב-totalPrice ב-Dependencies
+		try {
+			await api.createAppointment({
+				service_id: selectedService!.id,
+				start_time: selectedDate!.toISOString(),
+				end_time: endTime,
+				client_name: formData.name,
+				client_phone: formData.phone,
+				client_email: formData.email,
+				notes: formData.notes,
+				signature: signatureData!,
+				coupon_code: appliedCoupon?.code,
+				final_price: finalPriceToPay, // כאן אנחנו משתמשים במשתנה שחישבנו למעלה
+				visual_plan: visualPlanString
+			});
+			
+			setStep(BookingStep.CONFIRMATION);
+		} catch (error) {
+			console.error("Booking error:", error);
+		} finally {
+			setIsSubmitting(false);
+		}
+	}, [selectedService, selectedDate, formData, signatureData, appliedCoupon, aiResult, selectedJewelry, setStep]);
 
   const sendConfirmationWhatsapp = useCallback(() => {
       if ((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot) return;
