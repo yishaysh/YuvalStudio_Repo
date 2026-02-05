@@ -123,13 +123,24 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
-	// חישוב המחיר הכולל: שירותים + תכשיטים
+	// חישוב מחיר כולל (שירותים + תכשיטים)
 	const totalPrice = useMemo(() => {
 		const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
-		const jewelrySum = selectedJewelry.reduce((sum, j) => sum + (j.price || 0), 0);
-		return servicesSum + jewelrySum;
-	}, [selectedServices, selectedJewelry]);
-
+		const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
+		
+		let total = servicesSum + jewelrySum;
+		
+		// החלת קופון אם קיים
+		if (appliedCoupon) {
+			if (appliedCoupon.discountType === 'percentage') {
+				total -= (total * appliedCoupon.value) / 100;
+			} else {
+				total -= appliedCoupon.value;
+			}
+		}
+		
+		return Math.max(0, total);
+	}, [selectedServices, selectedJewelry, appliedCoupon]);
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
