@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, PlusCircle, AlertCircle, Info } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, AlertCircle, Info, Plus } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -349,7 +349,7 @@ const Booking: React.FC = () => {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
-  const [inventoryStatus, setInventoryStatus] = useState<Record<string, boolean>>({});
+  const [jewelryCatalog, setJewelryCatalog] = useState<any[]>(JEWELRY_CATALOG);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', nationalId: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
@@ -386,9 +386,14 @@ const Booking: React.FC = () => {
             setServices(fetchedServices);
             setStudioSettings(fetchedSettings);
             
-            // Set inventory from settings (default to true if missing)
+            // Hydrate Inventory from Settings
             // @ts-ignore
-            setInventoryStatus(fetchedSettings.inventory_status || {});
+            if (fetchedSettings.inventory_items && Array.isArray(fetchedSettings.inventory_items)) {
+                // @ts-ignore
+                setJewelryCatalog(fetchedSettings.inventory_items);
+            } else {
+                setJewelryCatalog(JEWELRY_CATALOG);
+            }
             
             // Check for AI Setting
             const aiSetting = (fetchedSettings as any).enable_ai;
@@ -538,14 +543,13 @@ const Booking: React.FC = () => {
       
       try {
           const cleanBase64 = aiImage.split(',')[1];
-          // Filter out of stock items before sending to AI context would be ideal, 
-          // but our service is simple. We will filter the *results* here.
           const result = await aiStylistService.analyzeEar(cleanBase64);
           
-          // Filter recommendations based on inventoryStatus
+          // STRICT CLIENT-SIDE FILTERING based on dynamic inventory
+          // Only show recommendations where in_stock !== false
           const filteredRecs = result.recommendations.filter(rec => {
-              const inStock = inventoryStatus[rec.jewelry_id] !== false; // Default true if undefined
-              return inStock;
+              const item = jewelryCatalog.find(j => j.id === rec.jewelry_id);
+              return item && item.in_stock !== false; 
           });
 
           setAiResult({ ...result, recommendations: filteredRecs });
@@ -555,7 +559,7 @@ const Booking: React.FC = () => {
       } finally {
           setIsAnalyzing(false);
       }
-  }, [aiImage, inventoryStatus]);
+  }, [aiImage, jewelryCatalog]);
 
   const handleApplyCoupon = useCallback(async () => {
       setCouponError(null);
@@ -835,10 +839,11 @@ const Booking: React.FC = () => {
                                                 {!isAnalyzing && aiResult && (
                                                     <div className="absolute inset-0 z-20" onClick={() => setActiveHotspot(null)}>
                                                         {aiResult.recommendations.map((rec, i) => {
-                                                            const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
+                                                            const jewelry = jewelryCatalog.find(j => j.id === rec.jewelry_id);
                                                             if (!jewelry) return null;
 
-                                                            const isRightEdge = rec.x > 60;
+                                                            const isRightEdge = rec.x > 70;
+                                                            const isLeftEdge = rec.x < 30;
                                                             const isBottomEdge = rec.y > 70;
 
                                                             return (
@@ -850,7 +855,7 @@ const Booking: React.FC = () => {
                                                                     {/* Jewelry Render Marker - using actual image */}
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); setActiveHotspot(i); }}
-                                                                        className={`relative -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${activeHotspot === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
+                                                                        className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${activeHotspot === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
                                                                     >
                                                                         <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
                                                                         {!activeHotspot && activeHotspot !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
@@ -865,7 +870,7 @@ const Booking: React.FC = () => {
                                                                                 animate={{ opacity: 1, scale: 1 }}
                                                                                 exit={{ opacity: 0, scale: 0.9 }}
                                                                                 className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 
-                                                                                    ${isRightEdge ? 'right-full mr-3' : 'left-full ml-3'} 
+                                                                                    ${isRightEdge ? 'right-full mr-3' : isLeftEdge ? 'left-full ml-3' : 'left-1/2 -translate-x-1/2 mt-3'} 
                                                                                     ${isBottomEdge ? 'bottom-0' : 'top-0'}`}
                                                                             >
                                                                                 <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">

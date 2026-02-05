@@ -539,33 +539,94 @@ const AppointmentsList = ({
 
 // --- Inventory Tab ---
 const InventoryTab = ({ settings, onUpdate }: any) => {
-    // Inventory status is stored in settings as a Record<string, boolean>
-    const [inventoryStatus, setInventoryStatus] = useState<Record<string, boolean>>({});
+    // Local state for items list, initialized from settings
+    const [items, setItems] = useState<any[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
 
     useEffect(() => {
+        // Hydrate from settings or fallback to constant
         // @ts-ignore
-        setInventoryStatus(settings.inventory_status || {});
+        if (settings.inventory_items && Array.isArray(settings.inventory_items)) {
+            // @ts-ignore
+            setItems(settings.inventory_items);
+        } else {
+            // Initialize with default catalog if empty
+            const initialCatalog = JEWELRY_CATALOG.map(item => ({...item, in_stock: true}));
+            setItems(initialCatalog);
+            // Save immediately to persist initial state
+            onUpdate({ ...settings, inventory_items: initialCatalog }, true);
+        }
     }, [settings]);
 
+    const handleSaveItem = () => {
+        let newItems;
+        if (editingItem) {
+            newItems = items.map(i => i.id === editingItem.id ? { ...i, ...formData } : i);
+        } else {
+            const newItem = {
+                id: `custom_${Math.random().toString(36).substr(2, 9)}`,
+                ...formData
+            };
+            newItems = [...items, newItem];
+        }
+        
+        setItems(newItems);
+        // Persist to settings
+        onUpdate({ ...settings, inventory_items: newItems }, true);
+        setIsModalOpen(false);
+        setEditingItem(null);
+        setFormData({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+    };
+
+    const handleDelete = (id: string) => {
+        if (window.confirm('האם למחוק פריט זה?')) {
+            const newItems = items.filter(i => i.id !== id);
+            setItems(newItems);
+            onUpdate({ ...settings, inventory_items: newItems }, true);
+        }
+    };
+
     const toggleStock = (id: string) => {
-        const currentStatus = inventoryStatus[id] !== false; // Default true if undefined
-        const newStatus = { ...inventoryStatus, [id]: !currentStatus };
-        setInventoryStatus(newStatus);
-        onUpdate({ ...settings, inventory_status: newStatus }, true);
+        const newItems = items.map(i => i.id === id ? { ...i, in_stock: !i.in_stock } : i);
+        setItems(newItems);
+        onUpdate({ ...settings, inventory_items: newItems }, true);
+    };
+
+    const openModal = (item?: any) => {
+        if (item) {
+            setEditingItem(item);
+            setFormData(item);
+        } else {
+            setEditingItem(null);
+            setFormData({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+        }
+        setIsModalOpen(true);
     };
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-serif text-white">ניהול מלאי תכשיטים</h3>
-                <p className="text-sm text-slate-400">פריטים שאינם במלאי לא יוצגו בהמלצות ה-AI ובגלריה</p>
+                <div>
+                    <h3 className="text-xl font-serif text-white">ניהול מלאי תכשיטים</h3>
+                    <p className="text-sm text-slate-400">פריטים שאינם במלאי לא יוצגו בהמלצות ה-AI ובגלריה</p>
+                </div>
+                <Button onClick={() => openModal()} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> פריט חדש</Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {JEWELRY_CATALOG.map((item) => {
-                    const inStock = inventoryStatus[item.id] !== false; // Default to true
+                {items.map((item) => {
+                    const inStock = item.in_stock !== false; 
                     return (
-                        <div key={item.id} className={`p-4 rounded-xl border transition-all flex items-center gap-4 ${inStock ? 'bg-brand-surface/30 border-white/5' : 'bg-red-500/5 border-red-500/20 opacity-75'}`}>
+                        <div key={item.id} className={`relative group p-4 rounded-xl border transition-all flex items-center gap-4 ${inStock ? 'bg-brand-surface/30 border-white/5' : 'bg-red-500/5 border-red-500/20 opacity-75'}`}>
+                            
+                            {/* Action Buttons Overlay */}
+                            <div className="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <button onClick={() => openModal(item)} className="p-1.5 bg-brand-surface rounded-full text-brand-primary hover:bg-brand-primary hover:text-brand-dark border border-white/10"><Edit2 className="w-3 h-3"/></button>
+                                <button onClick={() => handleDelete(item.id)} className="p-1.5 bg-brand-surface rounded-full text-red-400 hover:bg-red-500 hover:text-white border border-white/10"><Trash2 className="w-3 h-3"/></button>
+                            </div>
+
                             <div className="w-16 h-16 rounded-lg overflow-hidden bg-black shrink-0 relative">
                                 <img src={item.image_url} alt={item.name} className={`w-full h-full object-cover ${!inStock ? 'grayscale' : ''}`} />
                                 {!inStock && (
@@ -579,7 +640,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                                 <p className="text-xs text-slate-500 mb-2">{item.category}</p>
                                 <div className="flex items-center justify-between">
                                     <span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
-                                    <label className="relative inline-flex items-center cursor-pointer">
+                                    <label className="relative inline-flex items-center cursor-pointer" title="In Stock Toggle">
                                         <input 
                                             type="checkbox" 
                                             className="sr-only peer" 
@@ -594,6 +655,43 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                     );
                 })}
             </div>
+
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'עריכת פריט' : 'פריט חדש'}>
+                <div className="space-y-4">
+                    <Input label="שם הפריט" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="מחיר (₪)" type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
+                        <div>
+                            <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
+                            <select 
+                                className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
+                                value={formData.category}
+                                onChange={e => setFormData({...formData, category: e.target.value})}
+                            >
+                                <option value="Ear">Ear</option>
+                                <option value="Face">Face</option>
+                                <option value="Body">Body</option>
+                            </select>
+                        </div>
+                    </div>
+                    <Input label="תמונה (URL)" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} placeholder="https://..." />
+                    
+                    <div className="flex items-center gap-3 pt-2">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                className="sr-only peer" 
+                                checked={formData.in_stock} 
+                                onChange={() => setFormData({...formData, in_stock: !formData.in_stock})} 
+                            />
+                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                        <span className="text-sm text-slate-400">זמין במלאי</span>
+                    </div>
+
+                    <Button onClick={handleSaveItem} className="w-full mt-4">שמור</Button>
+                </div>
+            </Modal>
         </div>
     );
 };
