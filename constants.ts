@@ -153,5 +153,22 @@ export const MOCK_APPOINTMENTS: Appointment[] = [
     service_id: '4',
     start_time: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
     status: 'pending'
+  },
+  {
+    id: 'apt_ai_demo',
+    client_name: 'דניאל (AI הדגמה)',
+    client_email: 'daniel@demo.com',
+    client_phone: '050-9999999',
+    service_id: '2',
+    start_time: new Date().toISOString(),
+    status: 'pending',
+    notes: 'הערות: מעוניין בהליקס. \n\n--- AI Stylist Plan ---\n+ Gold Hoop - ₪180',
+    ai_recommendation_text: JSON.stringify({
+      original_image: 'https://images.unsplash.com/photo-1626202378363-2253327d497c?q=80&w=400&auto=format&fit=crop',
+      recommendations: [
+        { jewelry_id: 'j_helix_gold', location: 'Helix', description: 'מיקום מושלם למבנה האוזן שלך', x: 65, y: 25 }
+      ],
+      selected_items: ['j_helix_gold']
+    })
   }
 ];

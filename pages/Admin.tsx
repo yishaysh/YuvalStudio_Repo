@@ -456,7 +456,7 @@ const AppointmentsList = ({
                                                 className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
                                                 title="צפה בתוכנית AI ותמונה"
                                             >
-                                                <Sparkles className="w-4 h-4" />
+                                                <Wand2 className="w-4 h-4" />
                                             </button>
                                         )}
 
