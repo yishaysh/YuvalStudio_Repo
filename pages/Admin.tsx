@@ -14,7 +14,7 @@ import { Button, Card, Input, Modal, ConfirmationModal, SectionHeading } from '.
 import { jsPDF } from 'jspdf';
 // @ts-ignore
 import html2canvas from 'html2canvas';
-import { DEFAULT_STUDIO_DETAILS } from '../constants';
+import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { calendarService } from '../services/calendarService';
 
 const m = motion as any;
@@ -200,34 +200,49 @@ const AppointmentsList = ({
         let calculatedBasePrice = 0;
 
         // 1. Add Primary Service
-        servicesList.push({ name: apt.service_name || 'שירות כללי' });
+        servicesList.push({ name: apt.service_name || 'שירות כללי', type: 'service' });
         calculatedBasePrice += (apt.service_price || 0);
 
-        // 2. Parse Notes for Extras (Format from Booking.tsx)
+        // 2. Parse Visual Jewelry Items (from ai_recommendation_text JSON)
+        if (apt.ai_recommendation_text) {
+            try {
+                const visualPlan = JSON.parse(apt.ai_recommendation_text);
+                if (visualPlan.selected_items && Array.isArray(visualPlan.selected_items)) {
+                    // Map IDs to names from JEWELRY_CATALOG
+                    visualPlan.selected_items.forEach((id: string) => {
+                        const item = JEWELRY_CATALOG.find(j => j.id === id);
+                        if (item) {
+                            servicesList.push({ name: item.name, type: 'jewelry' });
+                            calculatedBasePrice += item.price;
+                        }
+                    });
+                }
+            } catch (e) {
+                // Ignore parse error
+            }
+        }
+
+        // 3. Fallback: Parse Notes for Extras if not in visual plan
         if (apt.notes && apt.notes.includes('תוספות:')) {
             const match = apt.notes.match(/תוספות: (.*?)(?:\n|$)/);
             if (match && match[1]) {
                 const extras = match[1].split(', ').map((s: string) => s.trim());
                 extras.forEach((extraName: string) => {
-                    servicesList.push({ name: extraName });
-                    // Find price in global services list to add to base
-                    const serviceObj = allServices.find((s: Service) => s.name === extraName);
-                    if (serviceObj) {
-                        calculatedBasePrice += serviceObj.price;
+                    // Avoid duplicates if already added via visual plan
+                    if (!servicesList.find(s => s.name === extraName)) {
+                        servicesList.push({ name: extraName, type: 'extra' });
+                        // Try to find price
+                        const serviceObj = allServices.find((s: Service) => s.name === extraName);
+                        if (serviceObj) calculatedBasePrice += serviceObj.price;
                     }
                 });
             }
         }
-        // Also check if notes contain specific Jewelry items added by AI logic manually
-        // Since we don't have exact catalog prices here easily unless passed, we rely on the logic that
-        // Booking.tsx creates 'final_price' correctly. 
-        // But for calculatedBasePrice display, we assume the provided service_price + parsed extras is close.
         
-        // 3. Determine Final Price & Coupon
+        // 4. Determine Final Price & Coupon
         let finalPrice = undefined;
         let couponCode = undefined;
 
-        // Try to parse from notes first (since schema column might be empty for older records or MVP)
         if (apt.notes && apt.notes.includes('=== פרטי קופון ===')) {
              const priceMatch = apt.notes.match(/מחיר סופי לחיוב: ₪(\d+)/);
              if (priceMatch) finalPrice = parseInt(priceMatch[1], 10);
@@ -236,7 +251,6 @@ const AppointmentsList = ({
              if (codeMatch) couponCode = codeMatch[1].trim();
         }
         
-        // Fallback to direct properties if notes didn't have it
         if (finalPrice === undefined) {
             finalPrice = apt.final_price !== undefined ? apt.final_price : calculatedBasePrice;
         }
@@ -244,7 +258,6 @@ const AppointmentsList = ({
             couponCode = apt.coupon_code;
         }
         
-        // Calculate Discount
         const discount = Math.max(0, calculatedBasePrice - finalPrice);
 
         return { servicesList, calculatedBasePrice, finalPrice, couponCode, discount };
@@ -363,7 +376,8 @@ const AppointmentsList = ({
                             <td className="py-4 px-6 align-top">
                                 <div className="flex flex-col gap-1.5">
                                     {servicesList.map((svc: any, idx: number) => (
-                                        <div key={idx} className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs bg-white/5 border border-white/10 w-fit">
+                                        <div key={idx} className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs border w-fit gap-1 ${svc.type === 'jewelry' ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary' : 'bg-white/5 border-white/10 text-slate-300'}`}>
+                                            {svc.type === 'jewelry' && <Sparkles className="w-2.5 h-2.5" />}
                                             {svc.name}
                                         </div>
                                     ))}
@@ -1582,11 +1596,12 @@ const Admin: React.FC = () => {
                     <div className="space-y-4">
                         <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black border border-white/10">
                             <img src={visualPlanData.original_image} className="w-full h-full object-contain" alt="Client Ear" />
+                            {/* Render Recommendations */}
                             {visualPlanData.recommendations?.map((rec: any, idx: number) => (
                                  <div
-                                    key={idx}
+                                    key={`rec-${idx}`}
                                     style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
-                                    className="absolute w-3 h-3 bg-brand-primary rounded-full border border-black transform -translate-x-1/2 -translate-y-1/2 shadow-lg animate-pulse"
+                                    className="absolute w-4 h-4 bg-brand-primary/50 border-2 border-brand-primary rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg animate-pulse"
                                     title={rec.location}
                                  />
                             ))}
@@ -1604,6 +1619,22 @@ const Admin: React.FC = () => {
                                  ))}
                             </ul>
                         </div>
+                        {/* Selected Items List in Modal */}
+                        {visualPlanData.selected_items && visualPlanData.selected_items.length > 0 && (
+                            <div className="bg-white/5 p-4 rounded-xl text-right mt-2">
+                                <h4 className="text-white font-medium mb-2">פריטים שנבחרו</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {visualPlanData.selected_items.map((itemId: string) => {
+                                        const item = JEWELRY_CATALOG.find(j => j.id === itemId);
+                                        return item ? (
+                                            <span key={itemId} className="text-xs bg-brand-primary/10 text-brand-primary px-2 py-1 rounded border border-brand-primary/20">
+                                                {item.name}
+                                            </span>
+                                        ) : null;
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </Modal>

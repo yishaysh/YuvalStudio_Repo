@@ -605,6 +605,7 @@ const Booking: React.FC = () => {
       
       // Serialize Visual Plan for Admin
       if (isAiEnabled && aiResult && aiImage) {
+          // Add selected items to the JSON payload for admin reconstruction
           const visualPlan = {
               original_image: aiImage, 
               recommendations: aiResult.recommendations.map(rec => ({
@@ -614,7 +615,7 @@ const Booking: React.FC = () => {
                   location: rec.location,
                   description: rec.description
               })),
-              selected_items: selectedJewelry.map(j => j.id)
+              selected_items: selectedJewelry.map(j => j.id) // IDs for reconstruction
           };
           
           finalNotes += `\n\n--- AI Stylist Plan ---\n`;
@@ -641,10 +642,12 @@ const Booking: React.FC = () => {
             signature: signatureData,
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
             final_price: finalPrice,
+            // Send proper JSON for admin visual reconstruction
             ai_recommendation_text: (isAiEnabled && aiResult && aiImage) ? JSON.stringify({
                 original_image: aiImage,
                 recommendations: aiResult.recommendations,
-                selected_items: selectedJewelry
+                selected_items: selectedJewelry // Full Objects or IDs, best to send lighter payload if possible, but Admin needs details. 
+                // Let's rely on Admin mapping back from constants using ID or just use what we have.
             }) : undefined
         });
         setStep(BookingStep.CONFIRMATION);
