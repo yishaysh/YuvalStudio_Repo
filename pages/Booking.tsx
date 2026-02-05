@@ -7,7 +7,7 @@ import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { aiStylistService, AIAnalysisResult, AIRecommendation } from '../services/aiStylistService';
+import { aiStylistService, AIAnalysisResult } from '../services/aiStylistService';
 
 const m = motion as any;
 
@@ -98,25 +98,21 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
     );
 });
 
+// Horizontal Laser Scan Animation
 const ScanningOverlay = () => (
     <div className="absolute inset-0 z-20 pointer-events-none rounded-2xl overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
+        <div className="absolute inset-0 bg-brand-primary/5 opacity-20" />
         <m.div 
             initial={{ top: "-10%" }}
             animate={{ top: "110%" }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.8)] opacity-90"
-        />
-        <m.div 
-            animate={{ opacity: [0, 0.4, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay"
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.9)] opacity-100 z-30"
         />
         <div className="absolute bottom-8 left-0 right-0 flex justify-center">
             <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-brand-primary/40 flex items-center gap-3 shadow-lg">
                 <BrainCircuit className="w-4 h-4 text-brand-primary animate-pulse" />
                 <span className="text-brand-primary text-xs font-mono uppercase tracking-widest animate-pulse">
-                    AI Structure Analysis...
+                    AI Scanning Structure...
                 </span>
             </div>
         </div>
@@ -353,13 +349,14 @@ const Booking: React.FC = () => {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
+  const [inventoryStatus, setInventoryStatus] = useState<Record<string, boolean>>({});
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', nationalId: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   
   // AI State
-  const [isAiEnabled, setIsAiEnabled] = useState(true); // Default to true, will update from settings
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [aiImage, setAiImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
@@ -388,6 +385,10 @@ const Booking: React.FC = () => {
             ]);
             setServices(fetchedServices);
             setStudioSettings(fetchedSettings);
+            
+            // Set inventory from settings (default to true if missing)
+            // @ts-ignore
+            setInventoryStatus(fetchedSettings.inventory_status || {});
             
             // Check for AI Setting
             const aiSetting = (fetchedSettings as any).enable_ai;
@@ -441,13 +442,12 @@ const Booking: React.FC = () => {
 
   // --- Visual Steps Calculation ---
   const currentStepDisplay = useMemo(() => {
-      // Calculate which visual step we are on (1-based index)
       if (!isAiEnabled) {
           if (step === BookingStep.SELECT_SERVICE) return 1;
-          if (step >= BookingStep.SELECT_DATE) return step - 1; // Skip step 2 (AI)
+          if (step >= BookingStep.SELECT_DATE) return step - 1;
           return step;
       }
-      return step; // Map directly
+      return step;
   }, [step, isAiEnabled]);
 
   const totalSteps = isAiEnabled ? 5 : 4;
@@ -524,7 +524,7 @@ const Booking: React.FC = () => {
           setAiError(null);
           setAiResult(null);
           setActiveHotspot(null);
-          setSelectedJewelry([]); // Reset selections on new image
+          setSelectedJewelry([]); 
       } catch (err) {
           console.error(err);
           setAiError("שגיאה בטעינת התמונה. נסה קובץ אחר.");
@@ -538,15 +538,24 @@ const Booking: React.FC = () => {
       
       try {
           const cleanBase64 = aiImage.split(',')[1];
+          // Filter out of stock items before sending to AI context would be ideal, 
+          // but our service is simple. We will filter the *results* here.
           const result = await aiStylistService.analyzeEar(cleanBase64);
-          setAiResult(result);
+          
+          // Filter recommendations based on inventoryStatus
+          const filteredRecs = result.recommendations.filter(rec => {
+              const inStock = inventoryStatus[rec.jewelry_id] !== false; // Default true if undefined
+              return inStock;
+          });
+
+          setAiResult({ ...result, recommendations: filteredRecs });
       } catch (err: any) {
           console.error("Analysis Failed:", err);
           setAiError(err.message || "אירעה שגיאה בניתוח התמונה.");
       } finally {
           setIsAnalyzing(false);
       }
-  }, [aiImage]);
+  }, [aiImage, inventoryStatus]);
 
   const handleApplyCoupon = useCallback(async () => {
       setCouponError(null);
@@ -603,9 +612,10 @@ const Booking: React.FC = () => {
       let finalNotes = formData.notes;
       if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
       
-      // Serialize Visual Plan for Admin
+      // Serialize Visual Plan for Admin (Structured JSON)
+      let aiRecommendationPayload = undefined;
+      
       if (isAiEnabled && aiResult && aiImage) {
-          // Add selected items to the JSON payload for admin reconstruction
           const visualPlan = {
               original_image: aiImage, 
               recommendations: aiResult.recommendations.map(rec => ({
@@ -615,11 +625,13 @@ const Booking: React.FC = () => {
                   location: rec.location,
                   description: rec.description
               })),
-              selected_items: selectedJewelry.map(j => j.id) // IDs for reconstruction
+              selected_items: selectedJewelry.map(j => j.id) // Only IDs needed
           };
           
-          finalNotes += `\n\n--- AI Stylist Plan ---\n`;
-          finalNotes += selectedJewelry.map(j => `+ ${j.name} (${j.category}) - ₪${j.price}`).join('\n');
+          aiRecommendationPayload = JSON.stringify(visualPlan);
+          
+          finalNotes += `\n\n--- AI Stylist Plan --- (ראה לשונית ויזואלית)\n`;
+          finalNotes += selectedJewelry.map(j => `+ ${j.name} - ₪${j.price}`).join('\n');
       }
 
       if (selectedServices.length > 1) {
@@ -643,12 +655,7 @@ const Booking: React.FC = () => {
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
             final_price: finalPrice,
             // Send proper JSON for admin visual reconstruction
-            ai_recommendation_text: (isAiEnabled && aiResult && aiImage) ? JSON.stringify({
-                original_image: aiImage,
-                recommendations: aiResult.recommendations,
-                selected_items: selectedJewelry // Full Objects or IDs, best to send lighter payload if possible, but Admin needs details. 
-                // Let's rely on Admin mapping back from constants using ID or just use what we have.
-            }) : undefined
+            ai_recommendation_text: aiRecommendationPayload
         });
         setStep(BookingStep.CONFIRMATION);
       } catch (err) {
@@ -831,13 +838,16 @@ const Booking: React.FC = () => {
                                                             const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
                                                             if (!jewelry) return null;
 
+                                                            const isRightEdge = rec.x > 60;
+                                                            const isBottomEdge = rec.y > 70;
+
                                                             return (
                                                                 <div
                                                                     key={i}
                                                                     style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
                                                                     className="absolute w-0 h-0"
                                                                 >
-                                                                    {/* Jewelry Render Marker */}
+                                                                    {/* Jewelry Render Marker - using actual image */}
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); setActiveHotspot(i); }}
                                                                         className={`relative -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${activeHotspot === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
@@ -846,7 +856,7 @@ const Booking: React.FC = () => {
                                                                         {!activeHotspot && activeHotspot !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
                                                                     </button>
                                                                     
-                                                                    {/* Smart Popup - Boundary Aware */}
+                                                                    {/* Smart Popup - Edge Aware */}
                                                                     <AnimatePresence>
                                                                         {activeHotspot === i && (
                                                                             <m.div
@@ -854,7 +864,9 @@ const Booking: React.FC = () => {
                                                                                 initial={{ opacity: 0, scale: 0.9 }}
                                                                                 animate={{ opacity: 1, scale: 1 }}
                                                                                 exit={{ opacity: 0, scale: 0.9 }}
-                                                                                className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 ${rec.x > 50 ? 'right-full mr-3' : 'left-full ml-3'} ${rec.y > 80 ? 'bottom-0' : 'top-0'}`}
+                                                                                className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 
+                                                                                    ${isRightEdge ? 'right-full mr-3' : 'left-full ml-3'} 
+                                                                                    ${isBottomEdge ? 'bottom-0' : 'top-0'}`}
                                                                             >
                                                                                 <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">
                                                                                     <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
@@ -882,7 +894,6 @@ const Booking: React.FC = () => {
                                                                                         )}
                                                                                     </div>
                                                                                 </div>
-                                                                                {/* Mobile close button inside popup for extra usability */}
                                                                                 <button 
                                                                                     onClick={(e) => { e.stopPropagation(); setActiveHotspot(null); }}
                                                                                     className="absolute top-2 right-2 p-1 bg-black/40 rounded-full text-white/80 hover:text-white md:hidden"

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket, 
   Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
   ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles
+  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box
 } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
@@ -198,6 +198,7 @@ const AppointmentsList = ({
     const getCalculatedData = (apt: any) => {
         const servicesList = [];
         let calculatedBasePrice = 0;
+        let jewelryPrice = 0;
 
         // 1. Add Primary Service
         servicesList.push({ name: apt.service_name || 'שירות כללי', type: 'service' });
@@ -213,7 +214,7 @@ const AppointmentsList = ({
                         const item = JEWELRY_CATALOG.find(j => j.id === id);
                         if (item) {
                             servicesList.push({ name: item.name, type: 'jewelry' });
-                            calculatedBasePrice += item.price;
+                            jewelryPrice += item.price;
                         }
                     });
                 }
@@ -221,6 +222,8 @@ const AppointmentsList = ({
                 // Ignore parse error
             }
         }
+        
+        calculatedBasePrice += jewelryPrice;
 
         // 3. Fallback: Parse Notes for Extras if not in visual plan
         if (apt.notes && apt.notes.includes('תוספות:')) {
@@ -260,7 +263,7 @@ const AppointmentsList = ({
         
         const discount = Math.max(0, calculatedBasePrice - finalPrice);
 
-        return { servicesList, calculatedBasePrice, finalPrice, couponCode, discount };
+        return { servicesList, calculatedBasePrice, finalPrice, couponCode, discount, jewelryPrice };
     };
 
     return (
@@ -353,7 +356,7 @@ const AppointmentsList = ({
                 <tbody className="text-slate-300 divide-y divide-white/5">
                 {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
                     const isHighlighted = apt.id === filterId;
-                    const { servicesList, calculatedBasePrice, finalPrice, couponCode, discount } = getCalculatedData(apt);
+                    const { servicesList, calculatedBasePrice, finalPrice, couponCode, discount, jewelryPrice } = getCalculatedData(apt);
                     const hasVisualPlan = !!apt.ai_recommendation_text;
 
                     return (
@@ -400,10 +403,16 @@ const AppointmentsList = ({
                                     {/* Price Breakdown Tooltip */}
                                     <div className="absolute top-full right-1/2 translate-x-1/2 mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-3 pointer-events-none text-right">
                                         <div className="text-xs space-y-2">
-                                            <div className="flex justify-between text-slate-400">
-                                                <span>שווי הזמנה כולל:</span>
-                                                <span className={discount > 0 ? "line-through" : ""}>₪{calculatedBasePrice}</span>
+                                            <div className="flex justify-between text-slate-400 border-b border-white/5 pb-1">
+                                                <span>טיפולים:</span>
+                                                <span>₪{calculatedBasePrice - jewelryPrice}</span>
                                             </div>
+                                            {jewelryPrice > 0 && (
+                                                <div className="flex justify-between text-brand-primary/80 border-b border-white/5 pb-1">
+                                                    <span>תכשיטים:</span>
+                                                    <span>₪{jewelryPrice}</span>
+                                                </div>
+                                            )}
                                             {discount > 0 && (
                                                 <div className="flex justify-between text-emerald-400">
                                                     <span>הנחה:</span>
@@ -411,13 +420,13 @@ const AppointmentsList = ({
                                                 </div>
                                             )}
                                             {couponCode && (
-                                                <div className="flex justify-between text-brand-primary text-[10px] border-t border-white/5 pt-1 mt-1">
+                                                <div className="flex justify-between text-brand-primary text-[10px] pt-1">
                                                     <span>קופון:</span>
                                                     <span>{couponCode}</span>
                                                 </div>
                                             )}
                                             <div className="border-t border-white/10 pt-2 mt-1 flex justify-between font-bold text-white">
-                                                <span>סה"כ לתשלום:</span>
+                                                <span>סה"כ:</span>
                                                 <span>₪{finalPrice}</span>
                                             </div>
                                         </div>
@@ -528,9 +537,68 @@ const AppointmentsList = ({
     );
 };
 
-// ... CouponsTab, DashboardTab, CalendarTab, ServicesTab, GalleryTab, SettingsTab ...
-// Keeping other tabs components exactly as is since they don't contain alerts directly, except for confirm logic which is in handlers
+// --- Inventory Tab ---
+const InventoryTab = ({ settings, onUpdate }: any) => {
+    // Inventory status is stored in settings as a Record<string, boolean>
+    const [inventoryStatus, setInventoryStatus] = useState<Record<string, boolean>>({});
 
+    useEffect(() => {
+        // @ts-ignore
+        setInventoryStatus(settings.inventory_status || {});
+    }, [settings]);
+
+    const toggleStock = (id: string) => {
+        const currentStatus = inventoryStatus[id] !== false; // Default true if undefined
+        const newStatus = { ...inventoryStatus, [id]: !currentStatus };
+        setInventoryStatus(newStatus);
+        onUpdate({ ...settings, inventory_status: newStatus }, true);
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-serif text-white">ניהול מלאי תכשיטים</h3>
+                <p className="text-sm text-slate-400">פריטים שאינם במלאי לא יוצגו בהמלצות ה-AI ובגלריה</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {JEWELRY_CATALOG.map((item) => {
+                    const inStock = inventoryStatus[item.id] !== false; // Default to true
+                    return (
+                        <div key={item.id} className={`p-4 rounded-xl border transition-all flex items-center gap-4 ${inStock ? 'bg-brand-surface/30 border-white/5' : 'bg-red-500/5 border-red-500/20 opacity-75'}`}>
+                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-black shrink-0 relative">
+                                <img src={item.image_url} alt={item.name} className={`w-full h-full object-cover ${!inStock ? 'grayscale' : ''}`} />
+                                {!inStock && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                                        <X className="w-6 h-6 text-red-400" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium text-white truncate">{item.name}</h4>
+                                <p className="text-xs text-slate-500 mb-2">{item.category}</p>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only peer" 
+                                            checked={inStock} 
+                                            onChange={() => toggleStock(item.id)} 
+                                        />
+                                        <div className={`w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${inStock ? 'peer-checked:bg-emerald-500' : 'peer-checked:bg-slate-700'}`}></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// ... Existing Tabs (CouponsTab, DashboardTab, CalendarTab, ServicesTab, GalleryTab, SettingsTab) ...
 const CouponsTab = ({ settings, onUpdate }: any) => {
     const [coupons, setCoupons] = useState<Coupon[]>(settings.coupons || []);
     const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -1526,6 +1594,7 @@ const Admin: React.FC = () => {
                                 { id: 'appointments', icon: Filter, label: 'ניהול תורים' }, // Restored Tab
                                 { id: 'services', icon: Edit2, label: 'שירותים' },
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
+                                { id: 'inventory', icon: Box, label: 'מלאי' }, // New Tab
                                 { id: 'coupons', icon: Ticket, label: 'קופונים' },
                                 { id: 'settings', icon: Settings, label: 'הגדרות' }
                             ].map(tab => (
@@ -1581,6 +1650,7 @@ const Admin: React.FC = () => {
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
                         {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'inventory' && <InventoryTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'coupons' && <CouponsTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
                     </m.div>
@@ -1596,15 +1666,26 @@ const Admin: React.FC = () => {
                     <div className="space-y-4">
                         <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black border border-white/10">
                             <img src={visualPlanData.original_image} className="w-full h-full object-contain" alt="Client Ear" />
-                            {/* Render Recommendations */}
-                            {visualPlanData.recommendations?.map((rec: any, idx: number) => (
-                                 <div
-                                    key={`rec-${idx}`}
-                                    style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
-                                    className="absolute w-4 h-4 bg-brand-primary/50 border-2 border-brand-primary rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg animate-pulse"
-                                    title={rec.location}
-                                 />
-                            ))}
+                            {/* Render Recommendations with Actual Jewelry Images */}
+                            {visualPlanData.recommendations?.map((rec: any, idx: number) => {
+                                const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
+                                return (
+                                     <div
+                                        key={`rec-${idx}`}
+                                        style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
+                                        className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2"
+                                        title={rec.location}
+                                     >
+                                        <div className="w-full h-full rounded-full border-2 border-brand-primary bg-white overflow-hidden shadow-lg">
+                                            {jewelry ? (
+                                                <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full bg-brand-primary/50 animate-pulse" />
+                                            )}
+                                        </div>
+                                     </div>
+                                );
+                            })}
                         </div>
                         <div className="bg-white/5 p-4 rounded-xl text-right">
                             <h4 className="text-white font-medium mb-2">מיקומי פירסינג מומלצים</h4>
@@ -1627,7 +1708,8 @@ const Admin: React.FC = () => {
                                     {visualPlanData.selected_items.map((itemId: string) => {
                                         const item = JEWELRY_CATALOG.find(j => j.id === itemId);
                                         return item ? (
-                                            <span key={itemId} className="text-xs bg-brand-primary/10 text-brand-primary px-2 py-1 rounded border border-brand-primary/20">
+                                            <span key={itemId} className="text-xs bg-brand-primary/10 text-brand-primary px-2 py-1 rounded border border-brand-primary/20 flex items-center gap-1">
+                                                <Sparkles className="w-3 h-3" />
                                                 {item.name}
                                             </span>
                                         ) : null;
