@@ -76,6 +76,7 @@ export interface StudioSettings {
   monthly_goals: MonthlyGoals;
   gallery_tags?: Record<string, string[]>; // Map Image ID -> Array of Service IDs
   coupons: Coupon[];
+  enable_ai?: boolean; // System Feature Flag
 }
 
 export enum BookingStep {

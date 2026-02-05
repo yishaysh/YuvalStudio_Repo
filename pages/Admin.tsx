@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket, 
   Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
   ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2
+  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2
 } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
@@ -1054,6 +1054,35 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
+            <Card>
+                <SectionHeading title="הגדרות מערכת" />
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                            <Wand2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h4 className="text-white font-medium">AI Ear Stylist</h4>
+                            <p className="text-sm text-slate-400">אפשר ללקוחות להשתמש בסטייליסט הווירטואלי בעת קביעת תור</p>
+                        </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={localSettings.enable_ai !== false} // Default to true if undefined
+                            onChange={() => {
+                                const newValue = !(localSettings.enable_ai !== false);
+                                const newSettings = {...localSettings, enable_ai: newValue};
+                                setLocalSettings(newSettings);
+                                onUpdate(newSettings, true);
+                            }} 
+                        />
+                        <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+                    </label>
+                </div>
+            </Card>
+
             <Card>
                 <SectionHeading title="פרטי הסטודיו" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

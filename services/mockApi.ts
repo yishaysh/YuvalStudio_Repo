@@ -1,5 +1,4 @@
 
-
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
 import { supabase } from './supabaseClient';
@@ -24,7 +23,8 @@ export const api = {
         studio_details: DEFAULT_STUDIO_DETAILS,
         monthly_goals: DEFAULT_MONTHLY_GOALS,
         gallery_tags: {},
-        coupons: []
+        coupons: [],
+        enable_ai: true // Default to true
       };
       
       if (!supabase) {
@@ -37,7 +37,7 @@ export const api = {
           const { data, error } = await supabase
             .from('settings')
             .select('*')
-            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons']);
+            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai']);
 
           if (error || !data) {
               cachedSettings = defaultSettings;
@@ -62,6 +62,8 @@ export const api = {
                newSettings.gallery_tags = row.value;
             } else if (row.key === 'coupons') {
                newSettings.coupons = row.value;
+            } else if (row.key === 'enable_ai') {
+               newSettings.enable_ai = row.value;
             }
           });
           
@@ -81,7 +83,8 @@ export const api = {
         { key: 'studio_details', value: settings.studio_details },
         { key: 'monthly_goals', value: settings.monthly_goals },
         { key: 'gallery_tags', value: settings.gallery_tags },
-        { key: 'coupons', value: settings.coupons }
+        { key: 'coupons', value: settings.coupons },
+        { key: 'enable_ai', value: settings.enable_ai }
       ];
 
       const { error } = await supabase
