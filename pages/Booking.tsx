@@ -353,6 +353,7 @@ const Booking: React.FC = () => {
   const [signatureData, setSignatureData] = useState<string | null>(null);
   
   // AI State
+  const [isAiEnabled, setIsAiEnabled] = useState(true); // Default to true, will update from settings
   const [aiImage, setAiImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
@@ -381,13 +382,19 @@ const Booking: React.FC = () => {
             ]);
             setServices(fetchedServices);
             setStudioSettings(fetchedSettings);
+            
+            // Check for AI Setting (Assuming it might be added to studio_details or root)
+            // For now, we default to true, but if the API returns a flag, we use it.
+            const aiSetting = (fetchedSettings as any).enable_ai;
+            setIsAiEnabled(aiSetting !== false);
 
             if (location.state && location.state.preSelectedServices) {
                 const preSelected = location.state.preSelectedServices as Service[];
                 const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
                 if (validPreSelected.length > 0) {
                     setSelectedServices(validPreSelected);
-                    setStep(BookingStep.AI_STYLIST);
+                    // Dynamically set step based on AI toggle
+                    setStep(aiSetting !== false ? BookingStep.AI_STYLIST : BookingStep.SELECT_DATE);
                 }
                 window.history.replaceState({}, document.title);
             }
@@ -401,6 +408,45 @@ const Booking: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
+
+  // --- Dynamic Navigation Logic ---
+  const handleNextStep = useCallback(() => {
+    setStep((current) => {
+        if (current === BookingStep.SELECT_SERVICE) {
+            return isAiEnabled ? BookingStep.AI_STYLIST : BookingStep.SELECT_DATE;
+        }
+        if (current === BookingStep.AI_STYLIST) return BookingStep.SELECT_DATE;
+        if (current === BookingStep.SELECT_DATE) return BookingStep.DETAILS;
+        if (current === BookingStep.DETAILS) return BookingStep.CONSENT;
+        return current;
+    });
+  }, [isAiEnabled]);
+
+  const handlePrevStep = useCallback(() => {
+    setStep((current) => {
+        if (current === BookingStep.SELECT_DATE) {
+            return isAiEnabled ? BookingStep.AI_STYLIST : BookingStep.SELECT_SERVICE;
+        }
+        if (current === BookingStep.AI_STYLIST) return BookingStep.SELECT_SERVICE;
+        if (current === BookingStep.DETAILS) return BookingStep.SELECT_DATE;
+        if (current === BookingStep.CONSENT) return BookingStep.DETAILS;
+        return current - 1;
+    });
+  }, [isAiEnabled]);
+
+  // --- Visual Steps Calculation ---
+  const currentStepDisplay = useMemo(() => {
+      // Calculate which visual step we are on (1-based index)
+      if (!isAiEnabled) {
+          if (step === BookingStep.SELECT_SERVICE) return 1;
+          if (step >= BookingStep.SELECT_DATE) return step - 1; // Skip step 2 (AI)
+          return step;
+      }
+      return step; // Map directly
+  }, [step, isAiEnabled]);
+
+  const totalSteps = isAiEnabled ? 5 : 4;
+
 
   // --- Memoized Values ---
   const filteredServices = useMemo(() => {
@@ -555,7 +601,8 @@ const Booking: React.FC = () => {
       if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
       
       // Formatting AI recommendation into text for the backend
-      if (aiResult) {
+      // Only include if AI was enabled and result exists
+      if (isAiEnabled && aiResult) {
           const recommendationsText = aiResult.recommendations
               .map(r => `- ${r.location}: ${r.jewelry_type} (${r.description})`)
               .join('\n');
@@ -583,7 +630,7 @@ const Booking: React.FC = () => {
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
             final_price: finalPrice,
             // Pass the plain text summary for legacy support, logic handles full object in notes
-            ai_recommendation_text: aiResult ? aiResult.style_summary : undefined
+            ai_recommendation_text: (isAiEnabled && aiResult) ? aiResult.style_summary : undefined
         });
         setStep(BookingStep.CONFIRMATION);
       } catch (err) {
@@ -591,7 +638,7 @@ const Booking: React.FC = () => {
       } finally {
           setIsSubmitting(false);
       }
-  }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiResult, appliedCoupon, finalPrice, totalDuration]);
+  }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiResult, appliedCoupon, finalPrice, totalDuration, isAiEnabled]);
 
   const sendConfirmationWhatsapp = useCallback(() => {
       if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
@@ -624,7 +671,7 @@ const Booking: React.FC = () => {
                         <p className="text-slate-400 flex items-center gap-2">
                             {step !== BookingStep.CONFIRMATION && (
                                 <span className="bg-brand-primary/10 text-brand-primary text-xs px-2 py-0.5 rounded-full border border-brand-primary/20">
-                                    שלב {step} מתוך 5
+                                    שלב {currentStepDisplay} מתוך {totalSteps}
                                 </span>
                             )}
                             {step === BookingStep.SELECT_SERVICE && 'בחר את הפירסינג המושלם בשבילך.'}
@@ -739,7 +786,7 @@ const Booking: React.FC = () => {
                                                 <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2">
                                                     <Upload className="w-4 h-4"/> בחר תמונה
                                                 </Button>
-                                                <Button onClick={() => setStep(BookingStep.SELECT_DATE)} variant="ghost">דלג על השלב</Button>
+                                                <Button onClick={handleNextStep} variant="ghost">דלג על השלב</Button>
                                             </div>
                                         </div>
                                     ) : (
@@ -807,7 +854,7 @@ const Booking: React.FC = () => {
                                                         <p className="text-sm text-slate-400 mb-4">
                                                             לחץ על הנקודות בתמונה כדי לראות את ההמלצות ולהוסיף אותן לתור.
                                                         </p>
-                                                        <Button onClick={() => setStep(BookingStep.SELECT_DATE)} className="w-full mt-2 gap-2">
+                                                        <Button onClick={handleNextStep} className="w-full mt-2 gap-2">
                                                             נשמע מעולה, המשך לקביעת תור <ArrowLeft className="w-4 h-4"/>
                                                         </Button>
                                                     </m.div>
@@ -993,17 +1040,17 @@ const Booking: React.FC = () => {
                 <m.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 p-4 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]">
                     <div className="container max-w-4xl flex items-center gap-4 w-full">
                         {step > 1 && (
-                            <button onClick={() => setStep(step - 1)} className="px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                            <button onClick={handlePrevStep} className="px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                                 <ArrowRight className="w-5 h-5" />
                                 <span className="hidden sm:inline">חזרה</span>
                             </button>
                         )}
                         <Button 
                             onClick={() => {
-                                if(step === BookingStep.SELECT_SERVICE) setStep(BookingStep.AI_STYLIST);
-                                else if(step === BookingStep.AI_STYLIST) setStep(BookingStep.SELECT_DATE);
-                                else if(step === BookingStep.SELECT_DATE) setStep(BookingStep.DETAILS);
-                                else if(step === BookingStep.DETAILS) setStep(BookingStep.CONSENT);
+                                if(step === BookingStep.SELECT_SERVICE) handleNextStep();
+                                else if(step === BookingStep.AI_STYLIST) handleNextStep();
+                                else if(step === BookingStep.SELECT_DATE) handleNextStep();
+                                else if(step === BookingStep.DETAILS) handleNextStep();
                                 else if(step === BookingStep.CONSENT) handleBook();
                             }}
                             disabled={
