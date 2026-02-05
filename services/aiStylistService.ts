@@ -1,10 +1,11 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { JEWELRY_CATALOG } from "../constants";
 
 // Define the shape of the AI response for TypeScript usage in the UI
 export interface AIRecommendation {
   location: string;
-  jewelry_type: string;
+  jewelry_id: string; // Updated to link to catalog
   description: string;
   x: number; // Percentage 0-100
   y: number; // Percentage 0-100
@@ -26,6 +27,11 @@ export const aiStylistService = {
 
     const ai = new GoogleGenAI({ apiKey: API_KEY });
 
+    // Prepare catalog string for the prompt
+    const catalogString = JEWELRY_CATALOG.map(j => 
+        `ID: ${j.id}, Name: ${j.name}, Type: ${j.category}, Suitable for: ${j.allowed_locations?.join(', ')}`
+    ).join('\n');
+
     // Define the schema to ensure we get coordinates for the UI
     const schema = {
       type: Type.OBJECT,
@@ -40,12 +46,12 @@ export const aiStylistService = {
             type: Type.OBJECT,
             properties: {
               location: { type: Type.STRING, description: "Anatomy name (e.g., Helix)" },
-              jewelry_type: { type: Type.STRING, description: "Type of jewelry (e.g., Gold Hoop)" },
-              description: { type: Type.STRING, description: "Why this fits (Hebrew)" },
+              jewelry_id: { type: Type.STRING, description: "The ID of the jewelry from the provided catalog that best fits this location." },
+              description: { type: Type.STRING, description: "Why this specific jewelry fits this anatomy (Hebrew)" },
               x: { type: Type.NUMBER, description: "Horizontal position percentage (0-100) from left" },
               y: { type: Type.NUMBER, description: "Vertical position percentage (0-100) from top" },
             },
-            required: ["location", "jewelry_type", "description", "x", "y"],
+            required: ["location", "jewelry_id", "description", "x", "y"],
           },
         },
       },
@@ -53,9 +59,14 @@ export const aiStylistService = {
     };
 
     const prompt = `You are a professional piercing stylist. Analyze this ear image.
-    1. Identify anatomical opportunities for piercing.
-    2. Suggest 3-4 specific styling additions.
-    3. Return X/Y coordinates (0-100 scale) for where the piercing should be placed on the image.
+    
+    CATALOG OF AVAILABLE JEWELRY:
+    ${catalogString}
+
+    Task:
+    1. Identify anatomical opportunities for piercing on this specific ear.
+    2. Suggest 3-4 specific styling additions using ONLY items from the provided catalog.
+    3. Return X/Y coordinates (0-100 scale) for where the jewelry should be placed on the image.
     4. Provide descriptions in Hebrew.
     `;
 

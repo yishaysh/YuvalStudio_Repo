@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, PlusCircle } from 'lucide-react';
+import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, PlusCircle, AlertCircle, Info } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
-import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS } from '../constants';
+import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { aiStylistService, AIAnalysisResult, AIRecommendation } from '../services/aiStylistService';
 
@@ -22,10 +22,6 @@ const SERVICE_META: Record<string, { healing: string }> = {
 
 const getMeta = (category: string) => SERVICE_META[category] || { healing: 'משתנה' };
 
-/**
- * Compresses an image file to a max width of 800px and 0.7 quality jpeg.
- * Prevents 414 URI Too Long errors and improves upload speed.
- */
 const compressImage = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -58,7 +54,6 @@ const compressImage = async (file: File): Promise<string> => {
 
 // --- Sub-Components ---
 
-// 1. Memoized Service Card (Crucial for performance with many items)
 const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Service, isSelected: boolean, onClick: () => void }) => {
     const meta = getMeta(service.category);
     
@@ -103,28 +98,20 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
     );
 });
 
-// 2. Scanning Animation Overlay
 const ScanningOverlay = () => (
     <div className="absolute inset-0 z-20 pointer-events-none rounded-2xl overflow-hidden">
-        {/* Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(212,181,133,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(212,181,133,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
-        
-        {/* Moving Laser Line - Loop animation */}
         <m.div 
             initial={{ top: "-10%" }}
             animate={{ top: "110%" }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_0_20px_rgba(212,181,133,0.8)] opacity-90"
         />
-
-        {/* Pulsating Radial Overlay */}
         <m.div 
             animate={{ opacity: [0, 0.4, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
             className="absolute inset-0 bg-brand-primary/10 mix-blend-overlay"
         />
-
-        {/* Status Badge */}
         <div className="absolute bottom-8 left-0 right-0 flex justify-center">
             <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-brand-primary/40 flex items-center gap-3 shadow-lg">
                 <BrainCircuit className="w-4 h-4 text-brand-primary animate-pulse" />
@@ -136,7 +123,6 @@ const ScanningOverlay = () => (
     </div>
 );
 
-// 3. Signature Pad
 const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => void }> = ({ onSave, onClear }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -232,18 +218,17 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     );
 };
 
-// 4. Ticket Summary
 const TicketSummary: React.FC<any> = ({
-  selectedServices, selectedDate, selectedSlot, totalDuration, appliedCoupon, couponCode, couponError, isCheckingCoupon, discountAmount, finalPrice, step, readOnly, aiRecommendation, onToggleService, onSetCouponCode, onApplyCoupon, onClearCoupon
+  selectedServices, selectedJewelry, selectedDate, selectedSlot, totalDuration, appliedCoupon, couponCode, couponError, isCheckingCoupon, discountAmount, finalPrice, step, readOnly, aiRecommendation, onToggleService, onToggleJewelry, onSetCouponCode, onApplyCoupon, onClearCoupon
 }) => {
   const result: AIAnalysisResult | null = aiRecommendation;
 
   return (
       <div className="p-6 space-y-6">
-        <div className={`transition-opacity duration-300 ${selectedServices.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
+        <div className={`transition-opacity duration-300 ${selectedServices.length > 0 || selectedJewelry?.length > 0 ? 'opacity-100' : 'opacity-30'}`}>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">טיפולים שנבחרו</div>
             <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar">
-                {selectedServices.length > 0 ? selectedServices.map((s: Service, idx: number) => (
+                {selectedServices.map((s: Service, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-sm">
                         <span className="text-white truncate max-w-[150px]">{s.name}</span>
                         <div className="flex items-center gap-2">
@@ -255,7 +240,27 @@ const TicketSummary: React.FC<any> = ({
                             )}
                         </div>
                     </div>
-                )) : (
+                ))}
+                
+                {/* Jewelry Section in Ticket */}
+                {selectedJewelry?.map((item: any, idx: number) => (
+                    <div key={`j-${idx}`} className="flex justify-between items-center text-sm bg-brand-primary/5 p-2 rounded-lg border border-brand-primary/10">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-3 h-3 text-brand-primary"/>
+                            <span className="text-white truncate max-w-[130px]">{item.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-brand-primary">₪{item.price}</span>
+                            {!readOnly && (
+                                <button onClick={() => onToggleJewelry(item)} className="text-red-400 hover:text-red-300">
+                                    <Trash2 className="w-3 h-3"/>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ))}
+
+                {selectedServices.length === 0 && (!selectedJewelry || selectedJewelry.length === 0) && (
                     <div className="text-slate-600 italic">לא נבחרו טיפולים</div>
                 )}
             </div>
@@ -304,11 +309,11 @@ const TicketSummary: React.FC<any> = ({
                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/30 uppercase disabled:opacity-50"
                          value={couponCode}
                          onChange={(e) => onSetCouponCode(e.target.value)}
-                         disabled={readOnly || selectedServices.length === 0}
+                         disabled={readOnly || (selectedServices.length === 0 && selectedJewelry.length === 0)}
                      />
                      <button 
                         onClick={onApplyCoupon}
-                        disabled={readOnly || !couponCode || isCheckingCoupon || selectedServices.length === 0}
+                        disabled={readOnly || !couponCode || isCheckingCoupon || (selectedServices.length === 0 && selectedJewelry.length === 0)}
                         className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-sm border border-white/10 disabled:opacity-50"
                      >
                          {isCheckingCoupon ? <Loader2 className="w-4 h-4 animate-spin"/> : 'הפעל'}
@@ -342,6 +347,7 @@ const Booking: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [selectedJewelry, setSelectedJewelry] = useState<any[]>([]); // New state for AI selections
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
@@ -455,7 +461,13 @@ const Booking: React.FC = () => {
   }, [activeCategory, services]);
 
   const totalDuration = useMemo(() => selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0), [selectedServices]);
-  const basePrice = useMemo(() => selectedServices.reduce((acc, s) => acc + s.price, 0), [selectedServices]);
+  
+  // Calculate base price including both standard services and AI selected jewelry
+  const basePrice = useMemo(() => {
+      const servicesTotal = selectedServices.reduce((acc, s) => acc + s.price, 0);
+      const jewelryTotal = selectedJewelry.reduce((acc, j) => acc + j.price, 0);
+      return servicesTotal + jewelryTotal;
+  }, [selectedServices, selectedJewelry]);
 
   const finalPrice = useMemo(() => {
       if (!appliedCoupon) return basePrice;
@@ -493,23 +505,15 @@ const Booking: React.FC = () => {
       setCouponError(null);
   }, []);
 
-  // Add dummy service from AI recommendation
-  const addServiceFromRecommendation = (rec: AIRecommendation) => {
-      // Logic to add a "custom" service or match with existing service
-      // For MVP, we add a placeholder service if no exact match
-      const matchingService = services.find(s => s.name.includes(rec.jewelry_type)) || {
-          id: `ai-${Math.random()}`,
-          name: `${rec.jewelry_type} (${rec.location})`,
-          price: 100, // Default estimate
-          duration_minutes: 30,
-          category: 'Ear',
-          description: rec.description,
-          image_url: 'https://picsum.photos/400/400',
-          pain_level: 3
-      } as Service;
-      
-      toggleService(matchingService);
-  };
+  const toggleJewelry = useCallback((item: any) => {
+      setSelectedJewelry(prev => {
+          const exists = prev.find(j => j.id === item.id);
+          if (exists) return prev.filter(j => j.id !== item.id);
+          return [...prev, item];
+      });
+      setAppliedCoupon(null);
+      setCouponCode('');
+  }, []);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -521,6 +525,7 @@ const Booking: React.FC = () => {
           setAiError(null);
           setAiResult(null);
           setActiveHotspot(null);
+          setSelectedJewelry([]); // Reset selections on new image
       } catch (err) {
           console.error(err);
           setAiError("שגיאה בטעינת התמונה. נסה קובץ אחר.");
@@ -587,34 +592,46 @@ const Booking: React.FC = () => {
   }, [studioSettings]);
 
   const handleBook = useCallback(async () => {
-      if(selectedServices.length === 0 || !selectedDate || !selectedSlot || !signatureData) return;
+      if((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot || !signatureData) return;
       setIsSubmitting(true);
       
       const [hours, minutes] = selectedSlot.split(':').map(Number);
       const date = new Date(selectedDate);
       date.setHours(hours, minutes);
 
-      const primaryService = selectedServices[0];
-      const otherServices = selectedServices.slice(1);
+      const primaryService = selectedServices[0] || { id: 'custom-jewelry', name: 'Jewelry Purchase', price: 0 };
       
       let finalNotes = formData.notes;
       if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
       
-      // Formatting AI recommendation into text for the backend
-      // Only include if AI was enabled and result exists
-      if (isAiEnabled && aiResult) {
-          const recommendationsText = aiResult.recommendations
-              .map(r => `- ${r.location}: ${r.jewelry_type} (${r.description})`)
-              .join('\n');
-          finalNotes += `\n\n--- AI Stylist Recommendation (${aiResult.style_summary}) ---\n${recommendationsText}`;
+      // Serialize Visual Plan for Admin
+      if (isAiEnabled && aiResult && aiImage) {
+          const visualPlan = {
+              original_image: aiImage, // Base64 could be heavy, ideally this would be an uploaded URL
+              recommendations: aiResult.recommendations.map(rec => ({
+                  jewelry_id: rec.jewelry_id,
+                  x: rec.x,
+                  y: rec.y,
+                  location: rec.location
+              })),
+              selected_items: selectedJewelry.map(j => j.id)
+          };
+          
+          // Stringify the JSON plan into the recommendation text field for admin parsing
+          // We also include readable text in notes
+          const planString = JSON.stringify(visualPlan);
+          
+          finalNotes += `\n\n--- AI Stylist Plan ---\n`;
+          finalNotes += selectedJewelry.map(j => `+ ${j.name} (${j.category}) - ₪${j.price}`).join('\n');
+          finalNotes += `\n\n(Visual Plan Data embedded in AI field)`;
       }
 
-      if (otherServices.length > 0) {
-          finalNotes += `\n\n--- חבילת שירותים משולבת ---\nטיפול ראשי: ${primaryService.name}\nתוספות: ${otherServices.map(s => s.name).join(', ')}`;
+      if (selectedServices.length > 1) {
+          finalNotes += `\n\n--- חבילת שירותים משולבת ---\nתוספות: ${selectedServices.slice(1).map(s => s.name).join(', ')}`;
       }
       finalNotes += `\n[חתם על הצהרת בריאות]`;
 
-      const endTime = new Date(date.getTime() + totalDuration * 60000).toISOString();
+      const endTime = new Date(date.getTime() + (totalDuration || 30) * 60000).toISOString();
 
       try {
         await api.createAppointment({
@@ -629,8 +646,12 @@ const Booking: React.FC = () => {
             signature: signatureData,
             coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
             final_price: finalPrice,
-            // Pass the plain text summary for legacy support, logic handles full object in notes
-            ai_recommendation_text: (isAiEnabled && aiResult) ? aiResult.style_summary : undefined
+            // Pass the serialized plan if AI was used, else null
+            ai_recommendation_text: (isAiEnabled && aiResult && aiImage) ? JSON.stringify({
+                original_image: aiImage, // Warning: Large payload if full base64
+                recommendations: aiResult.recommendations,
+                selected_items: selectedJewelry
+            }) : undefined
         });
         setStep(BookingStep.CONFIRMATION);
       } catch (err) {
@@ -638,16 +659,21 @@ const Booking: React.FC = () => {
       } finally {
           setIsSubmitting(false);
       }
-  }, [selectedServices, selectedDate, selectedSlot, signatureData, formData, aiResult, appliedCoupon, finalPrice, totalDuration, isAiEnabled]);
+  }, [selectedServices, selectedJewelry, selectedDate, selectedSlot, signatureData, formData, aiResult, aiImage, appliedCoupon, finalPrice, totalDuration, isAiEnabled]);
 
   const sendConfirmationWhatsapp = useCallback(() => {
-      if (selectedServices.length === 0 || !selectedDate || !selectedSlot) return;
+      if ((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot) return;
       const phone = studioSettings?.studio_details.phone || DEFAULT_STUDIO_DETAILS.phone;
       const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '972');
-      const serviceNames = selectedServices.map(s => s.name).join(' + ');
-      const msg = `*היי, קבעתי תור באתר!* 👋\n\n*שם:* ${formData.name}\n*טיפול:* ${serviceNames}\n*תאריך:* ${selectedDate.toLocaleDateString('he-IL')}\n*שעה:* ${selectedSlot}\n\nאשמח לאישור סופי. תודה! 🙏`;
+      
+      const items = [
+          ...selectedServices.map(s => s.name),
+          ...selectedJewelry.map(j => j.name)
+      ].join(' + ');
+
+      const msg = `*היי, קבעתי תור באתר!* 👋\n\n*שם:* ${formData.name}\n*פריטים:* ${items}\n*תאריך:* ${selectedDate.toLocaleDateString('he-IL')}\n*שעה:* ${selectedSlot}\n\nאשמח לאישור סופי. תודה! 🙏`;
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-  }, [selectedServices, selectedDate, selectedSlot, formData, studioSettings]);
+  }, [selectedServices, selectedJewelry, selectedDate, selectedSlot, formData, studioSettings]);
 
   const categories = useMemo(() => [{ id: 'All', label: 'הכל' }, { id: 'Ear', label: 'אוזניים' }, { id: 'Face', label: 'פנים' }, { id: 'Body', label: 'גוף' }], []);
   const showBottomBar = (step === BookingStep.SELECT_SERVICE && selectedServices.length > 0) || (step > BookingStep.SELECT_SERVICE && step < BookingStep.CONFIRMATION); 
@@ -680,7 +706,7 @@ const Booking: React.FC = () => {
                     </div>
 
                     {/* Mobile Summary - Fixed Z-Index */}
-                    {selectedServices.length > 0 && step < BookingStep.CONFIRMATION && (
+                    {(selectedServices.length > 0 || selectedJewelry.length > 0) && step < BookingStep.CONFIRMATION && (
                         <div className="lg:hidden mb-6 relative z-[70]">
                             <button 
                                 onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
@@ -692,7 +718,7 @@ const Booking: React.FC = () => {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs text-slate-400">סיכום ביניים</p>
-                                        <p className="text-sm font-medium text-white">{selectedServices.length} פריטים נבחרו</p>
+                                        <p className="text-sm font-medium text-white">{selectedServices.length + selectedJewelry.length} פריטים נבחרו</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -712,6 +738,7 @@ const Booking: React.FC = () => {
                                         <div className="bg-brand-surface border border-white/10 rounded-xl">
                                             <TicketSummary 
                                                 selectedServices={selectedServices}
+                                                selectedJewelry={selectedJewelry}
                                                 selectedDate={selectedDate}
                                                 selectedSlot={selectedSlot}
                                                 totalDuration={totalDuration}
@@ -725,6 +752,7 @@ const Booking: React.FC = () => {
                                                 readOnly={step === BookingStep.CONFIRMATION}
                                                 aiRecommendation={aiResult}
                                                 onToggleService={toggleService}
+                                                onToggleJewelry={toggleJewelry}
                                                 onSetCouponCode={setCouponCode}
                                                 onApplyCoupon={handleApplyCoupon}
                                                 onClearCoupon={() => { setAppliedCoupon(null); setCouponCode(''); }}
@@ -795,49 +823,73 @@ const Booking: React.FC = () => {
                                                 <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
                                                 {isAnalyzing && <ScanningOverlay />}
                                                 
-                                                {/* Hotspots Overlay */}
+                                                {/* Visual Jewelry Try-On Overlays */}
                                                 {!isAnalyzing && aiResult && (
                                                     <div className="absolute inset-0">
-                                                        {aiResult.recommendations.map((rec, i) => (
-                                                            <div
-                                                                key={i}
-                                                                style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
-                                                                className="absolute w-0 h-0"
-                                                            >
-                                                                <button
-                                                                    onClick={() => setActiveHotspot(i)}
-                                                                    className={`relative -ml-3 -mt-3 w-6 h-6 rounded-full border-2 transition-all duration-300 ${activeHotspot === i ? 'bg-brand-primary border-white scale-125' : 'bg-white/20 border-brand-primary/80 hover:bg-brand-primary/80'}`}
+                                                        {aiResult.recommendations.map((rec, i) => {
+                                                            const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
+                                                            if (!jewelry) return null;
+
+                                                            return (
+                                                                <div
+                                                                    key={i}
+                                                                    style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
+                                                                    className="absolute w-0 h-0"
                                                                 >
-                                                                    <div className="absolute inset-0 rounded-full animate-ping bg-brand-primary opacity-30"></div>
-                                                                </button>
-                                                                
-                                                                {/* Tooltip Card */}
-                                                                <AnimatePresence>
-                                                                    {activeHotspot === i && (
-                                                                        <m.div
-                                                                            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                                            exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                                                                            className="absolute z-50 top-8 left-1/2 -translate-x-1/2 w-48 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl"
-                                                                        >
-                                                                            <div className="text-xs text-brand-primary font-bold uppercase mb-1">{rec.location}</div>
-                                                                            <div className="text-sm font-medium text-white mb-1">{rec.jewelry_type}</div>
-                                                                            <div className="text-[10px] text-slate-400 mb-3 leading-tight">{rec.description}</div>
-                                                                            <button 
-                                                                                onClick={() => addServiceFromRecommendation(rec)}
-                                                                                className="w-full py-1.5 bg-brand-primary text-brand-dark text-xs font-bold rounded-lg flex items-center justify-center gap-1 hover:bg-white transition-colors"
+                                                                    {/* Jewelry Render Marker */}
+                                                                    <button
+                                                                        onClick={() => setActiveHotspot(i)}
+                                                                        className={`relative -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${activeHotspot === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
+                                                                    >
+                                                                        <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
+                                                                        {!activeHotspot && activeHotspot !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
+                                                                    </button>
+                                                                    
+                                                                    {/* Smart Popup - Boundary Aware */}
+                                                                    <AnimatePresence>
+                                                                        {activeHotspot === i && (
+                                                                            <m.div
+                                                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                                                className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 ${rec.x > 50 ? 'right-full mr-3' : 'left-full ml-3'} ${rec.y > 80 ? 'bottom-0' : 'top-0'}`}
                                                                             >
-                                                                                <PlusCircle className="w-3 h-3"/> הוסף לתור
-                                                                            </button>
-                                                                        </m.div>
-                                                                    )}
-                                                                </AnimatePresence>
-                                                            </div>
-                                                        ))}
+                                                                                <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">
+                                                                                    <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="text-xs text-brand-primary font-bold uppercase mb-0.5">{rec.location}</div>
+                                                                                    <div className="text-sm font-medium text-white mb-1">{jewelry.name}</div>
+                                                                                    <div className="text-[10px] text-slate-400 mb-2 leading-tight line-clamp-2">{jewelry.description}</div>
+                                                                                    <div className="flex items-center justify-between mt-2">
+                                                                                        <span className="text-brand-primary font-serif font-bold">₪{jewelry.price}</span>
+                                                                                        {selectedJewelry.find(j => j.id === jewelry.id) ? (
+                                                                                            <button 
+                                                                                                onClick={() => toggleJewelry(jewelry)}
+                                                                                                className="px-3 py-1 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500 hover:text-white transition-colors"
+                                                                                            >
+                                                                                                הסר
+                                                                                            </button>
+                                                                                        ) : (
+                                                                                            <button 
+                                                                                                onClick={() => toggleJewelry(jewelry)}
+                                                                                                className="px-3 py-1 bg-brand-primary text-brand-dark text-xs font-bold rounded hover:bg-white transition-colors"
+                                                                                            >
+                                                                                                הוסף לתור
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </m.div>
+                                                                        )}
+                                                                    </AnimatePresence>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
 
-                                                <button onClick={() => { setAiImage(null); setAiResult(null); setAiError(null); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
+                                                <button onClick={() => { setAiImage(null); setAiResult(null); setAiError(null); setSelectedJewelry([]); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -852,10 +904,10 @@ const Booking: React.FC = () => {
                                                             <Sparkles className="w-5 h-5"/> {aiResult.style_summary}
                                                         </h4>
                                                         <p className="text-sm text-slate-400 mb-4">
-                                                            לחץ על הנקודות בתמונה כדי לראות את ההמלצות ולהוסיף אותן לתור.
+                                                            הקש על הפריטים בתמונה כדי לראות פרטים ולהוסיף אותם להזמנה שלך.
                                                         </p>
                                                         <Button onClick={handleNextStep} className="w-full mt-2 gap-2">
-                                                            נשמע מעולה, המשך לקביעת תור <ArrowLeft className="w-4 h-4"/>
+                                                            המשך לקביעת תור <ArrowLeft className="w-4 h-4"/>
                                                         </Button>
                                                     </m.div>
                                                 ) : (
@@ -1009,6 +1061,7 @@ const Booking: React.FC = () => {
                             </div>
                             <TicketSummary 
                                 selectedServices={selectedServices}
+                                selectedJewelry={selectedJewelry}
                                 selectedDate={selectedDate}
                                 selectedSlot={selectedSlot}
                                 totalDuration={totalDuration}
@@ -1022,6 +1075,7 @@ const Booking: React.FC = () => {
                                 readOnly={step === BookingStep.CONFIRMATION}
                                 aiRecommendation={aiResult}
                                 onToggleService={toggleService}
+                                onToggleJewelry={toggleJewelry}
                                 onSetCouponCode={setCouponCode}
                                 onApplyCoupon={handleApplyCoupon}
                                 onClearCoupon={() => { setAppliedCoupon(null); setCouponCode(''); }}
@@ -1054,7 +1108,7 @@ const Booking: React.FC = () => {
                                 else if(step === BookingStep.CONSENT) handleBook();
                             }}
                             disabled={
-                                (step === BookingStep.SELECT_SERVICE && selectedServices.length === 0) ||
+                                (step === BookingStep.SELECT_SERVICE && selectedServices.length === 0 && selectedJewelry.length === 0) ||
                                 (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
                                 (step === BookingStep.DETAILS && (!formData.name || !formData.phone || !formData.nationalId)) ||
                                 (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||
