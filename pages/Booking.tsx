@@ -622,52 +622,52 @@ const Booking: React.FC = () => {
   }, [studioSettings]);
 
 	  const handleBook = useCallback(async () => {
-		// 1. חישוב המחיר בתוך הפונקציה כדי למנוע שגיאת ReferenceError
-		const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
-		const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
-		let calculatedTotal = servicesSum + jewelrySum;
-
-		if (appliedCoupon) {
-			if (appliedCoupon.discountType === 'percentage') {
-				calculatedTotal -= (calculatedTotal * appliedCoupon.value) / 100;
-			} else {
-				calculatedTotal -= appliedCoupon.value;
-			}
-		}
-		const finalPriceToPay = Math.max(0, calculatedTotal);
-
-		// 2. הכנת ה-Visual Plan (מה שקראת לו Q בקוד המכווץ)
-		const visualPlanString = JSON.stringify({
-			original_image: aiResult?.original_image,
-			recommendations: aiResult?.recommendations,
-			selected_items: selectedJewelry.map(j => j.id)
-		});
-
-		setIsSubmitting(true);
-		const endTime = new Date(selectedDate!.getTime() + (selectedService?.duration_minutes || 30) * 60000).toISOString();
-
-		try {
-			await api.createAppointment({
-				service_id: selectedService!.id,
-				start_time: selectedDate!.toISOString(),
-				end_time: endTime,
-				client_name: formData.name,
-				client_phone: formData.phone,
-				client_email: formData.email,
-				notes: formData.notes,
-				signature: signatureData!,
-				coupon_code: appliedCoupon?.code,
-				final_price: finalPriceToPay, // כאן אנחנו משתמשים במשתנה שחישבנו למעלה
-				visual_plan: visualPlanString
+			// 1. הגדרת המשתנים מתוך ה-State הקיים
+			const service = selectedServices[0]; // לוקח את השירות הראשון שנבחר
+			const visualPlanString = JSON.stringify({
+				original_image: aiResult?.original_image,
+				recommendations: aiResult?.recommendations,
+				selected_items: selectedJewelry.map(j => j.id)
 			});
+
+			// 2. חישוב מחיר סופי (כולל תכשיטים וקופון)
+			const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
+			const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
+			let total = servicesSum + jewelrySum;
+			if (appliedCoupon) {
+				if (appliedCoupon.discountType === 'percentage') total -= (total * appliedCoupon.value) / 100;
+				else total -= appliedCoupon.value;
+			}
+			const finalPriceToSave = Math.max(0, total);
+
+			setIsSubmitting(true);
 			
-			setStep(BookingStep.CONFIRMATION);
-		} catch (error) {
-			console.error("Booking error:", error);
-		} finally {
-			setIsSubmitting(false);
-		}
-	}, [selectedService, selectedDate, formData, signatureData, appliedCoupon, aiResult, selectedJewelry, setStep]);
+			// חישוב זמן סיום (ברירת מחדל 30 דקות אם אין שירות)
+			const duration = service?.duration_minutes || 30;
+			const endTime = new Date(selectedDate!.getTime() + duration * 60000).toISOString();
+
+			try {
+				await api.createAppointment({
+					service_id: service?.id || 'combined',
+					start_time: selectedDate!.toISOString(),
+					end_time: endTime,
+					client_name: formData.name,
+					client_phone: formData.phone,
+					client_email: formData.email,
+					notes: formData.notes,
+					signature: signatureData!,
+					coupon_code: appliedCoupon?.code,
+					final_price: finalPriceToSave,
+					visual_plan: visualPlanString
+				});
+				
+				setStep(BookingStep.CONFIRMATION);
+			} catch (error) {
+				console.error("Booking error:", error);
+			} finally {
+				setIsSubmitting(false);
+			}
+		}, [selectedServices, selectedDate, formData, signatureData, appliedCoupon, aiResult, selectedJewelry, setStep]);
 
   const sendConfirmationWhatsapp = useCallback(() => {
       if ((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot) return;
@@ -1119,7 +1119,7 @@ const Booking: React.FC = () => {
                 </div>
             </div>
         </div>
-
+ 
         <AnimatePresence>
             {showBottomBar && (
                 <m.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 p-4 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]">
