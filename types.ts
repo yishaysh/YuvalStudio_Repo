@@ -1,4 +1,3 @@
-
 export interface Service {
   id: string;
   name: string;
@@ -16,27 +15,36 @@ export interface Appointment {
   client_email: string;
   client_phone: string;
   service_id: string;
-  service_name?: string; // Extended
-  service_price?: number; // Extended
-  start_time: string; // ISO String
+  service_name?: string; 
+  service_price?: number; 
+  start_time: string; 
   status: 'pending' | 'confirmed' | 'cancelled';
   notes?: string;
-  signature?: string; // Base64 string of the signature
-  created_at?: string; // Added for sorting/display
-  coupon_code?: string; // Optional coupon code
-  final_price?: number; // Final price after discount
-  ai_recommendation_text?: string; // AI Styling advice
+  signature?: string; 
+  created_at?: string; 
+  coupon_code?: string; 
+  
+  // --- שדות מעודכנים/חדשים ---
+  final_price?: number; 
+  price?: number;            // הוספנו כדי לתמוך בשליחה הישירה מה-Booking
+  visual_plan?: string;      // השדה החדש שבו נשמר ה-JSON של ה-AI
+  ai_recommendation_text?: string; 
+}
+
+// שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך
+export interface JewelryItem extends Service {
+    in_stock?: boolean;
 }
 
 export interface DayAvailability {
   date: Date;
   isAvailable: boolean;
-  slots: string[]; // "10:00", "11:00" etc.
+  slots: string[]; 
 }
 
 export interface TimeRange {
-  start: number; // 0-24
-  end: number;   // 0-24
+  start: number; 
+  end: number;   
 }
 
 export interface DaySchedule {
@@ -60,23 +68,22 @@ export interface Coupon {
   id: string;
   code: string;
   discountType: 'fixed' | 'percentage';
-  value: number; // Percentage (0-100) or Fixed Amount
+  value: number; 
   minOrderAmount: number;
   isActive: boolean;
-  maxUses?: number; // Optional limit
-  usedCount?: number; // Counter
+  maxUses?: number; 
+  usedCount?: number; 
 }
 
 export interface StudioSettings {
-  // Key is "0" for Sunday, "1" for Monday, etc.
   working_hours: {
     [key: string]: DaySchedule; 
   };
   studio_details: StudioDetails;
   monthly_goals: MonthlyGoals;
-  gallery_tags?: Record<string, string[]>; // Map Image ID -> Array of Service IDs
+  gallery_tags?: Record<string, string[]>; 
   coupons: Coupon[];
-  enable_ai?: boolean; // System Feature Flag
+  enable_ai?: boolean; 
 }
 
 export enum BookingStep {
@@ -85,5 +92,6 @@ export enum BookingStep {
   SELECT_DATE = 3,
   DETAILS = 4,
   CONSENT = 5,
-  CONFIRMATION = 6
+  CONFIRMATION = 6,
+  SUCCESS = 7 // הוספתי Success למקרה שהשתמשנו בו ב-HandleBook
 }

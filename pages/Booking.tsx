@@ -123,6 +123,13 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
+	// חישוב המחיר הכולל: שירותים + תכשיטים
+	const totalPrice = useMemo(() => {
+		const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
+		const jewelrySum = selectedJewelry.reduce((sum, j) => sum + (j.price || 0), 0);
+		return servicesSum + jewelrySum;
+	}, [selectedServices, selectedJewelry]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -604,70 +611,74 @@ const Booking: React.FC = () => {
   }, [studioSettings]);
 
   const handleBook = useCallback(async () => {
-      if((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot || !signatureData) return;
-      setIsSubmitting(true);
-      
-      const [hours, minutes] = selectedSlot.split(':').map(Number);
-      const date = new Date(selectedDate);
-      date.setHours(hours, minutes);
+    if((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot || !signatureData) return;
+    setIsSubmitting(true);
+    
+    const [hours, minutes] = selectedSlot.split(':').map(Number);
+    const date = new Date(selectedDate);
+    date.setHours(hours, minutes);
 
-      const primaryService = selectedServices[0] || { id: 'custom-jewelry', name: 'Jewelry Purchase', price: 0 };
-      
-      let finalNotes = formData.notes;
-      if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
-      
-      // Serialize Visual Plan for Admin (Structured JSON)
-      let aiRecommendationPayload = undefined;
-      
-      if (isAiEnabled && aiResult && aiImage) {
-          const visualPlan = {
-              original_image: aiImage, 
-              recommendations: aiResult.recommendations.map(rec => ({
-                  jewelry_id: rec.jewelry_id,
-                  x: rec.x,
-                  y: rec.y,
-                  location: rec.location,
-                  description: rec.description
-              })),
-              selected_items: selectedJewelry.map(j => j.id) // Only IDs needed
-          };
-          
-          aiRecommendationPayload = JSON.stringify(visualPlan);
-          
-          finalNotes += `\n\n--- AI Stylist Plan --- (ראה לשונית ויזואלית)\n`;
-          finalNotes += selectedJewelry.map(j => `+ ${j.name} - ₪${j.price}`).join('\n');
-      }
+    const primaryService = selectedServices[0] || { id: 'custom-jewelry', name: 'Jewelry Purchase', price: 0 };
+    
+    let finalNotes = formData.notes;
+    if (formData.nationalId) finalNotes = `ת.ז: ${formData.nationalId}\n${finalNotes}`;
+    
+    // --- תיקון 1: מבנה ה-Visual Plan ---
+    let aiRecommendationPayload = undefined;
+    
+    if (isAiEnabled && aiResult && aiImage) {
+        const visualPlan = {
+            original_image: aiImage, 
+            // אנחנו מוודאים שכל המידע הנדרש לשחזור עובר כאן
+            recommendations: aiResult.recommendations.map(rec => ({
+                jewelry_id: rec.jewelry_id,
+                x: rec.x,
+                y: rec.y,
+                location: rec.location,
+                description: rec.description
+            })),
+            // חשוב: השתמשנו ב-selectedJewelry כדי לדעת מה הלקוח בחר בפועל
+            selected_items: selectedJewelry.map(j => j.id) 
+        };
+        
+        aiRecommendationPayload = JSON.stringify(visualPlan);
+        
+        finalNotes += `\n\n--- AI Stylist Plan --- (ראה לשונית ויזואלית)\n`;
+        finalNotes += selectedJewelry.map(j => `+ ${j.name} - ₪${j.price}`).join('\n');
+    }
 
-      if (selectedServices.length > 1) {
-          finalNotes += `\n\n--- חבילת שירותים משולבת ---\nתוספות: ${selectedServices.slice(1).map(s => s.name).join(', ')}`;
-      }
-      finalNotes += `\n[חתם על הצהרת בריאות]`;
+    if (selectedServices.length > 1) {
+        finalNotes += `\n\n--- חבילת שירותים משולבת ---\nתוספות: ${selectedServices.slice(1).map(s => s.name).join(', ')}`;
+    }
+    finalNotes += `\n[חתם על הצהרת בריאות]`;
 
-      const endTime = new Date(date.getTime() + (totalDuration || 30) * 60000).toISOString();
+    const endTime = new Date(date.getTime() + (totalDuration || 30) * 60000).toISOString();
 
-      try {
-        await api.createAppointment({
-            service_id: primaryService.id,
-            start_time: date.toISOString(),
-            // @ts-ignore
-            end_time: endTime, 
-            client_name: formData.name,
-            client_phone: formData.phone,
-            client_email: formData.email,
-            notes: finalNotes,
-            signature: signatureData,
-            coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
-            final_price: finalPrice,
-            // Send proper JSON for admin visual reconstruction
-            ai_recommendation_text: aiRecommendationPayload
-        });
-        setStep(BookingStep.CONFIRMATION);
-      } catch (err) {
-          console.error(err);
-      } finally {
-          setIsSubmitting(false);
-      }
-  }, [selectedServices, selectedJewelry, selectedDate, selectedSlot, signatureData, formData, aiResult, aiImage, appliedCoupon, finalPrice, totalDuration, isAiEnabled]);
+    try {
+      await api.createAppointment({
+          service_id: primaryService.id,
+          start_time: date.toISOString(),
+          // @ts-ignore
+          end_time: endTime, 
+          client_name: formData.name,
+          client_phone: formData.phone,
+          client_email: formData.email,
+          notes: finalNotes,
+          signature: signatureData,
+          coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
+          // --- תיקון 2: שימוש במחיר המחושב כולל התכשיטים ---
+          final_price: totalPrice, 
+          // --- תיקון 3: השדה שה-Admin יחפש ---
+          visual_plan: aiRecommendationPayload 
+      });
+      setStep(BookingStep.CONFIRMATION);
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setIsSubmitting(false);
+    }
+}, [selectedServices, selectedJewelry, selectedDate, selectedSlot, signatureData, formData, aiResult, aiImage, appliedCoupon, totalPrice, totalDuration, isAiEnabled]);
+// ^ שים לב שהחלפתי את finalPrice ב-totalPrice ב-Dependencies
 
   const sendConfirmationWhatsapp = useCallback(() => {
       if ((selectedServices.length === 0 && selectedJewelry.length === 0) || !selectedDate || !selectedSlot) return;
@@ -861,53 +872,59 @@ const Booking: React.FC = () => {
                                                                         {!activeHotspot && activeHotspot !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
                                                                     </button>
                                                                     
-                                                                    {/* Smart Popup - Edge Aware */}
-                                                                    <AnimatePresence>
-                                                                        {activeHotspot === i && (
-                                                                            <m.div
-                                                                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                                                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                                                animate={{ opacity: 1, scale: 1 }}
-                                                                                exit={{ opacity: 0, scale: 0.9 }}
-                                                                                className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 
-                                                                                    ${isRightEdge ? 'right-full mr-3' : isLeftEdge ? 'left-full ml-3' : 'left-1/2 -translate-x-1/2 mt-3'} 
-                                                                                    ${isBottomEdge ? 'bottom-0' : 'top-0'}`}
-                                                                            >
-                                                                                <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">
-                                                                                    <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
-                                                                                </div>
-                                                                                <div>
-                                                                                    <div className="text-xs text-brand-primary font-bold uppercase mb-0.5">{rec.location}</div>
-                                                                                    <div className="text-sm font-medium text-white mb-1">{jewelry.name}</div>
-                                                                                    <div className="text-[10px] text-slate-400 mb-2 leading-tight line-clamp-2">{jewelry.description}</div>
-                                                                                    <div className="flex items-center justify-between mt-2">
-                                                                                        <span className="text-brand-primary font-serif font-bold">₪{jewelry.price}</span>
-                                                                                        {selectedJewelry.find(j => j.id === jewelry.id) ? (
-                                                                                            <button 
-                                                                                                onClick={() => toggleJewelry(jewelry)}
-                                                                                                className="px-3 py-1 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500 hover:text-white transition-colors"
-                                                                                            >
-                                                                                                הסר
-                                                                                            </button>
-                                                                                        ) : (
-                                                                                            <button 
-                                                                                                onClick={() => toggleJewelry(jewelry)}
-                                                                                                className="px-3 py-1 bg-brand-primary text-brand-dark text-xs font-bold rounded hover:bg-white transition-colors"
-                                                                                            >
-                                                                                                הוסף לתור
-                                                                                            </button>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                                <button 
-                                                                                    onClick={(e) => { e.stopPropagation(); setActiveHotspot(null); }}
-                                                                                    className="absolute top-2 right-2 p-1 bg-black/40 rounded-full text-white/80 hover:text-white md:hidden"
-                                                                                >
-                                                                                    <X className="w-3 h-3" />
-                                                                                </button>
-                                                                            </m.div>
-                                                                        )}
-                                                                    </AnimatePresence>
+                                                                    {/* Tooltip Popup */}
+																	<AnimatePresence>
+																	  {activeRecommendation === index && (
+																		<m.div
+																		  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+																		  animate={{ opacity: 1, scale: 1, y: 0 }}
+																		  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+																		  className="absolute z-[100] min-w-[220px] bg-black/95 backdrop-blur-xl border border-brand-primary/30 p-4 rounded-2xl shadow-2xl pointer-events-auto"
+																		  style={{
+																			bottom: 'calc(100% + 15px)', // מעל הנקודה
+																			// לוגיקת צדדים: אם מעל 70% מהרוחב - הצמד לימין (ייפתח שמאלה), אחרת הצמד לשמאל (ייפתח ימינה)
+																			left: rec.x > 70 ? 'auto' : '0',
+																			right: rec.x > 70 ? '0' : 'auto',
+																		  }}
+																		>
+																		  <div className="relative">
+																			{/* חץ קטן שזז לפי הצד */}
+																			<div 
+																			  className="absolute -bottom-5 w-4 h-4 bg-black/95 border-r border-b border-brand-primary/30 rotate-45"
+																			  style={{
+																				left: rec.x > 70 ? 'auto' : '15px',
+																				right: rec.x > 70 ? '15px' : 'auto'
+																			  }}
+																			/>
+																			
+																			<div className="flex items-start gap-3">
+																			  <div className="w-12 h-12 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex-shrink-0 overflow-hidden">
+																				{JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.image_url ? (
+																				  <img 
+																					src={JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.image_url} 
+																					className="w-full h-full object-cover"
+																					alt=""
+																				  />
+																				) : (
+																				  <Sparkles className="w-full h-full p-3 text-brand-primary" />
+																				)}
+																			  </div>
+																			  <div className="flex-1 text-right">
+																				<h4 className="text-white font-bold text-sm">
+																				  {JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.name || 'תכשיט מומלץ'}
+																				</h4>
+																				<p className="text-brand-primary font-mono text-xs mt-0.5">
+																				  ₪{JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id)?.price || 0}
+																				</p>
+																			  </div>
+																			</div>
+																			<p className="text-gray-400 text-xs mt-3 leading-relaxed border-t border-white/10 pt-2">
+																			  {rec.description}
+																			</p>
+																		  </div>
+																		</m.div>
+																	  )}
+																	</AnimatePresence>
                                                                 </div>
                                                             );
                                                         })}
