@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket, 
   Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
   ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2
+  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles
 } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
@@ -129,7 +129,8 @@ const AppointmentsList = ({
     showFilters = true, 
     allServices = [],
     onSyncToCalendar,
-    onBulkSync
+    onBulkSync,
+    onViewVisualPlan
 }: any) => {
     const rowRefs = useRef<{[key: string]: HTMLTableRowElement | null}>({});
     const [statusFilter, setStatusFilter] = useState('all');
@@ -217,7 +218,11 @@ const AppointmentsList = ({
                 });
             }
         }
-
+        // Also check if notes contain specific Jewelry items added by AI logic manually
+        // Since we don't have exact catalog prices here easily unless passed, we rely on the logic that
+        // Booking.tsx creates 'final_price' correctly. 
+        // But for calculatedBasePrice display, we assume the provided service_price + parsed extras is close.
+        
         // 3. Determine Final Price & Coupon
         let finalPrice = undefined;
         let couponCode = undefined;
@@ -336,6 +341,7 @@ const AppointmentsList = ({
                 {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
                     const isHighlighted = apt.id === filterId;
                     const { servicesList, calculatedBasePrice, finalPrice, couponCode, discount } = getCalculatedData(apt);
+                    const hasVisualPlan = !!apt.ai_recommendation_text;
 
                     return (
                         <tr 
@@ -382,7 +388,7 @@ const AppointmentsList = ({
                                         <div className="text-xs space-y-2">
                                             <div className="flex justify-between text-slate-400">
                                                 <span>שווי הזמנה כולל:</span>
-                                                <span className="line-through">₪{calculatedBasePrice}</span>
+                                                <span className={discount > 0 ? "line-through" : ""}>₪{calculatedBasePrice}</span>
                                             </div>
                                             {discount > 0 && (
                                                 <div className="flex justify-between text-emerald-400">
@@ -420,12 +426,25 @@ const AppointmentsList = ({
                             <td className="py-4 px-6 align-top">
                                 <div className="flex items-center justify-end gap-2">
                                     <div className="flex bg-white/5 rounded-lg mr-2">
+                                        {/* AI Visual Plan Button */}
+                                        {hasVisualPlan && (
+                                            <button 
+                                                onClick={() => onViewVisualPlan(apt)} 
+                                                className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
+                                                title="צפה בתוכנית AI ותמונה"
+                                            >
+                                                <Sparkles className="w-4 h-4" />
+                                            </button>
+                                        )}
+
                                         <button 
                                             onClick={() => sendWhatsapp(apt, 'status_update', studioAddress)} 
                                             className={`p-2 transition-colors ${
+                                                !hasVisualPlan ? 'rounded-r-lg' : ''
+                                            } border-l border-white/5 ${
                                                 apt.status === 'confirmed' 
-                                                    ? 'rounded-r-lg border-l border-white/5 text-emerald-400 hover:bg-emerald-500/20' 
-                                                    : 'rounded-lg ' + (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
+                                                    ? 'text-emerald-400 hover:bg-emerald-500/20' 
+                                                    : (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
                                             }`} 
                                             title={apt.status === 'cancelled' ? "שלח הודעת ביטול" : "שלח הודעת סטטוס"}
                                         >
@@ -653,7 +672,7 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
     );
 };
 
-const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar }: any) => {
+const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan }: any) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -701,13 +720,14 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                     onDownloadPdf={() => {}}
                     allServices={services}
                     onSyncToCalendar={onSyncToCalendar}
+                    onViewVisualPlan={onViewVisualPlan}
                 />
             </div>
         </div>
     );
 };
 
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar }: any) => {
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, onViewVisualPlan }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const appointmentsRef = useRef<HTMLDivElement>(null);
@@ -798,6 +818,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         showFilters={false}
                         allServices={services}
                         onSyncToCalendar={onSyncToCalendar}
+                        onViewVisualPlan={onViewVisualPlan}
                     />
                 </div>
             </div>
@@ -1301,6 +1322,9 @@ const Admin: React.FC = () => {
     const [modalData, setModalData] = useState<{ isOpen: boolean, type: 'cancel' | null, item: any | null }>({ isOpen: false, type: null, item: null });
     const [pdfData, setPdfData] = useState<Appointment | null>(null);
     const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
+    
+    // New State for Visual Plan Viewer
+    const [visualPlanData, setVisualPlanData] = useState<any | null>(null);
 
     const showNotification = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -1506,8 +1530,20 @@ const Admin: React.FC = () => {
 
                 <AnimatePresence mode="wait">
                     <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} />}
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={(apt: Appointment) => {
+                            if (apt.ai_recommendation_text) {
+                                try {
+                                    setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
+                                } catch (e) { console.error(e); }
+                            }
+                        }} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={(apt: Appointment) => {
+                            if (apt.ai_recommendation_text) {
+                                try {
+                                    setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
+                                } catch (e) { console.error(e); }
+                            }
+                        }} />}
                         {activeTab === 'appointments' && (
                             <AppointmentsList 
                                 appointments={appointments} 
@@ -1520,6 +1556,13 @@ const Admin: React.FC = () => {
                                 allServices={services}
                                 onSyncToCalendar={handleSyncToCalendar}
                                 onBulkSync={handleBulkSync}
+                                onViewVisualPlan={(apt: Appointment) => {
+                                    if (apt.ai_recommendation_text) {
+                                        try {
+                                            setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
+                                        } catch (e) { console.error(e); }
+                                    }
+                                }}
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
@@ -1532,6 +1575,38 @@ const Admin: React.FC = () => {
 
             <ConfirmationModal isOpen={modalData.isOpen} onClose={() => setModalData({ ...modalData, isOpen: false })} onConfirm={handleCancelAppointment} title="ביטול תור" description="האם אתה בטוח?" confirmText="בטל" variant="danger" />
             <ConfirmationModal isOpen={!!imageToDeleteId} onClose={() => setImageToDeleteId(null)} onConfirm={handleConfirmDeleteGalleryImage} title="מחיקת תמונה" description="האם למחוק תמונה זו?" confirmText="מחק" variant="danger" />
+
+            {/* AI Visual Plan Modal */}
+            <Modal isOpen={!!visualPlanData} onClose={() => setVisualPlanData(null)} title="תוכנית עיצוב AI">
+                {visualPlanData && (
+                    <div className="space-y-4">
+                        <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black border border-white/10">
+                            <img src={visualPlanData.original_image} className="w-full h-full object-contain" alt="Client Ear" />
+                            {visualPlanData.recommendations?.map((rec: any, idx: number) => (
+                                 <div
+                                    key={idx}
+                                    style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
+                                    className="absolute w-3 h-3 bg-brand-primary rounded-full border border-black transform -translate-x-1/2 -translate-y-1/2 shadow-lg animate-pulse"
+                                    title={rec.location}
+                                 />
+                            ))}
+                        </div>
+                        <div className="bg-white/5 p-4 rounded-xl text-right">
+                            <h4 className="text-white font-medium mb-2">מיקומי פירסינג מומלצים</h4>
+                            <ul className="space-y-2">
+                                 {visualPlanData.recommendations?.map((rec: any, i: number) => (
+                                     <li key={i} className="text-xs text-slate-300 flex items-start gap-2">
+                                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-1.5 shrink-0"></span>
+                                         <span>
+                                             <strong className="text-white">{rec.location}:</strong> {rec.description}
+                                         </span>
+                                     </li>
+                                 ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
                 {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
