@@ -825,7 +825,7 @@ const Booking: React.FC = () => {
                                                 
                                                 {/* Visual Jewelry Try-On Overlays */}
                                                 {!isAnalyzing && aiResult && (
-                                                    <div className="absolute inset-0">
+                                                    <div className="absolute inset-0" onClick={() => setActiveHotspot(null)}>
                                                         {aiResult.recommendations.map((rec, i) => {
                                                             const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
                                                             if (!jewelry) return null;
@@ -838,7 +838,7 @@ const Booking: React.FC = () => {
                                                                 >
                                                                     {/* Jewelry Render Marker */}
                                                                     <button
-                                                                        onClick={() => setActiveHotspot(i)}
+                                                                        onClick={(e) => { e.stopPropagation(); setActiveHotspot(i); }}
                                                                         className={`relative -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${activeHotspot === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
                                                                     >
                                                                         <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
@@ -849,6 +849,7 @@ const Booking: React.FC = () => {
                                                                     <AnimatePresence>
                                                                         {activeHotspot === i && (
                                                                             <m.div
+                                                                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
                                                                                 initial={{ opacity: 0, scale: 0.9 }}
                                                                                 animate={{ opacity: 1, scale: 1 }}
                                                                                 exit={{ opacity: 0, scale: 0.9 }}
@@ -880,6 +881,13 @@ const Booking: React.FC = () => {
                                                                                         )}
                                                                                     </div>
                                                                                 </div>
+                                                                                {/* Mobile close button inside popup for extra usability */}
+                                                                                <button 
+                                                                                    onClick={(e) => { e.stopPropagation(); setActiveHotspot(null); }}
+                                                                                    className="absolute top-2 right-2 p-1 bg-black/40 rounded-full text-white/80 hover:text-white md:hidden"
+                                                                                >
+                                                                                    <X className="w-3 h-3" />
+                                                                                </button>
                                                                             </m.div>
                                                                         )}
                                                                     </AnimatePresence>
