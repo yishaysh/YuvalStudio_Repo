@@ -356,6 +356,16 @@ export const api = {
       return !error;
   },
 
+  // --- DELETE ALL FUNCTION ---
+  clearAppointments: async (): Promise<boolean> => {
+      if (!supabase) return false;
+      // We use a filter that matches all rows to satisfy safe delete policies if strict, 
+      // or just straight delete.
+      // NOTE: RLS Policies must allow DELETE for this to work.
+      const { error } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      return !error;
+  },
+
   // --- Stats ---
   getMonthlyStats: async () => {
       if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };
