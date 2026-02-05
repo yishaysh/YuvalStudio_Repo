@@ -452,7 +452,17 @@ const AppointmentsList = ({
                                         {/* AI Visual Plan Button */}
                                         {hasVisualPlan && (
 											<button 
-												onClick={() => onViewVisualPlan(apt)} 
+												onClick={() => {
+													try {
+														const rawData = apt.visual_plan || apt.ai_recommendation_text || '{}';
+														const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+														setVisualPlanData(data);
+														setIsVisualModalOpen(true);
+													} catch (e) {
+														console.error("Visual plan error", e);
+														onViewVisualPlan(apt); // fallback לפונקציה המקורית
+													}
+												}} 
 												className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
 												title="צפה בתוכנית AI ותמונה"
 											>
@@ -639,18 +649,37 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                             <div className="flex-1 min-w-0">
                                 <h4 className="text-sm font-medium text-white truncate">{item.name}</h4>
                                 <p className="text-xs text-slate-500 mb-2">{item.category}</p>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
-                                    <label className="relative inline-flex items-center cursor-pointer" title="In Stock Toggle">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only peer" 
-                                            checked={inStock} 
-                                            onChange={() => toggleStock(item.id)} 
-                                        />
-                                        <div className={`w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${inStock ? 'peer-checked:bg-emerald-500' : 'peer-checked:bg-slate-700'}`}></div>
-                                    </label>
-                                </div>
+                                <div className="flex items-center justify-between mt-2">
+								<div className="flex items-center gap-2">
+									<span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
+									<div className="flex gap-1 ml-2 border-l border-white/10 pl-2">
+										<button 
+											onClick={() => {/* פונקציית עריכה */}}
+											className="p-1 text-slate-400 hover:text-white transition-colors"
+											title="ערוך תכשיט"
+										>
+											<Edit2 className="w-3.5 h-3.5" />
+										</button>
+										<button 
+											onClick={() => { if(confirm('למחוק תכשיט זה?')) {/* פונקציית מחיקה */}} }
+											className="p-1 text-slate-400 hover:text-red-400 transition-colors"
+											title="מחק תכשיט"
+										>
+											<Trash2 className="w-3.5 h-3.5" />
+										</button>
+									</div>
+								</div>
+								
+								<label className="relative inline-flex items-center cursor-pointer" title="In Stock Toggle">
+									<input 
+										type="checkbox" 
+										className="sr-only peer" 
+										checked={inStock} 
+										onChange={() => toggleStock(item.id)} 
+									/>
+									<div className={`w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${inStock ? 'peer-checked:bg-emerald-500' : 'peer-checked:bg-slate-700'}`}></div>
+								</label>
+							</div>
                             </div>
                         </div>
                     );
@@ -1739,11 +1768,11 @@ const Admin: React.FC = () => {
                                 onSyncToCalendar={handleSyncToCalendar}
                                 onBulkSync={handleBulkSync}
                                 onViewVisualPlan={(apt: Appointment) => {
-                                    try {
-                                        const rawData = apt.visual_plan || apt.ai_recommendation_text || '{}';
-                                        const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-                                        setVisualPlanData(data);
-                                    } catch (e) { console.error(e); }
+                                    if (apt.ai_recommendation_text) {
+                                        try {
+                                            setVisualPlanData(JSON.parse(apt.ai_recommendation_text));
+                                        } catch (e) { console.error(e); }
+                                    }
                                 }}
                             />
                         )}
@@ -1764,7 +1793,15 @@ const Admin: React.FC = () => {
                 {visualPlanData && (
                     <div className="space-y-4">
                         <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black border border-white/10">
-                            <img src={visualPlanData.original_image} className="w-full h-full object-contain" alt="Client Ear" />
+                            <img 
+								src={visualPlanData.userImage || visualPlanData.original_image} 
+								alt="AI Plan" 
+								className="w-full h-auto rounded-lg shadow-2xl"
+								onError={(e) => {
+									// אם התמונה לא נטענת, נציג פלייס-הולדר
+									(e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Image+Not+Found';
+								}}
+							/>
                             {/* Render Recommendations with Actual Jewelry Images */}
                             {visualPlanData.recommendations?.map((rec: any, idx: number) => {
                                 const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
