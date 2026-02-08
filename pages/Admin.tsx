@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket, 
   Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
   ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle
+  Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload
 } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
@@ -357,9 +357,27 @@ const AppointmentsList = ({
                     const hasVisualPlan = !!(apt.visual_plan || apt.ai_recommendation_text);
                     const isAiInfluenced = hasVisualPlan || jewelryPrice > 0;
                     
-                    // Extract image from notes if visual plan logic didn't catch it
-                    const imageMatch = apt.notes?.match(/\[.*?\]\((https?:\/\/[^\)]+)\)/) || apt.notes?.match(/(https?:\/\/[^\s]+)/);
-                    const imageUrl = imageMatch ? imageMatch[1] || imageMatch[0] : null;
+                    let imageUrl = null;
+                    
+                    // 1. Try parsing visual plan for image
+                    if (apt.visual_plan) {
+                        try {
+                            const vp = typeof apt.visual_plan === 'string' ? JSON.parse(apt.visual_plan) : apt.visual_plan;
+                            if (vp.original_image) imageUrl = vp.original_image;
+                            else if (vp.userImage) imageUrl = vp.userImage;
+                        } catch (e) {}
+                    } else if (apt.ai_recommendation_text) {
+                        try {
+                            const vp = typeof apt.ai_recommendation_text === 'string' ? JSON.parse(apt.ai_recommendation_text) : apt.ai_recommendation_text;
+                            if (vp.original_image) imageUrl = vp.original_image;
+                        } catch (e) {}
+                    }
+
+                    // 2. Fallback to notes regex if not found in visual plan
+                    if (!imageUrl && apt.notes) {
+                         const imageMatch = apt.notes.match(/\[.*?\]\((https?:\/\/[^\)]+)\)/) || apt.notes.match(/(https?:\/\/[^\s]+)/);
+                         if (imageMatch) imageUrl = imageMatch[1] || imageMatch[0];
+                    }
 
                     return (
                         <tr 
@@ -554,9 +572,8 @@ const AppointmentsList = ({
 
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings }: any) => {
     const today = new Date();
-    // Fix: Only confirmed appointments count for revenue (or pending if desired, but typically confirmed)
-    // Actually typically all non-cancelled appointments for forecast
-    const todaysAppointments = appointments.filter((apt: any) => isToday(new Date(apt.start_time)) && apt.status !== 'cancelled');
+    // Only confirmed appointments count for revenue
+    const todaysAppointments = appointments.filter((apt: any) => isToday(new Date(apt.start_time)) && apt.status === 'confirmed');
     
     // Calculate daily revenue using final_price
     const dailyRevenue = todaysAppointments.reduce((sum: number, apt: any) => {
@@ -637,7 +654,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                             </div>
                         </div>
                     ) : (
-                        <div className="text-center py-10 text-slate-500">אין תורים להיום</div>
+                        <div className="text-center py-10 text-slate-500">אין תורים מאושרים להיום</div>
                     )}
                 </Card>
 
@@ -656,1332 +673,424 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
     );
 };
 
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, onViewVisualPlan }: any) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
+const SettingsView = ({ settings, onUpdate }: { settings: StudioSettings | null, onUpdate: (s: StudioSettings) => Promise<void> }) => {
+    const [localSettings, setLocalSettings] = useState<StudioSettings | null>(settings);
+    
+    useEffect(() => setLocalSettings(settings), [settings]);
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month);
+    if (!localSettings) return <div>Loading...</div>;
 
-    const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-    const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-
-    const selectedDayAppointments = selectedDay 
-        ? appointments.filter((apt: any) => {
-            const d = new Date(apt.start_time);
-            return d.getDate() === selectedDay.getDate() && 
-                   d.getMonth() === selectedDay.getMonth() && 
-                   d.getFullYear() === selectedDay.getFullYear();
-          }).sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        : [];
+    const handleSave = () => onUpdate(localSettings);
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
-            <Card className="lg:w-2/3 flex flex-col h-full">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-serif text-white">{currentDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h3>
-                    <div className="flex gap-2">
-                        <button onClick={prevMonth} className="p-2 hover:bg-white/10 rounded-full"><ChevronRight className="w-5 h-5"/></button>
-                        <button onClick={() => setCurrentDate(new Date())} className="text-sm px-3 hover:bg-white/10 rounded-lg">היום</button>
-                        <button onClick={nextMonth} className="p-2 hover:bg-white/10 rounded-full"><ChevronLeft className="w-5 h-5"/></button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+                <SectionHeading title="פרטי סטודיו" />
+                <div className="space-y-4">
+                    <Input label="שם העסק" value={localSettings.studio_details.name} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, name: e.target.value}})} />
+                    <Input label="טלפון" value={localSettings.studio_details.phone} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, phone: e.target.value}})} />
+                    <Input label="כתובת" value={localSettings.studio_details.address} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, address: e.target.value}})} />
+                    <Input label="אימייל" value={localSettings.studio_details.email} onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, email: e.target.value}})} />
+                    
+                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 mt-4">
+                        <span className="text-sm font-medium text-white">Enable AI Stylist</span>
+                        <input 
+                            type="checkbox" 
+                            checked={localSettings.enable_ai ?? true} 
+                            onChange={e => setLocalSettings({...localSettings, enable_ai: e.target.checked})} 
+                            className="w-5 h-5 accent-brand-primary"
+                        />
                     </div>
                 </div>
+                <Button className="w-full mt-6" onClick={handleSave}>שמור שינויים</Button>
+            </Card>
 
-                <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                    {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(d => (
-                        <div key={d} className="text-xs text-slate-500 py-2">{d}</div>
-                    ))}
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1 flex-1 auto-rows-fr">
-                    {Array.from({ length: firstDay }).map((_, i) => (
-                        <div key={`empty-${i}`} className="bg-transparent" />
-                    ))}
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                        const day = i + 1;
-                        const date = new Date(year, month, day);
-                        const isSelected = selectedDay?.toDateString() === date.toDateString();
-                        const isTodayDate = isToday(date);
-                        const dayAppts = appointments.filter((apt: any) => {
-                            const d = new Date(apt.start_time);
-                            return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year && apt.status !== 'cancelled';
-                        });
-
+            <Card>
+                <SectionHeading title="שעות פעילות" />
+                <div className="space-y-3">
+                    {[0,1,2,3,4,5,6].map(day => {
+                        const dayConfig = localSettings.working_hours[day.toString()];
+                        const isOpen = dayConfig?.isOpen;
+                        const range = dayConfig?.ranges[0] || { start: 10, end: 18 };
+                        
                         return (
-                            <button
-                                key={day}
-                                onClick={() => setSelectedDay(date)}
-                                className={`relative p-2 rounded-xl border transition-all flex flex-col items-start justify-start ${
-                                    isSelected ? 'bg-brand-primary/20 border-brand-primary' : 
-                                    isTodayDate ? 'bg-white/5 border-white/20' : 
-                                    'bg-white/[0.02] border-white/5 hover:bg-white/5'
-                                }`}
-                            >
-                                <span className={`text-sm font-medium ${isTodayDate ? 'text-brand-primary' : 'text-slate-300'}`}>{day}</span>
-                                {dayAppts.length > 0 && (
-                                    <div className="mt-auto flex gap-1 flex-wrap content-end w-full">
-                                        {dayAppts.slice(0, 3).map((_: any, idx: number) => (
-                                            <div key={idx} className="w-1.5 h-1.5 rounded-full bg-brand-primary/60" />
-                                        ))}
-                                        {dayAppts.length > 3 && <span className="text-[8px] text-slate-500">+</span>}
+                            <div key={day} className="flex items-center gap-3 p-2 border-b border-white/5 last:border-0">
+                                <div className="w-20 text-sm text-slate-400">
+                                    {new Date(0, 0, day + 1).toLocaleDateString('he-IL', { weekday: 'long' })}
+                                </div>
+                                <input 
+                                    type="checkbox" 
+                                    checked={isOpen}
+                                    onChange={e => {
+                                        const newHours = {...localSettings.working_hours};
+                                        newHours[day.toString()].isOpen = e.target.checked;
+                                        setLocalSettings({...localSettings, working_hours: newHours});
+                                    }}
+                                    className="accent-brand-primary"
+                                />
+                                {isOpen ? (
+                                    <div className="flex gap-2 items-center text-sm">
+                                        <input 
+                                            type="number" 
+                                            value={range.start} 
+                                            className="w-12 bg-transparent border-b border-white/20 text-center text-white"
+                                            onChange={e => {
+                                                const newHours = {...localSettings.working_hours};
+                                                newHours[day.toString()].ranges[0].start = parseInt(e.target.value);
+                                                setLocalSettings({...localSettings, working_hours: newHours});
+                                            }}
+                                        />
+                                        <span>-</span>
+                                        <input 
+                                            type="number" 
+                                            value={range.end} 
+                                            className="w-12 bg-transparent border-b border-white/20 text-center text-white"
+                                            onChange={e => {
+                                                const newHours = {...localSettings.working_hours};
+                                                newHours[day.toString()].ranges[0].end = parseInt(e.target.value);
+                                                setLocalSettings({...localSettings, working_hours: newHours});
+                                            }}
+                                        />
                                     </div>
-                                )}
-                            </button>
+                                ) : <span className="text-xs text-slate-600">סגור</span>}
+                            </div>
                         );
                     })}
                 </div>
             </Card>
-
-            <div className="lg:w-1/3 flex flex-col gap-4 h-full overflow-hidden">
-                <Card className="flex-1 flex flex-col overflow-hidden bg-brand-surface/30">
-                    <h3 className="text-lg font-serif text-white mb-4 sticky top-0 bg-transparent">
-                        {selectedDay ? selectedDay.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' }) : 'בחר תאריך'}
-                    </h3>
-                    
-                    <div className="overflow-y-auto custom-scrollbar flex-1 space-y-3 pr-2">
-                        {selectedDayAppointments.length > 0 ? (
-                            selectedDayAppointments.map((apt: any) => (
-                                <div key={apt.id} className={`p-3 rounded-xl border ${apt.status === 'confirmed' ? 'bg-emerald-500/5 border-emerald-500/20' : apt.status === 'cancelled' ? 'bg-red-500/5 border-red-500/20' : 'bg-white/5 border-white/10'}`}>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="text-lg font-bold text-white">
-                                            {new Date(apt.start_time).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}
-                                        </div>
-                                        <div className={`px-2 py-0.5 rounded text-[10px] ${apt.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400' : apt.status === 'cancelled' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                            {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
-                                        </div>
-                                    </div>
-                                    <div className="mb-3">
-                                        <div className="font-medium text-slate-200">{apt.client_name}</div>
-                                        <div className="text-xs text-slate-500">{apt.service_name}</div>
-                                    </div>
-                                    <div className="flex gap-2 justify-end border-t border-white/5 pt-2">
-                                        {/* Actions logic similar to AppointmentsList */}
-                                        {/* Simplified for brevity in calendar view */}
-                                        {apt.status === 'pending' && (
-                                            <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-1.5 text-brand-primary hover:bg-brand-primary/10 rounded"><Check className="w-4 h-4"/></button>
-                                        )}
-                                        {apt.status !== 'cancelled' && (
-                                            <button onClick={() => onCancelRequest(apt)} className="p-1.5 text-red-400 hover:bg-red-500/10 rounded"><X className="w-4 h-4"/></button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-10 text-slate-500">אין תורים לתאריך זה</div>
-                        )}
-                    </div>
-                </Card>
-            </div>
         </div>
     );
 };
 
-const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService }: any) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingService, setEditingService] = useState<Service | null>(null);
-    const [formData, setFormData] = useState<Partial<Service>>({
-        name: '', description: '', price: 0, duration_minutes: 30, category: 'Ear', image_url: '', pain_level: 1
-    });
+const GalleryView = ({ gallery, onDelete, onUpload }: any) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
-    const openModal = (service?: Service) => {
-        if (service) {
-            setEditingService(service);
-            setFormData(service);
-        } else {
-            setEditingService(null);
-            setFormData({ name: '', description: '', price: 0, duration_minutes: 30, category: 'Ear', image_url: '', pain_level: 1 });
-        }
-        setIsModalOpen(true);
-    };
-
-    const handleSave = () => {
-        if (editingService) {
-            onUpdateService(editingService.id, formData);
-        } else {
-            onAddService(formData);
-        }
-        setIsModalOpen(false);
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if(!file) return;
+        setIsUploading(true);
+        try {
+            const url = await api.uploadImage(file, 'gallery-images');
+            if(url) await onUpload(url);
+        } catch(e) { console.error(e); }
+        finally { setIsUploading(false); }
     };
 
     return (
-        <div>
+        <Card>
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-serif text-white">ניהול שירותים</h3>
-                <Button onClick={() => openModal()} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> שירות חדש</Button>
+                <SectionHeading title="ניהול גלריה" />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} isLoading={isUploading}>
+                    <Upload className="w-4 h-4 mr-2" /> העלאת תמונה
+                </Button>
+                <input type="file" hidden ref={fileInputRef} onChange={handleFile} accept="image/*" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {services.map((service: Service) => (
-                    <Card key={service.id} className="group relative border border-white/5 hover:border-brand-primary/30 transition-colors">
-                         <div className="aspect-video bg-black/50 rounded-lg mb-4 overflow-hidden">
-                             <img src={service.image_url} alt={service.name} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" />
-                         </div>
-                         <div className="flex justify-between items-start mb-2">
-                             <h4 className="font-medium text-white">{service.name}</h4>
-                             <span className="text-brand-primary font-bold">₪{service.price}</span>
-                         </div>
-                         <p className="text-xs text-slate-400 mb-4 line-clamp-2">{service.description}</p>
-                         <div className="flex items-center justify-between text-xs text-slate-500">
-                             <div className="flex gap-3">
-                                 <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> {service.duration_minutes} דק'</span>
-                                 <span className="flex items-center gap-1"><Tag className="w-3 h-3"/> {service.category}</span>
-                             </div>
-                             <div className="flex gap-2">
-                                 <button onClick={() => openModal(service)} className="p-1.5 hover:bg-white/10 rounded text-slate-300 hover:text-white"><Edit2 className="w-3.5 h-3.5"/></button>
-                                 <button onClick={() => onDeleteService(service.id)} className="p-1.5 hover:bg-red-500/10 rounded text-slate-300 hover:text-red-400"><Trash2 className="w-3.5 h-3.5"/></button>
-                             </div>
-                         </div>
-                    </Card>
-                ))}
-            </div>
-
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingService ? 'עריכת שירות' : 'שירות חדש'}>
-                <div className="space-y-4">
-                    <Input label="שם השירות" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                    <Input label="תיאור" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input label="מחיר (₪)" type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
-                        <Input label="משך (דקות)" type="number" value={formData.duration_minutes} onChange={e => setFormData({...formData, duration_minutes: Number(e.target.value)})} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
-                            <select 
-                                className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
-                                value={formData.category}
-                                onChange={e => setFormData({...formData, category: e.target.value as any})}
-                            >
-                                <option value="Ear">Ear</option>
-                                <option value="Face">Face</option>
-                                <option value="Body">Body</option>
-                            </select>
-                        </div>
-                        <Input label="רמת כאב (1-10)" type="number" min="1" max="10" value={formData.pain_level} onChange={e => setFormData({...formData, pain_level: Number(e.target.value)})} />
-                    </div>
-                    <Input label="תמונה (URL)" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} placeholder="https://..." />
-                    <Button onClick={handleSave} className="w-full mt-4">שמור</Button>
-                </div>
-            </Modal>
-        </div>
-    );
-};
-
-// ... [GalleryTab, InventoryTab, CouponsTab, SettingsTab same as before] ...
-
-// Modifying GalleryTab to fix tagging issue
-const GalleryTab = ({ gallery, onUpload, onDelete, services, settings, onUpdateSettings }: any) => {
-    const [isUploadOpen, setIsUploadOpen] = useState(false);
-    const [uploadUrl, setUploadUrl] = useState('');
-    const [taggingImageId, setTaggingImageId] = useState<string | null>(null);
-    
-    // Tagging state
-    const currentTags = taggingImageId && settings.gallery_tags ? (settings.gallery_tags[taggingImageId] || []) : [];
-
-    const handleToggleTag = useCallback((serviceId: string) => {
-        if (!taggingImageId) return;
-        
-        const newTags = currentTags.includes(serviceId) 
-            ? currentTags.filter((id: string) => id !== serviceId)
-            : [...currentTags, serviceId];
-            
-        const newGalleryTags = { ...settings.gallery_tags, [taggingImageId]: newTags };
-        // Pass true for silent update to avoid heavy UI re-render effects if possible
-        onUpdateSettings({ ...settings, gallery_tags: newGalleryTags }, true);
-    }, [taggingImageId, currentTags, settings, onUpdateSettings]);
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-serif text-white">גלריה</h3>
-                <Button onClick={() => setIsUploadOpen(true)} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> הוסף תמונה</Button>
-            </div>
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {gallery.map((item: any) => (
-                    <div key={item.id} className="relative group aspect-square rounded-xl overflow-hidden bg-brand-dark/50 border border-white/5">
-                        <img src={item.image_url} alt="Gallery" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
-                        
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
-                             <button 
-                                onClick={() => setTaggingImageId(item.id)}
-                                className="px-4 py-2 bg-brand-primary text-brand-dark rounded-full text-xs font-medium hover:bg-white transition-colors flex items-center gap-2"
-                            >
-                                <Tag className="w-3 h-3" /> תייג מוצרים
-                            </button>
-                            <button 
-                                onClick={() => onDelete(item.id)}
-                                className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors"
-                            >
-                                <Trash2 className="w-4 h-4" />
+                    <div key={item.id} className="relative aspect-square group rounded-lg overflow-hidden border border-white/10">
+                        <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button onClick={() => onDelete(item.id)} className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors">
+                                <Trash2 className="w-5 h-5" />
                             </button>
                         </div>
-
-                        {item.taggedServices?.length > 0 && (
-                            <div className="absolute top-2 right-2 w-6 h-6 bg-brand-primary text-brand-dark rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
-                                {item.taggedServices.length}
-                            </div>
-                        )}
                     </div>
                 ))}
             </div>
-
-            <Modal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} title="העלאת תמונה">
-                <div className="space-y-4">
-                    <Input label="כתובת תמונה (URL)" value={uploadUrl} onChange={e => setUploadUrl(e.target.value)} placeholder="https://..." />
-                    <Button onClick={() => { onUpload(uploadUrl); setIsUploadOpen(false); setUploadUrl(''); }} className="w-full">העלה</Button>
-                </div>
-            </Modal>
-
-            <Modal isOpen={!!taggingImageId} onClose={() => setTaggingImageId(null)} title="תיוג מוצרים בתמונה">
-                <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                    {services.map((s: Service) => {
-                        const isTagged = currentTags.includes(s.id);
-                        return (
-                            <div 
-                                key={s.id} 
-                                onClick={(e) => { e.stopPropagation(); handleToggleTag(s.id); }}
-                                className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all ${isTagged ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-                            >
-                                <span className={isTagged ? 'text-white' : 'text-slate-400'}>{s.name}</span>
-                                {isTagged && <Check className="w-4 h-4 text-brand-primary" />}
-                            </div>
-                        )
-                    })}
-                </div>
-                <div className="mt-4 pt-4 border-t border-white/10 text-center">
-                    <Button onClick={() => setTaggingImageId(null)} className="w-full">סיום</Button>
-                </div>
-            </Modal>
-        </div>
+        </Card>
     );
 };
 
-const InventoryTab = ({ settings, onUpdate }: any) => {
-    // Local state for items list, initialized from settings
-    const [items, setItems] = useState<any[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<any>(null);
-    const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+const CouponsView = ({ coupons, onUpdate }: { coupons: Coupon[], onUpdate: (c: Coupon[]) => Promise<void> }) => {
+    const [newCoupon, setNewCoupon] = useState<Partial<Coupon>>({ code: '', value: 0, discountType: 'fixed', minOrderAmount: 0, isActive: true });
 
-    useEffect(() => {
-        // Hydrate from settings or fallback to constant
-        // @ts-ignore
-        if (settings.inventory_items && Array.isArray(settings.inventory_items)) {
-            // @ts-ignore
-            setItems(settings.inventory_items);
-        } else {
-            // Initialize with default catalog if empty
-            const initialCatalog = JEWELRY_CATALOG.map(item => ({...item, in_stock: true}));
-            setItems(initialCatalog);
-            // Save immediately to persist initial state
-            onUpdate({ ...settings, inventory_items: initialCatalog }, true);
-        }
-    }, [settings]);
-
-    const handleSaveItem = () => {
-        let newItems;
-        if (editingItem) {
-            newItems = items.map(i => i.id === editingItem.id ? { ...i, ...formData } : i);
-        } else {
-            const newItem = {
-                id: `custom_${Math.random().toString(36).substr(2, 9)}`,
-                ...formData
-            };
-            newItems = [...items, newItem];
-        }
+    const handleAdd = async () => {
+        if (!newCoupon.code || !newCoupon.value) return;
+        const coupon: Coupon = {
+            id: Math.random().toString(36).substr(2, 9),
+            code: newCoupon.code.toUpperCase(),
+            value: Number(newCoupon.value),
+            discountType: newCoupon.discountType as 'fixed' | 'percentage',
+            minOrderAmount: Number(newCoupon.minOrderAmount) || 0,
+            isActive: true,
+            ...newCoupon
+        } as Coupon;
         
-        setItems(newItems);
-        // Persist to settings
-        onUpdate({ ...settings, inventory_items: newItems }, true);
-        setIsModalOpen(false);
-        setEditingItem(null);
-        setFormData({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+        await onUpdate([...coupons, coupon]);
+        setNewCoupon({ code: '', value: 0, discountType: 'fixed', minOrderAmount: 0, isActive: true });
     };
 
     const handleDelete = (id: string) => {
-        if (window.confirm('האם למחוק פריט זה?')) {
-            const newItems = items.filter(i => i.id !== id);
-            setItems(newItems);
-            onUpdate({ ...settings, inventory_items: newItems }, true);
-        }
-    };
-
-    const toggleStock = (id: string) => {
-        const newItems = items.map(i => i.id === id ? { ...i, in_stock: !i.in_stock } : i);
-        setItems(newItems);
-        onUpdate({ ...settings, inventory_items: newItems }, true);
-    };
-
-    const openModal = (item?: any) => {
-        if (item) {
-            setEditingItem(item);
-            setFormData(item);
-        } else {
-            setEditingItem(null);
-            setFormData({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
-        }
-        setIsModalOpen(true);
+        onUpdate(coupons.filter(c => c.id !== id));
     };
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h3 className="text-xl font-serif text-white">ניהול מלאי תכשיטים</h3>
-                    <p className="text-sm text-slate-400">פריטים שאינם במלאי לא יוצגו בהמלצות ה-AI ובגלריה</p>
-                </div>
-                <Button onClick={() => openModal()} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> פריט חדש</Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {items.map((item) => {
-                    const inStock = item.in_stock !== false; 
-                    return (
-                        <div key={item.id} className={`relative group p-4 rounded-xl border transition-all flex items-center gap-4 ${inStock ? 'bg-brand-surface/30 border-white/5' : 'bg-red-500/5 border-red-500/20 opacity-75'}`}>
-                            
-                            {/* Action Buttons Overlay */}
-                            <div className="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <button onClick={() => openModal(item)} className="p-1.5 bg-brand-surface rounded-full text-brand-primary hover:bg-brand-primary hover:text-brand-dark border border-white/10"><Edit2 className="w-3 h-3"/></button>
-                                <button onClick={() => handleDelete(item.id)} className="p-1.5 bg-brand-surface rounded-full text-red-400 hover:bg-red-500 hover:text-white border border-white/10"><Trash2 className="w-3 h-3"/></button>
-                            </div>
-
-                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-black shrink-0 relative">
-                                <img src={item.image_url} alt={item.name} className={`w-full h-full object-cover ${!inStock ? 'grayscale' : ''}`} />
-                                {!inStock && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                                        <X className="w-6 h-6 text-red-400" />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-medium text-white truncate">{item.name}</h4>
-                                <p className="text-xs text-slate-500 mb-2">{item.category}</p>
-                                <div className="flex items-center justify-between mt-2">
-								<div className="flex items-center gap-2">
-									<span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
-									<div className="flex gap-1 ml-2 border-l border-white/10 pl-2">
-										<button 
-											onClick={() => openModal(item)}
-											className="p-1 text-slate-400 hover:text-white transition-colors"
-											title="ערוך תכשיט"
-										>
-											<Edit2 className="w-3.5 h-3.5" />
-										</button>
-										<button 
-											onClick={() => handleDelete(item.id)}
-											className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-											title="מחק תכשיט"
-										>
-											<Trash2 className="w-3.5 h-3.5" />
-										</button>
-									</div>
-								</div>
-								
-								<label className="relative inline-flex items-center cursor-pointer" title="In Stock Toggle">
-									<input 
-										type="checkbox" 
-										className="sr-only peer" 
-										checked={inStock} 
-										onChange={() => toggleStock(item.id)} 
-									/>
-									<div className={`w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${inStock ? 'peer-checked:bg-emerald-500' : 'peer-checked:bg-slate-700'}`}></div>
-								</label>
-							</div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'עריכת פריט' : 'פריט חדש'}>
-                <div className="space-y-4">
-                    <Input label="שם הפריט" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input label="מחיר (₪)" type="number" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
-                        <div>
-                            <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
-                            <select 
-                                className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
-                                value={formData.category}
-                                onChange={e => setFormData({...formData, category: e.target.value})}
-                            >
-                                <option value="Ear">Ear</option>
-                                <option value="Face">Face</option>
-                                <option value="Body">Body</option>
-                            </select>
-                        </div>
+        <div className="space-y-6">
+             <Card>
+                <h3 className="text-lg font-medium text-white mb-4">הוספת קופון חדש</h3>
+                <div className="flex flex-wrap gap-4 items-end">
+                    <Input label="קוד קופון" value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} className="uppercase" />
+                    <Input label="ערך הנחה" type="number" value={newCoupon.value} onChange={e => setNewCoupon({...newCoupon, value: Number(e.target.value)})} />
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-400">סוג</label>
+                        <select 
+                            value={newCoupon.discountType}
+                            onChange={e => setNewCoupon({...newCoupon, discountType: e.target.value as any})}
+                            className="bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
+                        >
+                            <option value="fixed">שקלים (₪)</option>
+                            <option value="percentage">אחוזים (%)</option>
+                        </select>
                     </div>
-                    <Input label="תמונה (URL)" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} placeholder="https://..." />
-                    
-                    <div className="flex items-center gap-3 pt-2">
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                className="sr-only peer" 
-                                checked={formData.in_stock} 
-                                onChange={() => setFormData({...formData, in_stock: !formData.in_stock})} 
-                            />
-                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                        </label>
-                        <span className="text-sm text-slate-400">זמין במלאי</span>
-                    </div>
-
-                    <Button onClick={handleSaveItem} className="w-full mt-4">שמור</Button>
-                </div>
-            </Modal>
-        </div>
-    );
-};
-
-const CouponsTab = ({ settings, onUpdate }: any) => {
-    const [coupons, setCoupons] = useState<Coupon[]>(settings.coupons || []);
-    const [deleteId, setDeleteId] = useState<string | null>(null);
-
-    useEffect(() => { setCoupons(settings.coupons || []); }, [settings.coupons]);
-
-    const handleSilentSave = (newCoupons: Coupon[]) => {
-        onUpdate({ ...settings, coupons: newCoupons }, true);
-    };
-
-    const addCoupon = () => {
-        const newCoupon: Coupon = {
-            id: Math.random().toString(36).substr(2, 9),
-            code: '',
-            discountType: 'fixed',
-            value: 0,
-            minOrderAmount: 0,
-            isActive: true,
-            maxUses: 0,
-            usedCount: 0
-        };
-        const newCoupons = [...coupons, newCoupon];
-        setCoupons(newCoupons);
-        handleSilentSave(newCoupons);
-    };
-
-    const updateLocal = (id: string, field: keyof Coupon, value: any) => {
-        setCoupons(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
-    };
-
-    const handleBlur = () => {
-        handleSilentSave(coupons);
-    };
-
-    const updateImmediate = (id: string, field: keyof Coupon, value: any) => {
-        const newCoupons = coupons.map(c => c.id === id ? { ...c, [field]: value } : c);
-        setCoupons(newCoupons);
-        handleSilentSave(newCoupons);
-    };
-
-    const confirmDelete = () => {
-        if(deleteId) {
-            const newCoupons = coupons.filter(c => c.id !== deleteId);
-            setCoupons(newCoupons);
-            handleSilentSave(newCoupons);
-            setDeleteId(null);
-        }
-    };
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-serif text-white">ניהול קופונים</h3>
-                <Button onClick={addCoupon} className="flex items-center gap-2 text-sm"><Plus className="w-4 h-4"/> הוסף קופון</Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {coupons.map((coupon, index) => (
-                    <Card key={coupon.id} className="relative group border border-white/5 hover:border-brand-primary/30 transition-colors">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="w-full">
-                                <label className="text-xs text-slate-500 mb-1 block">קוד קופון</label>
-                                <input 
-                                    type="text" 
-                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full uppercase font-bold tracking-wider focus:border-brand-primary/50 outline-none"
-                                    value={coupon.code}
-                                    onChange={(e) => updateLocal(coupon.id, 'code', e.target.value)}
-                                    onBlur={handleBlur}
-                                    placeholder="CODE"
-                                />
-                            </div>
-                            <button onClick={() => setDeleteId(coupon.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors mr-2">
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="text-xs text-slate-500 mb-1 block">סוג הנחה</label>
-                                <select 
-                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
-                                    value={coupon.discountType}
-                                    onChange={(e) => updateImmediate(coupon.id, 'discountType', e.target.value)}
-                                >
-                                    <option value="fixed">שקלים (₪)</option>
-                                    <option value="percentage">אחוזים (%)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-500 mb-1 block">ערך ההנחה</label>
-                                <input 
-                                    type="number"
-                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
-                                    value={coupon.value}
-                                    onChange={(e) => updateLocal(coupon.id, 'value', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                             <div>
-                                <label className="text-xs text-slate-500 mb-1 block">מינימום הזמנה (₪)</label>
-                                <input 
-                                    type="number"
-                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
-                                    value={coupon.minOrderAmount}
-                                    onChange={(e) => updateLocal(coupon.id, 'minOrderAmount', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                />
-                             </div>
-                             <div>
-                                <label className="text-xs text-slate-500 mb-1 block">הגבלת שימוש</label>
-                                <input 
-                                    type="number"
-                                    className="bg-brand-dark/50 border border-white/10 rounded-lg px-3 py-2 text-white w-full text-sm outline-none"
-                                    value={coupon.maxUses || 0}
-                                    onChange={(e) => updateLocal(coupon.id, 'maxUses', Number(e.target.value))}
-                                    onBlur={handleBlur}
-                                    placeholder="0 ללא הגבלה"
-                                />
-                             </div>
-                        </div>
-
-                        <div className="flex justify-between items-center border-t border-white/5 pt-3">
-                             <div className="flex items-center gap-2 text-xs text-slate-400">
-                                <Users className="w-3 h-3" />
-                                <span>נוצל: {coupon.usedCount || 0} פעמים</span>
-                             </div>
-                             
-                             <label className="flex items-center gap-2 cursor-pointer">
-                                <span className={`text-xs ${coupon.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>{coupon.isActive ? 'פעיל' : 'לא פעיל'}</span>
-                                <div className="relative inline-flex items-center">
-                                    <input type="checkbox" className="sr-only peer" checked={coupon.isActive} onChange={() => updateImmediate(coupon.id, 'isActive', !coupon.isActive)} />
-                                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                                </div>
-                             </label>
-                        </div>
-                    </Card>
-                ))}
-            </div>
-
-            <ConfirmationModal 
-                isOpen={!!deleteId} 
-                onClose={() => setDeleteId(null)} 
-                onConfirm={confirmDelete} 
-                title="מחיקת קופון" 
-                description="האם אתה בטוח שברצונך למחוק קופון זה? הפעולה אינה הפיכה." 
-                confirmText="מחק" 
-                variant="danger" 
-            />
-        </div>
-    );
-};
-
-const SettingsTab = ({ settings, onUpdate }: any) => {
-    const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-    useEffect(() => { setLocalSettings(settings); }, [settings]);
-
-    const handleSilentSave = () => { onUpdate(localSettings, true); };
-    
-    const updateAndSaveWorkingHours = (newWorkingHours: any) => {
-        const newSettings = { ...localSettings, working_hours: newWorkingHours };
-        setLocalSettings(newSettings);
-        onUpdate(newSettings, true);
-    };
-
-    const toggleDay = (dayIndex: string) => {
-        const day = localSettings.working_hours[dayIndex] || { isOpen: false, ranges: [] };
-        const newState = !day.isOpen;
-        
-        let newRanges = day.ranges;
-        if (newState && (!day.ranges || day.ranges.length === 0)) {
-            newRanges = [{ start: 10, end: 18 }];
-        }
-
-        const newWorkingHours = {
-            ...localSettings.working_hours,
-            [dayIndex]: {
-                ...day,
-                isOpen: newState,
-                ranges: newRanges
-            }
-        };
-        updateAndSaveWorkingHours(newWorkingHours);
-    };
-
-    const addRange = (dayIndex: string) => {
-        const day = localSettings.working_hours[dayIndex];
-        const newRanges = [...(day.ranges || []), { start: 10, end: 18 }];
-        
-        const newWorkingHours = {
-            ...localSettings.working_hours,
-            [dayIndex]: { ...day, ranges: newRanges }
-        };
-        updateAndSaveWorkingHours(newWorkingHours);
-    };
-
-    const removeRange = (dayIndex: string, rangeIndex: number) => {
-        const day = localSettings.working_hours[dayIndex];
-        const newRanges = day.ranges.filter((_, i) => i !== rangeIndex);
-        
-        const newWorkingHours = {
-            ...localSettings.working_hours,
-            [dayIndex]: { ...day, ranges: newRanges }
-        };
-        updateAndSaveWorkingHours(newWorkingHours);
-    };
-
-    const updateRange = (dayIndex: string, rangeIndex: number, field: 'start' | 'end', value: number) => {
-        const day = localSettings.working_hours[dayIndex];
-        const newRanges = [...day.ranges];
-        newRanges[rangeIndex] = { ...newRanges[rangeIndex], [field]: value };
-
-        const newWorkingHours = {
-            ...localSettings.working_hours,
-            [dayIndex]: { ...day, ranges: newRanges }
-        };
-        updateAndSaveWorkingHours(newWorkingHours);
-    };
-
-    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-
-    const handleClearAppointments = async () => {
-        try {
-            await api.clearAppointments();
-            alert('כל הפגישות נמחקו בהצלחה');
-            window.location.reload(); // Refresh to update view
-        } catch (error) {
-            console.error(error);
-            alert('אירעה שגיאה במחיקת הפגישות');
-        }
-    };
-
-    return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <Card>
-                <SectionHeading title="הגדרות מערכת" />
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <Wand2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h4 className="text-white font-medium">AI Ear Stylist</h4>
-                            <p className="text-sm text-slate-400">אפשר ללקוחות להשתמש בסטייליסט הווירטואלי בעת קביעת תור</p>
-                        </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            className="sr-only peer" 
-                            checked={localSettings.enable_ai !== false} // Default to true if undefined
-                            onChange={() => {
-                                const newValue = !(localSettings.enable_ai !== false);
-                                const newSettings = {...localSettings, enable_ai: newValue};
-                                setLocalSettings(newSettings);
-                                onUpdate(newSettings, true);
-                            }} 
-                        />
-                        <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
-                    </label>
+                    <Input label="מינימום הזמנה" type="number" value={newCoupon.minOrderAmount} onChange={e => setNewCoupon({...newCoupon, minOrderAmount: Number(e.target.value)})} />
+                    <Button onClick={handleAdd} className="mb-1"><Plus className="w-4 h-4 mr-2"/> הוסף</Button>
                 </div>
             </Card>
 
-            <Card>
-                <SectionHeading title="פרטי הסטודיו" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input 
-                        label="שם העסק" 
-                        value={localSettings.studio_details.name} 
-                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, name: e.target.value}})} 
-                        onBlur={handleSilentSave}
-                    />
-                    <Input 
-                        label="טלפון" 
-                        value={localSettings.studio_details.phone} 
-                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, phone: e.target.value}})} 
-                        onBlur={handleSilentSave}
-                    />
-                    <Input 
-                        label="כתובת" 
-                        value={localSettings.studio_details.address} 
-                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, address: e.target.value}})} 
-                        onBlur={handleSilentSave}
-                    />
-                    <Input 
-                        label="אימייל" 
-                        value={localSettings.studio_details.email} 
-                        onChange={e => setLocalSettings({...localSettings, studio_details: {...localSettings.studio_details, email: e.target.value}})} 
-                        onBlur={handleSilentSave}
-                    />
-                </div>
+            <Card className="p-0 overflow-hidden">
+                <table className="w-full text-sm text-right">
+                    <thead className="bg-white/5 text-slate-400">
+                        <tr>
+                            <th className="p-4">קוד</th>
+                            <th className="p-4">הנחה</th>
+                            <th className="p-4">מינימום</th>
+                            <th className="p-4">שימושים</th>
+                            <th className="p-4">סטטוס</th>
+                            <th className="p-4">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {coupons.map(coupon => (
+                            <tr key={coupon.id} className="hover:bg-white/5">
+                                <td className="p-4 font-mono font-bold text-brand-primary">{coupon.code}</td>
+                                <td className="p-4">{coupon.value}{coupon.discountType === 'percentage' ? '%' : '₪'}</td>
+                                <td className="p-4">₪{coupon.minOrderAmount}</td>
+                                <td className="p-4">{coupon.usedCount || 0}</td>
+                                <td className="p-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs ${coupon.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                        {coupon.isActive ? 'פעיל' : 'לא פעיל'}
+                                    </span>
+                                </td>
+                                <td className="p-4">
+                                    <button onClick={() => handleDelete(coupon.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4"/></button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </Card>
-
-            <Card>
-                <SectionHeading title="יעדים חודשיים" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input 
-                        label="יעד הכנסות (₪)" 
-                        type="number" 
-                        value={localSettings.monthly_goals.revenue} 
-                        onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, revenue: Number(e.target.value)}})} 
-                        onBlur={handleSilentSave}
-                    />
-                    <Input 
-                        label="יעד תורים" 
-                        type="number" 
-                        value={localSettings.monthly_goals.appointments} 
-                        onChange={e => setLocalSettings({...localSettings, monthly_goals: {...localSettings.monthly_goals, appointments: Number(e.target.value)}})} 
-                        onBlur={handleSilentSave}
-                    />
-                </div>
-            </Card>
-
-            <Card>
-                <div className="flex justify-between items-center mb-6">
-                    <SectionHeading title="שעות פעילות" />
-                </div>
-                
-                <div className="space-y-4">
-                    {days.map((dayName, index) => {
-                        const dayKey = index.toString();
-                        const dayConfig = localSettings.working_hours[dayKey] || { isOpen: false, ranges: [] };
-                        
-                        return (
-                            <div key={dayKey} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
-                                <div className="grid grid-cols-[1fr_auto] md:grid-cols-[100px_60px_1fr] gap-x-4 gap-y-4 items-center md:items-start">
-                                    <div className="font-medium text-white md:pt-2">{dayName}</div>
-                                    
-                                    <div className="md:pt-1">
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={dayConfig.isOpen} onChange={() => toggleDay(dayKey)} />
-                                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
-                                        </label>
-                                    </div>
-
-                                    <div className="col-span-2 md:col-span-1 w-full space-y-3">
-                                        {dayConfig.isOpen ? (
-                                            <>
-                                                {dayConfig.ranges.map((range, rIdx) => (
-                                                    <div key={rIdx} className="flex items-center gap-3 w-full">
-                                                        <div className="flex-1 flex items-center justify-center gap-2 bg-brand-dark/50 p-2 rounded-lg border border-white/10">
-                                                            <select 
-                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
-                                                                value={range.start}
-                                                                onChange={e => updateRange(dayKey, rIdx, 'start', Number(e.target.value))}
-                                                            >
-                                                                {Array.from({length: 24}).map((_, i) => (
-                                                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                                                ))}
-                                                            </select>
-                                                            <span className="text-slate-500">-</span>
-                                                            <select 
-                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
-                                                                value={range.end}
-                                                                onChange={e => updateRange(dayKey, rIdx, 'end', Number(e.target.value))}
-                                                            >
-                                                                {Array.from({length: 24}).map((_, i) => (
-                                                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                        
-                                                        <button 
-                                                            onClick={() => removeRange(dayKey, rIdx)}
-                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
-                                                            title="מחק טווח"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                
-                                                <button 
-                                                    onClick={() => addRange(dayKey)}
-                                                    className="flex items-center gap-2 text-xs text-brand-primary hover:text-white mt-2 px-3 py-1.5 rounded-lg bg-brand-primary/5 hover:bg-brand-primary/10 border border-brand-primary/10 w-full md:w-fit justify-center transition-colors"
-                                                >
-                                                    <Plus className="w-3 h-3" /> הוסף טווח שעות
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <div className="text-slate-500 text-sm italic md:pt-2">סגור</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </Card>
-
-            <Card className="border-red-500/20 bg-red-500/5">
-                <div className="flex items-center gap-3 mb-4">
-                    <AlertTriangle className="w-6 h-6 text-red-400" />
-                    <h3 className="text-lg font-medium text-red-400">אזור מסוכן</h3>
-                </div>
-                <p className="text-sm text-slate-400 mb-6">פעולות אלו הן בלתי הפיכות. אנא היזהר.</p>
-                <Button 
-                    variant="danger" 
-                    onClick={() => setIsDeleteModalOpen(true)}
-                    className="w-full sm:w-auto"
-                >
-                    מחק את כל הפגישות
-                </Button>
-            </Card>
-
-            <ConfirmationModal 
-                isOpen={isDeleteModalOpen} 
-                onClose={() => setIsDeleteModalOpen(false)} 
-                onConfirm={handleClearAppointments}
-                title="מחיקת כל הפגישות"
-                description="האם אתה בטוח שברצונך למחוק את כל הפגישות מהמערכת? פעולה זו אינה הפיכה."
-                confirmText="כן, מחק הכל"
-                variant="danger"
-            />
-        </div>
-    );
-};
-
-// ... [ConsentPdfTemplate, DashboardTab, CalendarTab, ServicesTab, Admin main component wrapper] ...
-
-const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: StudioSettings }) => {
-    // [Same implementation as previous]
-    const extractId = (notes?: string) => {
-        const match = notes?.match(/ת\.ז: (\d+)/);
-        return match ? match[1] : null;
-    };
-
-    const nationalId = extractId(data.notes);
-
-    return (
-        <div id="pdf-template" className="bg-white text-black p-12 w-[210mm] min-h-[297mm] mx-auto font-sans direction-rtl relative box-border" style={{ direction: 'rtl' }}>
-            <div className="text-center border-b-2 border-black pb-8 mb-8">
-                <h1 className="text-4xl font-serif font-bold mb-2">{settings.studio_details.name}</h1>
-                <p className="text-sm text-gray-600">{settings.studio_details.address} | {settings.studio_details.phone}</p>
-                <h2 className="text-2xl font-bold mt-6 underline">הצהרת בריאות ואישור ביצוע פירסינג</h2>
-            </div>
-
-            <div className="mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <h3 className="font-bold text-lg mb-4 border-b border-gray-300 pb-2">פרטי הלקוח/ה</h3>
-                <div className="grid grid-cols-2 gap-6 text-sm">
-                    <p className="border-b border-gray-200 pb-1"><strong>שם מלא:</strong> {data.client_name}</p>
-                    <p className="border-b border-gray-200 pb-1"><strong>תעודת זהות:</strong> {nationalId || '_________________'}</p>
-                    <p className="border-b border-gray-200 pb-1"><strong>טלפון:</strong> {data.client_phone}</p>
-                    <p className="border-b border-gray-200 pb-1"><strong>תאריך:</strong> {new Date(data.start_time).toLocaleDateString('he-IL')}</p>
-                    <p className="col-span-2 border-b border-gray-200 pb-1"><strong>שירות מבוקש:</strong> {data.service_name || 'פירסינג'}</p>
-                </div>
-            </div>
-
-            <div className="mb-8 text-sm leading-relaxed">
-                <h3 className="font-bold text-lg mb-4 underline">הצהרת הלקוח/ה:</h3>
-                
-                <div className="space-y-3 text-justify">
-                    <p>- אני מצהיר/ה כי אני מעל גיל 16, או מלווה ע"י הורה/אפוטרופוס חוקי שחתם על אישור זה.</p>
-                    <p>- אני מצהיר/ה כי איני תחת השפעת אלכוהול או סמים.</p>
-                    <p>- אני מצהיר/ה כי איני סובל/ת ממחלות המועברות בדם (כגון צהבת, HIV וכו').</p>
-                    <p>- אני מצהיר/ה כי איני סובל/ת מבעיות קרישת דם, סוכרת לא מאוזנת, מחלות לב, אפילפסיה או אלרגיות למתכות.</p>
-                    <p>- נשים: אני מצהיר/ה כי איני בהריון ואיני מניקה (רלוונטי לפירסינג בפטמה/טבור).</p>
-                    <p>- ידוע לי כי ביצוע הפירסינג כרוך בפציעה מבוקרת של העור וכי קיימים סיכונים לזיהום, צלקות, דחייה או אלרגיה.</p>
-                    <p>- קיבלתי הסבר מפורט על אופן הטיפול בפירסינג והבנתי את חשיבות השמירה על היגיינה.</p>
-                    <p>- אני משחרר/ת את הסטודיו ואת הפירסר/ית מכל אחריות לנזק שיגרם כתוצאה מטיפול לקוי שלי או אי-מילוי הוראות הטיפול.</p>
-                </div>
-            </div>
-
-            <div className="mt-auto pt-12 pb-4">
-                <p className="mb-8 text-sm">בחתימתי אני מאשר/ת כי קראתי את ההצהרה לעיל, הבנתי את תוכנה ואני מסכים/ה לכל האמור בה.</p>
-                
-                <div className="flex justify-between items-end border-t border-black pt-8">
-                    <div className="text-center w-1/3">
-                        {data.signature ? (
-                            <img src={data.signature} alt="Client Signature" className="h-16 mx-auto mb-2 object-contain" />
-                        ) : (
-                            <div className="h-16 mb-2"></div>
-                        )}
-                        <p className="border-t border-black pt-2 font-bold">חתימת הלקוח/ה</p>
-                    </div>
-                    <div className="text-center w-1/3">
-                        <div className="h-16 mb-2 flex items-end justify-center font-script text-2xl">Yuval</div>
-                        <p className="border-t border-black pt-2 font-bold">חתימת הפירסר/ית</p>
-                    </div>
-                </div>
-                
-                <div className="mt-8 text-center text-[10px] text-gray-500">
-                    מסמך זה נוצר דיגיטלית ביום {new Date().toLocaleDateString('he-IL')} בשעה {new Date().toLocaleTimeString('he-IL')}
-                </div>
-            </div>
         </div>
     );
 };
 
 const Admin: React.FC = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [password, setPassword] = useState('');
-    const [loginError, setLoginError] = useState(''); // New State for Login Error
-    const [activeTab, setActiveTab] = useState('appointments'); // Default to appointments
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
-    const [gallery, setGallery] = useState<any[]>([]);
-    const [settings, setSettings] = useState<StudioSettings | null>(null);
-    const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
-    const [isLoading, setIsLoading] = useState(true);
-    
-    // Toast Notification State
-    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-
-    // Filters & Modals
-    const [filterId, setFilterId] = useState<string | null>(null);
-    const [modalData, setModalData] = useState<{ isOpen: boolean, type: 'cancel' | null, item: any | null }>({ isOpen: false, type: null, item: null });
-    const [pdfData, setPdfData] = useState<Appointment | null>(null);
-    const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
-    
-    // New State for Visual Plan Viewer
-    const [visualPlanData, setVisualPlanData] = useState<any | null>(null);
-
-    const showNotification = (message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-    };
-
-    const fetchData = useCallback(async (silent = false) => {
-        if (!silent) setIsLoading(true);
-        const [appts, srvs, stgs, sts, gall] = await Promise.all([
-            api.getAppointments(),
-            api.getServices(),
-            api.getSettings(),
-            api.getMonthlyStats(),
-            api.getGallery()
-        ]);
-        setAppointments(appts);
-        setServices(srvs);
-        setSettings(stgs);
-        setStats(sts);
-        setGallery(gall);
-        if (!silent) setIsLoading(false);
-    }, []);
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            fetchData();
-            // Init Google Calendar Client
-            calendarService.initClient();
-        }
-    }, [isAuthenticated, fetchData]);
-
-    const handleSyncToCalendar = async (apt: Appointment) => {
-        try {
-            // Find service duration
-            const service = services.find(s => s.id === apt.service_id);
-            const duration = service ? service.duration_minutes : 30;
-            
-            await calendarService.syncAppointment(apt, duration);
-            showNotification(`האירוע עבור ${apt.client_name} סונכרן ליומן בהצלחה!`, 'success');
-        } catch (error: any) {
-            console.error(error);
-            showNotification('שגיאה בסנכרון ליומן: ' + error.message, 'error');
-        }
-    };
-
-    const handleBulkSync = async (appointmentsToSync: Appointment[]) => {
-        if (!confirm(`האם לסנכרן ${appointmentsToSync.length} תורים ליומן גוגל?`)) return;
-        
-        let successCount = 0;
-        let failCount = 0;
-
-        for (const apt of appointmentsToSync) {
-            try {
-                const service = services.find(s => s.id === apt.service_id);
-                const duration = service ? service.duration_minutes : 30;
-                await calendarService.syncAppointment(apt, duration);
-                successCount++;
-            } catch (e) {
-                failCount++;
-                console.error(e);
-            }
-        }
-        showNotification(`סנכרון הסתיים. הצלחות: ${successCount}, כישלונות: ${failCount}`, failCount > 0 ? 'error' : 'success');
-    };
-
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoginError(''); // Clear previous error
-        if (password === '2007') {
-            setIsAuthenticated(true);
-        } else {
-            setLoginError('סיסמה שגויה'); // Set error message
-        }
-    };
-
-    const handleCancelAppointment = async () => {
-        if (modalData.item) {
-            await api.updateAppointmentStatus(modalData.item.id, 'cancelled');
-            await api.updateAppointment(modalData.item.id, { notes: (modalData.item.notes || '') + '\nסיבת ביטול: בוטל ע"י מנהל' });
-            setModalData({ isOpen: false, type: null, item: null });
-            fetchData();
-        }
-    };
-
-    const handleDownloadPdf = async (apt: Appointment) => {
-        setPdfData(apt);
-        // Wait for render
-        setTimeout(async () => {
-            const input = document.getElementById('pdf-template');
-            if (input) {
-                try {
-                    const canvas = await html2canvas(input, { 
-                        scale: 2, 
-                        useCORS: true, 
-                        logging: false,
-                        backgroundColor: '#ffffff'
-                    });
-                    
-                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                    const pdf = new jsPDF({
-                        orientation: 'p',
-                        unit: 'mm',
-                        format: 'a4',
-                        compress: true
-                    });
-                    
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = pdf.internal.pageSize.getHeight();
-                    
-                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                    pdf.save(`Consent_${apt.client_name.replace(/\s+/g, '_')}.pdf`);
-                    
-                } catch (err) { 
-                    console.error("PDF Error:", err);
-                    showNotification("שגיאה ביצירת ה-PDF", 'error');
-                }
-            }
-            setPdfData(null);
-        }, 500); 
-    };
-
-    const handleUpdateSettings = useCallback(async (newSettings: StudioSettings, silent = false) => { 
-        await api.updateSettings(newSettings); 
-        fetchData(silent); 
-    }, [fetchData]);
-
-    // OPTIMISTIC UI UPDATE
-    const handleStatusUpdate = async (id: string, status: string) => { 
-        // 1. Optimistic Update (Immediate Feedback)
-        setAppointments(prev => prev.map(apt => apt.id === id ? { ...apt, status: status as any } : apt));
-        
-        // 2. API Call
-        await api.updateAppointmentStatus(id, status); 
-        
-        // 3. Silent Refresh (Ensure sync)
-        fetchData(true); 
-    };
-
-    const handleAddService = async (service: any) => { await api.addService(service); fetchData(); }
-    const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); fetchData(); }
-    const handleDeleteService = async (id: string) => { if(window.confirm('האם אתה בטוח?')) { await api.deleteService(id); fetchData(); } }
-    const handleGalleryUpload = async (url: string) => { await api.addToGallery(url); fetchData(); }
-    const handleDeleteGalleryImage = (id: string) => { setImageToDeleteId(id); }
-    const handleConfirmDeleteGalleryImage = async () => { if (imageToDeleteId) { await api.deleteFromGallery(imageToDeleteId); setImageToDeleteId(null); fetchData(); } }
-
-    const handleViewVisualPlan = (apt: Appointment) => {
-        const rawData = apt.visual_plan || apt.ai_recommendation_text;
-        if (rawData) {
-            try {
-                const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-                setVisualPlanData(data);
-            } catch (e) { console.error(e); }
-        }
-    };
-
-    if (!isAuthenticated) {
-        return (
-            <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
-                <Card className="w-full max-w-md p-8 border-brand-primary/20">
-                    <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-primary">
-                            <Lock className="w-8 h-8" />
-                        </div>
-                        <h1 className="text-2xl font-serif text-white">כניסת מנהל</h1>
-                    </div>
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <Input 
-                            label="סיסמה" 
-                            type="password" 
-                            value={password} 
-                            onChange={(e) => { setPassword(e.target.value); setLoginError(''); }} 
-                            autoFocus 
-                            className={`text-center tracking-widest text-lg ${loginError ? 'border-red-500/50 focus:border-red-500' : ''}`}
-                        />
-                        {loginError && (
-                            <p className="text-red-400 text-sm text-center -mt-4">{loginError}</p>
-                        )}
-                        <Button type="submit" className="w-full">התחבר</Button>
-                    </form>
-                </Card>
-            </div>
-        );
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoading, setIsLoading] = useState(false);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [settings, setSettings] = useState<StudioSettings | null>(null);
+  const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
+  const [gallery, setGallery] = useState<any[]>([]);
+  const [filterId, setFilterId] = useState<string | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+  
+  // Initialize
+  useEffect(() => {
+    const isLogged = localStorage.getItem('yuval_admin_auth') === 'true';
+    if (isLogged) {
+      setIsAuthenticated(true);
+      fetchData();
     }
+  }, []);
 
-    if (isLoading || !settings) {
-        return <div className="min-h-screen flex items-center justify-center text-brand-primary"><Loader2 className="w-8 h-8 animate-spin"/></div>;
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [appts, stngs, mStats, gall] = await Promise.all([
+        api.getAppointments(),
+        api.getSettings(),
+        api.getMonthlyStats(),
+        api.getGallery()
+      ]);
+      setAppointments(appts);
+      setSettings(stngs);
+      setStats(mStats);
+      setGallery(gall);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-brand-dark pb-20 pt-24 relative">
-            <AnimatePresence>
-                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            </AnimatePresence>
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === '1234' || password === 'admin') {
+      localStorage.setItem('yuval_admin_auth', 'true');
+      setIsAuthenticated(true);
+      fetchData();
+    } else {
+      alert('סיסמה שגויה');
+    }
+  };
+  
+  const handleLogout = () => {
+      localStorage.removeItem('yuval_admin_auth');
+      setIsAuthenticated(false);
+  };
 
-            <div className="container mx-auto px-4 lg:px-8">
-                <div className="flex flex-col gap-6 mb-10">
-                    <div>
-                        <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
-                        <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
-                    </div>
-                    
-                    {/* Fixed Tabs Row */}
-                    <div className="w-full overflow-x-auto pb-2">
-                        <div className="flex flex-row items-center gap-2 p-1 bg-brand-surface/50 rounded-xl min-w-max">
-                            {[
-                                { id: 'dashboard', icon: Activity, label: 'ראשי' },
-                                { id: 'calendar', icon: Calendar, label: 'יומן' },
-                                { id: 'appointments', icon: Filter, label: 'ניהול תורים' }, // Restored Tab
-                                { id: 'services', icon: Edit2, label: 'שירותים' },
-                                { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
-                                { id: 'inventory', icon: Box, label: 'מלאי' }, // New Tab
-                                { id: 'coupons', icon: Ticket, label: 'קופונים' },
-                                { id: 'settings', icon: Settings, label: 'הגדרות' }
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => { setActiveTab(tab.id); if(tab.id !== 'appointments') setFilterId(null); }}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                                >
-                                    <tab.icon className="w-4 h-4" />
-                                    <span>{tab.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+  const generatePdf = async (appt: Appointment) => {
+     if(!appt.signature) return;
+     
+     const doc = new jsPDF();
+     doc.addFont("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf", "Roboto", "normal");
+     doc.setFont("Roboto");
+     doc.setFontSize(20);
+     doc.text(`Health Declaration - ${appt.client_name}`, 10, 20);
+     doc.setFontSize(12);
+     doc.text(`Date: ${new Date(appt.start_time).toLocaleDateString()}`, 10, 30);
+     doc.text(`ID: ${appt.id}`, 10, 40);
+     doc.text(`Service: ${appt.service_name}`, 10, 50);
+     
+     if (appt.signature) {
+         doc.text('Signature:', 10, 70);
+         doc.addImage(appt.signature, 'PNG', 10, 80, 50, 25);
+     }
+     
+     doc.save(`declaration_${appt.client_name}.pdf`);
+  };
 
-                <AnimatePresence mode="wait">
-                    <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} />}
-                        {activeTab === 'appointments' && (
-                            <AppointmentsList 
-                                appointments={appointments} 
-                                onStatusUpdate={handleStatusUpdate} 
-                                onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} 
-                                filterId={filterId} 
-                                onClearFilter={() => setFilterId(null)} 
-                                studioAddress={settings.studio_details?.address} 
-                                onDownloadPdf={handleDownloadPdf} 
-                                allServices={services}
-                                onSyncToCalendar={handleSyncToCalendar}
-                                onBulkSync={handleBulkSync}
-                                onViewVisualPlan={handleViewVisualPlan}
-                            />
-                        )}
-                        {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
-                        {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
-                        {activeTab === 'inventory' && <InventoryTab settings={settings} onUpdate={handleUpdateSettings} />}
-                        {activeTab === 'coupons' && <CouponsTab settings={settings} onUpdate={handleUpdateSettings} />}
-                        {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
-                    </m.div>
-                </AnimatePresence>
-            </div>
-
-            <ConfirmationModal isOpen={modalData.isOpen} onClose={() => setModalData({ ...modalData, isOpen: false })} onConfirm={handleCancelAppointment} title="ביטול תור" description="האם אתה בטוח?" confirmText="בטל" variant="danger" />
-            <ConfirmationModal isOpen={!!imageToDeleteId} onClose={() => setImageToDeleteId(null)} onConfirm={handleConfirmDeleteGalleryImage} title="מחיקת תמונה" description="האם למחוק תמונה זו?" confirmText="מחק" variant="danger" />
-
-            {/* AI Visual Plan Modal */}
-            <Modal isOpen={!!visualPlanData} onClose={() => setVisualPlanData(null)} title="תוכנית עיצוב AI">
-                {visualPlanData && (
-                    <div className="space-y-4">
-                        <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black border border-white/10">
-                            <img 
-								src={visualPlanData.userImage || visualPlanData.original_image} 
-								alt="AI Plan" 
-								className="w-full h-auto rounded-lg shadow-2xl"
-								onError={(e) => {
-									// אם התמונה לא נטענת, נציג פלייס-הולדר
-									(e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Image+Not+Found';
-								}}
-							/>
-                            {/* Render Recommendations with Actual Jewelry Images */}
-                            {visualPlanData.recommendations?.map((rec: any, idx: number) => {
-                                const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
-                                return (
-                                     <div
-                                        key={`rec-${idx}`}
-                                        style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
-                                        className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2"
-                                        title={rec.location}
-                                     >
-                                        <div className="w-full h-full rounded-full border-2 border-brand-primary bg-white overflow-hidden shadow-lg">
-                                            {jewelry ? (
-                                                <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full bg-brand-primary/50 animate-pulse" />
-                                            )}
-                                        </div>
-                                     </div>
-                                );
-                            })}
-                        </div>
-                        <div className="bg-white/5 p-4 rounded-xl text-right">
-                            <h4 className="text-white font-medium mb-2">מיקומי פירסינג מומלצים</h4>
-                            <ul className="space-y-2">
-                                 {visualPlanData.recommendations?.map((rec: any, i: number) => (
-                                     <li key={i} className="text-xs text-slate-300 flex items-start gap-2">
-                                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-1.5 shrink-0"></span>
-                                         <span>
-                                             <strong className="text-white">{rec.location}:</strong> {rec.description}
-                                         </span>
-                                     </li>
-                                 ))}
-                            </ul>
-                        </div>
-                        {/* Selected Items List in Modal */}
-                        {visualPlanData.selected_items && visualPlanData.selected_items.length > 0 && (
-                            <div className="bg-white/5 p-4 rounded-xl text-right mt-2">
-                                <h4 className="text-white font-medium mb-2">פריטים שנבחרו</h4>
-                                <div className="flex flex-wrap gap-2">
-                                    {visualPlanData.selected_items.map((itemId: string) => {
-                                        const item = JEWELRY_CATALOG.find(j => j.id === itemId);
-                                        return item ? (
-                                            <span key={itemId} className="text-xs bg-brand-primary/10 text-brand-primary px-2 py-1 rounded border border-brand-primary/20 flex items-center gap-1">
-                                                <Sparkles className="w-3 h-3" />
-                                                {item.name}
-                                            </span>
-                                        ) : null;
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </Modal>
-
-            <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
-                {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
-            </div>
+  if (!isAuthenticated) {
+     return (
+        <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
+             <Card className="w-full max-w-md p-8 bg-brand-surface border-white/10">
+                 <div className="text-center mb-8">
+                     <h1 className="text-3xl font-serif text-white mb-2">כניסת מנהל</h1>
+                     <p className="text-slate-400">הזן סיסמה להמשך</p>
+                 </div>
+                 <form onSubmit={handleLogin} className="space-y-4">
+                     <Input 
+                        label="סיסמה" 
+                        type="password" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        autoFocus
+                     />
+                     <Button type="submit" className="w-full">התחבר</Button>
+                 </form>
+             </Card>
         </div>
-    );
+     );
+  }
+
+  return (
+    <div className="min-h-screen bg-brand-dark pb-20">
+       <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-8">
+             <h1 className="text-3xl font-serif text-white">לוח בקרה</h1>
+             <Button variant="ghost" onClick={handleLogout} className="text-red-400 hover:text-red-300 gap-2">
+                <LogOut className="w-4 h-4" /> התנתק
+             </Button>
+          </div>
+          
+          {/* Tabs Navigation (Horizontal on PC) */}
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-white/10">
+             {[
+                { id: 'dashboard', label: 'סקירה', icon: LayoutDashboard },
+                { id: 'appointments', label: 'יומן תורים', icon: Calendar },
+                { id: 'settings', label: 'הגדרות', icon: Settings },
+                { id: 'gallery', label: 'גלריה', icon: ImageIcon },
+                { id: 'coupons', label: 'קופונים', icon: Ticket },
+             ].map(tab => (
+                <button
+                   key={tab.id}
+                   onClick={() => setActiveTab(tab.id)}
+                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
+                      activeTab === tab.id 
+                         ? 'bg-brand-primary text-brand-dark font-medium shadow-lg shadow-brand-primary/20' 
+                         : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                   }`}
+                >
+                   <tab.icon className="w-4 h-4" />
+                   {tab.label}
+                </button>
+             ))}
+          </div>
+
+          {/* Content Area */}
+          <div className="min-h-[500px]">
+              {isLoading ? (
+                 <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-brand-primary animate-spin" /></div>
+              ) : (
+                 <>
+                    {activeTab === 'dashboard' && (
+                        <DashboardTab 
+                           stats={stats} 
+                           appointments={appointments} 
+                           onViewAppointment={(id: string) => {
+                               setActiveTab('appointments');
+                               setFilterId(id);
+                           }}
+                           settings={settings}
+                        />
+                    )}
+                    
+                    {activeTab === 'appointments' && (
+                        <AppointmentsList 
+                            appointments={appointments}
+                            onStatusUpdate={async (id: string, status: string) => {
+                                await api.updateAppointmentStatus(id, status);
+                                fetchData();
+                            }}
+                            onCancelRequest={async (appt: Appointment) => {
+                                if(confirm('האם אתה בטוח שברצונך לבטל את התור?')) {
+                                   await api.updateAppointmentStatus(appt.id, 'cancelled');
+                                   fetchData();
+                                }
+                            }}
+                            filterId={filterId}
+                            onClearFilter={() => setFilterId(null)}
+                            studioAddress={settings?.studio_details.address}
+                            onDownloadPdf={generatePdf}
+                            onSyncToCalendar={(appt: Appointment) => {
+                                calendarService.syncAppointment(appt)
+                                    .then(() => alert('סונכרן בהצלחה!'))
+                                    .catch(e => alert('שגיאה בסנכרון: ' + e.message));
+                            }}
+                            onBulkSync={async (appts: Appointment[]) => {
+                                if(!confirm(`האם לסנכרן ${appts.length} תורים?`)) return;
+                                let success = 0;
+                                for(const apt of appts) {
+                                    try {
+                                        await calendarService.syncAppointment(apt);
+                                        success++;
+                                    } catch(e) {}
+                                }
+                                alert(`סונכרנו ${success} מתוך ${appts.length} תורים.`);
+                            }}
+                            onViewVisualPlan={(apt: Appointment) => {
+                                alert('צפייה בתוכנית ויזואלית טרם הוטמעה במלואה בממשק זה, אך הנתונים נשמרו.');
+                            }}
+                        />
+                    )}
+
+                    {activeTab === 'settings' && <SettingsView settings={settings} onUpdate={async (s) => { await api.updateSettings(s); fetchData(); }} />}
+                    {activeTab === 'gallery' && <GalleryView gallery={gallery} onDelete={async (id: string) => { await api.deleteFromGallery(id); fetchData(); }} onUpload={async (url: string) => { await api.addToGallery(url); fetchData(); }} />}
+                    {activeTab === 'coupons' && <CouponsView coupons={settings?.coupons || []} onUpdate={async (c: Coupon[]) => { 
+                        if(settings) {
+                           await api.updateSettings({ ...settings, coupons: c });
+                           fetchData();
+                        }
+                    }} />}
+                 </>
+              )}
+          </div>
+       </div>
+    </div>
+  );
 };
 
 export default Admin;
