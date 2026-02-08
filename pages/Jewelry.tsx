@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { api } from '../services/mockApi';
 import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
@@ -18,7 +19,24 @@ const JewelryPage: React.FC = () => {
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [direction, setDirection] = useState(0);
 
+  // Refs for event listener access
+  const selectedIndexRef = useRef(selectedIndex);
+  const isSelectionModeRef = useRef(isSelectionMode);
+  const galleryItemsRef = useRef(galleryItems);
+
   const navigate = useNavigate();
+
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    isSelectionModeRef.current = isSelectionMode;
+  }, [isSelectionMode]);
+
+  useEffect(() => {
+    galleryItemsRef.current = galleryItems;
+  }, [galleryItems]);
 
   useEffect(() => {
     const loadGallery = async () => {
@@ -32,44 +50,67 @@ const JewelryPage: React.FC = () => {
     loadGallery();
   }, []);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll when modal is open - dedicated effect with cleanup
   useEffect(() => {
     if (selectedIndex !== null) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
-      setIsSelectionMode(false); 
     }
-    return () => { document.body.style.overflow = 'unset'; };
+    
+    // Cleanup function ensures scroll is restored when unmounting or navigating away
+    return () => { 
+        document.body.style.overflow = 'unset'; 
+    };
   }, [selectedIndex]);
+
+  // Handler refs to use inside the stable event listener
+  const handleNextStable = useCallback(() => {
+    const currentItems = galleryItemsRef.current;
+    const currentIdx = selectedIndexRef.current;
+    if (currentIdx === null || currentItems.length === 0) return;
+    
+    setDirection(1);
+    setSelectedIndex((currentIdx + 1) % currentItems.length);
+    if (isSelectionModeRef.current) setIsSelectionMode(false);
+  }, []);
+
+  const handlePrevStable = useCallback(() => {
+    const currentItems = galleryItemsRef.current;
+    const currentIdx = selectedIndexRef.current;
+    if (currentIdx === null || currentItems.length === 0) return;
+
+    setDirection(-1);
+    setSelectedIndex((currentIdx - 1 + currentItems.length) % currentItems.length);
+    if (isSelectionModeRef.current) setIsSelectionMode(false);
+  }, []);
 
   const handleNext = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setDirection(1);
-    setSelectedIndex((prev) => prev === null ? null : (prev + 1) % galleryItems.length);
-    setIsSelectionMode(false);
-  }, [galleryItems.length]);
+    handleNextStable();
+  }, [handleNextStable]);
 
   const handlePrev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setDirection(-1);
-    setSelectedIndex((prev) => prev === null ? null : (prev - 1 + galleryItems.length) % galleryItems.length);
-    setIsSelectionMode(false);
-  }, [galleryItems.length]);
+    handlePrevStable();
+  }, [handlePrevStable]);
 
+  // Keydown listener - attached once
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedIndex === null) return;
-      if (e.key === 'ArrowLeft') handleNext();
-      if (e.key === 'ArrowRight') handlePrev();
+      if (selectedIndexRef.current === null) return;
+      
+      if (e.key === 'ArrowLeft') handleNextStable();
+      if (e.key === 'ArrowRight') handlePrevStable();
       if (e.key === 'Escape') {
-          if (isSelectionMode) setIsSelectionMode(false);
+          if (isSelectionModeRef.current) setIsSelectionMode(false);
           else setSelectedIndex(null);
       }
     };
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIndex, handleNext, handlePrev, isSelectionMode]);
+  }, [handleNextStable, handlePrevStable]);
 
   const currentItem = selectedIndex !== null ? galleryItems[selectedIndex] : null;
   const taggedServices: Service[] = currentItem?.taggedServices || [];
