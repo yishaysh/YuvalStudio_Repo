@@ -91,7 +91,10 @@ export const api = {
         .from('settings')
         .upsert(updates, { onConflict: 'key' });
       
-      if (!error) cachedSettings = settings;
+      if (!error) {
+          // Update local cache immediately to prevent desync
+          cachedSettings = { ...settings };
+      }
       return !error;
   },
 
@@ -289,7 +292,11 @@ export const api = {
       guest_phone: appt.client_phone,
       notes: finalNotes,
       signature: appt.signature,
-      status: 'pending' // Default to pending
+      status: 'pending', // Default to pending
+      price: appt.final_price, // Ensure price is saved
+      final_price: appt.final_price,
+      ai_recommendation_text: appt.ai_recommendation_text,
+      visual_plan: appt.visual_plan
     };
 
     const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
@@ -336,7 +343,10 @@ export const api = {
         status: item.status,
         notes: item.notes,
         signature: item.signature,
-        created_at: item.created_at
+        created_at: item.created_at,
+        final_price: item.final_price, // Ensure we return this from DB
+        visual_plan: item.visual_plan,
+        ai_recommendation_text: item.ai_recommendation_text
       }));
     } catch (err) {
       console.error(err);
@@ -359,9 +369,6 @@ export const api = {
   // --- DELETE ALL FUNCTION ---
   clearAppointments: async (): Promise<boolean> => {
       if (!supabase) return false;
-      // We use a filter that matches all rows to satisfy safe delete policies if strict, 
-      // or just straight delete.
-      // NOTE: RLS Policies must allow DELETE for this to work.
       const { error } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       return !error;
   },
@@ -376,7 +383,7 @@ export const api = {
 
       const { data } = await supabase
         .from('appointments')
-        .select(`status, services(price)`)
+        .select(`status, services(price), final_price`)
         .gte('start_time', startOfMonth)
         .lte('start_time', endOfMonth)
         .neq('status', 'cancelled');
@@ -386,7 +393,8 @@ export const api = {
       
       data?.forEach((app: any) => {
           if (app.status !== 'cancelled') {
-             revenue += (app.services?.price || 0);
+             // Prefer final_price if exists, else service price
+             revenue += (app.final_price !== undefined && app.final_price !== null) ? app.final_price : (app.services?.price || 0);
           }
           if (app.status === 'pending') pending++;
       });
@@ -458,5 +466,46 @@ export const api = {
 
       const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
       return data.publicUrl;
+  },
+
+  // Convert Base64 Data URL to File/Blob and upload
+  uploadBase64Image: async (base64Data: string, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
+      if (!supabase) return null;
+
+      try {
+          // 1. Convert Base64 to Blob
+          // Assume base64Data is without the "data:image/jpeg;base64," prefix or clean it
+          const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+          
+          const byteCharacters = atob(cleanBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+          // 2. Generate Path
+          const fileName = `ai_upload_${Math.random().toString(36).substring(2)}.jpg`;
+          
+          // 3. Upload
+          const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, blob, {
+              contentType: 'image/jpeg',
+              upsert: false
+          });
+
+          if (uploadError) {
+              console.error("Supabase Upload Error:", uploadError);
+              return null;
+          }
+
+          // 4. Get URL
+          const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+          return data.publicUrl;
+
+      } catch (e) {
+          console.error("Error converting/uploading base64 image:", e);
+          return null;
+      }
   }
 };

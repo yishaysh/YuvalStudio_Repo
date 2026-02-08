@@ -470,8 +470,8 @@ const Booking: React.FC = () => {
   
   // Calculate base price including both standard services and AI selected jewelry
   const basePrice = useMemo(() => {
-      const servicesTotal = selectedServices.reduce((acc, s) => acc + s.price, 0);
-      const jewelryTotal = selectedJewelry.reduce((acc, j) => acc + j.price, 0);
+      const servicesTotal = selectedServices.reduce((sum, s) => sum + s.price, 0);
+      const jewelryTotal = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
       return servicesTotal + jewelryTotal;
   }, [selectedServices, selectedJewelry]);
 
@@ -606,49 +606,81 @@ const Booking: React.FC = () => {
   }, [studioSettings]);
 
   const handleBook = useCallback(async () => {
-      // 1. הגדרת המשתנים מתוך ה-State הקיים
-      const service = selectedServices[0]; // לוקח את השירות הראשון שנבחר
+      setIsSubmitting(true);
+
+      let finalImageUrl = aiImage; // Default to base64 if not uploaded
+      let finalAiResult = aiResult;
+
+      // 1. Upload AI Image if exists and not already a URL
+      if (aiImage && !aiImage.startsWith('http')) {
+          try {
+              const uploadedUrl = await api.uploadBase64Image(aiImage, 'gallery-images');
+              if (uploadedUrl) {
+                  finalImageUrl = uploadedUrl;
+                  // Update local copy of visual plan to use URL
+                  if (finalAiResult) {
+                      finalAiResult = { ...finalAiResult, original_image: uploadedUrl };
+                  }
+              }
+          } catch (e) {
+              console.error("Image upload failed, fallback to base64 in json", e);
+          }
+      }
+
+      // 2. Prepare Visual Plan JSON
       const visualPlanString = JSON.stringify({
-          original_image: aiResult?.original_image || aiImage,
-          recommendations: aiResult?.recommendations,
-          selected_items: selectedJewelry.map(j => j.id)
+          original_image: finalImageUrl,
+          recommendations: finalAiResult?.recommendations,
+          selected_items: selectedJewelry.map(j => j.id),
+          userImage: finalImageUrl // Adding userImage explicitly as well for clarity
       });
 
-      // 2. חישוב מחיר סופי (כולל תכשיטים וקופון) - Duplicate logic for safety in payload construction
+      // 3. Price Calculation (Services + Jewelry - Discount)
       const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
       const jewelrySum = selectedJewelry.reduce((sum, j) => sum + j.price, 0);
       let total = servicesSum + jewelrySum;
-      if (appliedCoupon) {
-          if (appliedCoupon.discountType === 'percentage') total -= (total * appliedCoupon.value) / 100;
-          else total -= appliedCoupon.value;
-      }
-      const finalPriceToSave = Math.max(0, total);
-
-      setIsSubmitting(true);
       
-      // חישוב זמן סיום (ברירת מחדל 30 דקות אם אין שירות)
-      const duration = service?.duration_minutes || 30;
+      if (appliedCoupon) {
+          if (appliedCoupon.discountType === 'percentage') {
+              total -= (total * appliedCoupon.value) / 100;
+          } else {
+              total -= appliedCoupon.value;
+          }
+      }
+      const finalPriceToSave = Math.max(0, Math.round(total));
+
+      // 4. Determine Service Duration
+      // If combined services, sum them up or take max, or default 30
+      const duration = selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0) || 30;
       const endTime = new Date(selectedDate!.getTime() + duration * 60000).toISOString();
+
+      // 5. Append Image URL to notes for easy admin access
+      let updatedNotes = formData.notes;
+      if (finalImageUrl && finalImageUrl.startsWith('http')) {
+          updatedNotes += `\n\n[תמונת לקוח מצורפת](${finalImageUrl})`;
+      }
 
       try {
           await api.createAppointment({
-              service_id: service?.id || 'combined',
+              service_id: selectedServices[0]?.id || 'combined',
+              service_name: selectedServices.map(s => s.name).join(' + '), // Save composite name
               start_time: selectedDate!.toISOString(),
               end_time: endTime,
               client_name: formData.name,
               client_phone: formData.phone,
               client_email: formData.email,
-              notes: formData.notes,
+              notes: updatedNotes,
               signature: signatureData!,
               coupon_code: appliedCoupon?.code,
-              final_price: finalPriceToSave,
+              final_price: finalPriceToSave, // Save the properly calculated price
               visual_plan: visualPlanString,
-              ai_recommendation_text: visualPlanString // Ensure backward compatibility for admin
+              ai_recommendation_text: visualPlanString 
           });
           
           setStep(BookingStep.CONFIRMATION);
       } catch (error) {
           console.error("Booking error:", error);
+          alert("אירעה שגיאה בקביעת התור. אנא נסה שנית.");
       } finally {
           setIsSubmitting(false);
       }
