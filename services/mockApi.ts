@@ -300,7 +300,14 @@ export const api = {
     };
 
     const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
-    if (error) throw error;
+    
+    if (error) {
+        if (error.code === 'PGRST204') {
+            console.error("Schema Mismatch: Missing columns in 'appointments' table. Please run migration SQL.");
+            throw new Error("שגיאת מערכת: מבנה הנתונים אינו מעודכן. אנא פנה למנהל המערכת.");
+        }
+        throw error;
+    }
 
     return {
       id: data.id,

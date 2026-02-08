@@ -37,7 +37,41 @@ create table if not exists public.appointments (
   status text default 'pending' check (status in ('pending', 'confirmed', 'cancelled', 'completed')),
   notes text,
   signature text,
-  ai_recommendation_text text, -- Added for Personal AI Ear Stylist
+  
+  -- New Columns for AI Stylist & Pricing
+  ai_recommendation_text text, 
+  visual_plan text,
+  price decimal(10,2),
+  final_price decimal(10,2),
+  
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
--- ... [Rest of file unchanged] ...
+
+-- MIGRATION COMMANDS (Run these in Supabase SQL Editor if table already exists)
+-- ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS price decimal(10,2);
+-- ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS final_price decimal(10,2);
+-- ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS visual_plan text;
+-- ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS ai_recommendation_text text;
+
+-- SETTINGS (Key-Value Store for config)
+create table if not exists public.settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- GALLERY
+create table if not exists public.gallery (
+  id uuid default uuid_generate_v4() primary key,
+  image_url text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- STORAGE BUCKETS (Requires Storage Extension)
+-- insert into storage.buckets (id, name) values ('service-images', 'service-images');
+-- insert into storage.buckets (id, name) values ('gallery-images', 'gallery-images');
+
+-- RLS POLICIES (Example)
+-- alter table public.appointments enable row level security;
+-- create policy "Public appointments insert" on public.appointments for insert with check (true);
+-- create policy "Public services view" on public.services for select using (true);
