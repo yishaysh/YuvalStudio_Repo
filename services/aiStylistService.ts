@@ -23,20 +23,18 @@ export const aiStylistService = {
 
     if (!API_KEY) {
       console.error("Gemini API Key missing");
-      throw new Error('חסר מפתח API. אנא הגדר את VITE_GEMINI_API_KEY בקובץ ה-.env שלך או בלוח הבקרה של Vercel.');
+      throw new Error('חסר מפתח API. אנא הגדר את VITE_GEMINI_API_KEY בלוח הבקרה של Vercel או בקובץ ה-.env.');
     }
 
-    // Direct fetch fallback targeting v1 version explicitly
-    // This is the most reliable way to bypass SDK's internal v1beta defaults
-    const tryDirectV1 = async () => {
-      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-
-      const prompt = this.getPrompt();
+    // Explicitly target v1 to avoid v1beta 404 issues
+    const tryDirectV1 = async (modelName: string) => {
+      console.log(`Attempting direct v1 API call with ${modelName}...`);
+      const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${API_KEY}`;
 
       const body = {
         contents: [{
           parts: [
-            { text: prompt },
+            { text: this.getPrompt() },
             {
               inlineData: {
                 mimeType: "image/jpeg",
@@ -49,59 +47,63 @@ export const aiStylistService = {
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        console.error("Direct V1 Error:", errData);
-        throw new Error(errData.error?.message || "Direct API call failed");
+        const errData = await response.json().catch(() => ({}));
+        console.error(`Direct V1 Error (${modelName}):`, errData);
+        throw new Error(errData.error?.message || `API error ${response.status}`);
       }
 
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-      if (!text) throw new Error("Empty response from direct v1 API");
-
+      if (!text) throw new Error("Empty response from AI");
       return this.parseResponse(text);
     };
 
     try {
-      // Attempt 1: Direct V1 call (Highest reliability for version control)
-      console.log("Attempting direct v1 API call...");
-      return await tryDirectV1();
-    } catch (apiError: any) {
-      console.warn("Direct v1 call failed, trying SDK as fallback...", apiError.message);
-
-      // Attempt 2: SDK with a different model variation (8b is often more resilient on some keys)
+      // Try gemini-1.5-flash first (most common)
+      return await tryDirectV1("gemini-1.5-flash");
+    } catch (e1: any) {
+      console.warn("Flash failed, trying Flash-8B on v1...", e1.message);
       try {
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+        // Try flash-8b as fallback on v1
+        return await tryDirectV1("gemini-1.5-flash-8b");
+      } catch (e2: any) {
+        console.error("All direct v1 calls failed. Falling back to SDK with explicit v1 config...");
 
-        const result = await model.generateContent([
-          this.getPrompt(),
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: cleanBase64,
+        try {
+          const genAI = new GoogleGenerativeAI(API_KEY);
+          // Explicitly set apiVersion to 'v1' in the model options
+          const model = genAI.getGenerativeModel(
+            { model: "gemini-1.5-flash" },
+            { apiVersion: "v1" }
+          );
+
+          const result = await model.generateContent([
+            this.getPrompt(),
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: cleanBase64,
+              },
             },
-          },
-        ]);
+          ]);
 
-        const response = await result.response;
-        const text = response.text();
-        return this.parseResponse(text);
-      } catch (sdkError: any) {
-        console.error("Both direct and SDK calls failed:", sdkError);
+          const response = await result.response;
+          return this.parseResponse(response.text());
+        } catch (sdkError: any) {
+          console.error("SDK Fallback also failed:", sdkError);
 
-        if (sdkError.message?.includes('API key') || sdkError.message?.includes('403')) {
-          throw new Error("מפתח API לא תקין או חסר.");
+          if (sdkError.message?.includes('API key') || sdkError.message?.includes('403')) {
+            throw new Error("מפתח API לא תקין או חסר.");
+          }
+
+          throw new Error(`שגיאה בניתוח (v1): ${sdkError.message || "לא הצלחנו ליצור קשר עם ה-AI"}`);
         }
-
-        throw new Error(`שגיאה בניתוח: ${sdkError.message || "נכשלנו בניתוח התמונה."}`);
       }
     }
   },
@@ -140,8 +142,6 @@ export const aiStylistService = {
   },
 
   parseResponse(text: string): AIAnalysisResult {
-    if (!text) throw new Error("Empty response from AI");
-
     // Robust JSON extraction
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -151,7 +151,7 @@ export const aiStylistService = {
     try {
       return JSON.parse(text) as AIAnalysisResult;
     } catch (e) {
-      console.error("Failed to parse AI response:", text);
+      console.error("JSON Parse Error:", text);
       throw new Error("תוצאת ה-AI אינה תקינה. אנא נסה שוב.");
     }
   }
