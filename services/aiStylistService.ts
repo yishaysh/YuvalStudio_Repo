@@ -19,18 +19,18 @@ export interface AIAnalysisResult {
 
 export const aiStylistService = {
   async analyzeEar(cleanBase64: string): Promise<AIAnalysisResult> {
-    const API_KEY = process.env.API_KEY;
+    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
     if (!API_KEY) {
-      console.error("API Key missing");
-      throw new Error('חסר מפתח API. אנא וודא שהגדרת את process.env.API_KEY');
+      console.error("Gemini API Key missing");
+      throw new Error('חסר מפתח API. אנא הגדר את VITE_GEMINI_API_KEY בקובץ ה-.env שלך.');
     }
 
     const ai = new GoogleGenAI({ apiKey: API_KEY });
 
     // Prepare catalog string for the prompt
-    const catalogString = JEWELRY_CATALOG.map(j => 
-        `ID: ${j.id}, Name: ${j.name}, Type: ${j.category}, Suitable for: ${j.allowed_locations?.join(', ')}`
+    const catalogString = JEWELRY_CATALOG.map(j =>
+      `ID: ${j.id}, Name: ${j.name}, Type: ${j.category}, Suitable for: ${j.allowed_locations?.join(', ')}`
     ).join('\n');
 
     // Define the schema to ensure we get coordinates for the UI
@@ -73,7 +73,7 @@ export const aiStylistService = {
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: [
           {
             parts: [
@@ -106,7 +106,7 @@ export const aiStylistService = {
       if (error.message && error.message.includes('404')) {
         throw new Error("המודל אינו זמין כרגע. אנא נסה שוב.");
       }
-      throw new Error("נכשלנו בניתוח התמונה. אנא וודא שהתמונה ברורה ונסה שנית.");
+      throw new Error("נכשלנו בניתוח התמונה. אנא וודא שהתמונה ברורה וסגנון המצלמה תקין.");
     }
   },
 };
