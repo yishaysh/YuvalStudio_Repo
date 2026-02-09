@@ -33,38 +33,11 @@ export const aiStylistService = {
       `ID: ${j.id}, Name: ${j.name}, Type: ${j.category}, Suitable for: ${j.allowed_locations?.join(', ')}`
     ).join('\n');
 
-    // Define the schema to ensure we get coordinates for the UI using the official SDK types
-    const schema: any = {
-      type: SchemaType.OBJECT,
-      properties: {
-        style_summary: {
-          type: SchemaType.STRING,
-          description: "A short, luxurious title for the styling concept (Hebrew)",
-        },
-        recommendations: {
-          type: SchemaType.ARRAY,
-          items: {
-            type: SchemaType.OBJECT,
-            properties: {
-              location: { type: SchemaType.STRING, description: "Anatomy name (e.g., Helix)" },
-              jewelry_id: { type: SchemaType.STRING, description: "The ID of the jewelry from the provided catalog that best fits this location." },
-              description: { type: SchemaType.STRING, description: "Why this specific jewelry fits this anatomy (Hebrew)" },
-              x: { type: SchemaType.NUMBER, description: "Horizontal position percentage (0-100) from left" },
-              y: { type: SchemaType.NUMBER, description: "Vertical position percentage (0-100) from top" },
-            },
-            required: ["location", "jewelry_id", "description", "x", "y"],
-          },
-        },
-      },
-      required: ["style_summary", "recommendations"],
-    };
+    // We will ask for JSON in the prompt instead of using responseSchema
+    // to avoid the v1beta requirement which seems to be failing for this API key.
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-      },
+      model: "gemini-1.5-flash"
     });
 
     const prompt = `You are a professional piercing stylist. Analyze this ear image.
@@ -77,6 +50,22 @@ export const aiStylistService = {
     2. Suggest 3-4 specific styling additions using ONLY items from the provided catalog.
     3. Return X/Y coordinates (0-100 scale) for where the jewelry should be placed on the image.
     4. Provide descriptions in Hebrew.
+
+    RESPONSE FORMAT:
+    You MUST return a valid JSON object with the following structure:
+    {
+      "style_summary": "Short luxurious title in Hebrew",
+      "recommendations": [
+        {
+          "location": "Helix",
+          "jewelry_id": "ID_FROM_CATALOG",
+          "description": "Explanation in Hebrew",
+          "x": 50,
+          "y": 50
+        }
+      ]
+    }
+    Return ONLY the JSON object, no other text.
     `;
 
     try {
@@ -91,9 +80,15 @@ export const aiStylistService = {
       ]);
 
       const response = await result.response;
-      const text = response.text();
+      let text = response.text();
 
       if (!text) throw new Error("Empty response from AI");
+
+      // Robust JSON extraction
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        text = jsonMatch[0];
+      }
 
       // Parse JSON output
       return JSON.parse(text) as AIAnalysisResult;
