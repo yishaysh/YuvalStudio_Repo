@@ -2,48 +2,48 @@
 import { Service, Appointment, StudioSettings, StudioDetails, MonthlyGoals } from './types';
 
 export const JEWELRY_CATALOG = [
-  { 
-    id: 'j_helix_gold', 
-    name: 'Classic Gold Hoop', 
-    price: 180, 
-    image_url: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=200&auto=format&fit=crop', 
-    category: 'Ear', 
+  {
+    id: 'j_helix_gold',
+    name: 'Classic Gold Hoop',
+    price: 180,
+    image_url: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=200&auto=format&fit=crop',
+    category: 'Ear',
     description: 'חישוק זהב 14K קלאסי, מתאים להליקס.',
     allowed_locations: ['Helix', 'Lobe', 'Cartilage']
   },
-  { 
-    id: 'j_stud_dia', 
-    name: 'Diamond Solitaire', 
-    price: 250, 
-    image_url: 'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?q=80&w=200&auto=format&fit=crop', 
-    category: 'Ear', 
+  {
+    id: 'j_stud_dia',
+    name: 'Diamond Solitaire',
+    price: 250,
+    image_url: 'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?q=80&w=200&auto=format&fit=crop',
+    category: 'Ear',
     description: 'נקודת יהלום עדינה בשיבוץ מלא.',
     allowed_locations: ['Lobe', 'Tragus', 'Helix', 'Conch']
   },
-  { 
-    id: 'j_conch_cuff', 
-    name: 'Textured Gold Cuff', 
-    price: 220, 
-    image_url: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=200&auto=format&fit=crop', 
-    category: 'Ear', 
+  {
+    id: 'j_conch_cuff',
+    name: 'Textured Gold Cuff',
+    price: 220,
+    image_url: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=200&auto=format&fit=crop',
+    category: 'Ear',
     description: 'חישוק עבה בטקסטורה מחוספסת לקונץ\'.',
     allowed_locations: ['Conch', 'Lobe']
   },
-  { 
-    id: 'j_tragus_gem', 
-    name: 'Opal Stud', 
-    price: 150, 
-    image_url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=200&auto=format&fit=crop', 
-    category: 'Ear', 
+  {
+    id: 'j_tragus_gem',
+    name: 'Opal Stud',
+    price: 150,
+    image_url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=200&auto=format&fit=crop',
+    category: 'Ear',
     description: 'אבן אופל טבעית עם מסגרת זהב.',
     allowed_locations: ['Tragus', 'Forward Helix', 'Rook']
   },
-  { 
-    id: 'j_lobe_chain', 
-    name: 'Gold Connector Chain', 
-    price: 200, 
-    image_url: 'https://images.unsplash.com/photo-1630019852942-e5e1237d6d49?q=80&w=200&auto=format&fit=crop', 
-    category: 'Ear', 
+  {
+    id: 'j_lobe_chain',
+    name: 'Gold Connector Chain',
+    price: 200,
+    image_url: 'https://images.unsplash.com/photo-1630019852942-e5e1237d6d49?q=80&w=200&auto=format&fit=crop',
+    category: 'Ear',
     description: 'שרשרת חיבור עדינה בין שני חורים.',
     allowed_locations: ['Lobe', 'Helix']
   }
@@ -125,9 +125,9 @@ export const DEFAULT_WORKING_HOURS: StudioSettings['working_hours'] = {
 
 export const DEFAULT_STUDIO_DETAILS: StudioDetails = {
   name: 'Yuval Studio',
-  phone: '050-1234567',
-  address: 'דיזנגוף 100, תל אביב',
-  email: 'info@yuvalstudio.com'
+  phone: '0547513343',
+  address: 'ברקת 40 מעלה שומרון',
+  email: 'shavlev.yuval@gmail.com'
 };
 
 export const DEFAULT_MONTHLY_GOALS: MonthlyGoals = {

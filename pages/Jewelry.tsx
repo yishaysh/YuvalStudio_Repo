@@ -207,6 +207,7 @@ const JewelryPage: React.FC = () => {
                   src={item.image_url}
                   alt={`Jewelry ${i}`}
                   className="w-full h-full object-cover"
+                  priority={i < 4}
                 />
               </m.div>
             ))}

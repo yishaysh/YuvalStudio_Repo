@@ -1085,7 +1085,7 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {services.map((service: Service) => (
                     <Card key={service.id} className="relative group hover:border-brand-primary/30 transition-all">
-                        <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <button onClick={() => openModal(service)} className="p-2 bg-brand-surface rounded-full text-brand-primary hover:bg-brand-primary hover:text-brand-dark"><Edit2 className="w-4 h-4" /></button>
                             <button onClick={() => onDeleteService(service.id)} className="p-2 bg-brand-surface rounded-full text-red-400 hover:bg-red-500 hover:text-white"><Trash2 className="w-4 h-4" /></button>
                         </div>
@@ -1412,9 +1412,60 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
     );
 };
 
-const GalleryTab = ({ gallery, onDelete, onUpload }: any) => {
+const GalleryTaggingModal = ({ isOpen, onClose, services, currentTags, onSave, image_url }: any) => {
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (isOpen) setSelectedIds(currentTags || []);
+    }, [isOpen, currentTags]);
+
+    const toggleService = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="תיוג שירותים לתמונה">
+            <div className="space-y-6">
+                <div className="aspect-video rounded-xl overflow-hidden border border-white/10 bg-brand-dark/50">
+                    <img src={image_url} alt="" className="w-full h-full object-cover" />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-400 block mb-2">בחר שירותים הכלולים בלוק:</label>
+                    <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                        {services.map((service: Service) => {
+                            const isSelected = selectedIds.includes(service.id);
+                            return (
+                                <div
+                                    key={service.id}
+                                    onClick={() => toggleService(service.id)}
+                                    className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-slate-600'}`}>
+                                            {isSelected && <Check className="w-3 h-3 text-brand-dark" />}
+                                        </div>
+                                        <span className={`text-sm ${isSelected ? 'text-white font-medium' : 'text-slate-400'}`}>{service.name}</span>
+                                    </div>
+                                    <span className="text-xs text-brand-primary">₪{service.price}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <Button onClick={() => onSave(selectedIds)} className="w-full">שמור תיוגים</Button>
+            </div>
+        </Modal>
+    );
+};
+
+const GalleryTab = ({ gallery, onDelete, onUpload, onUpdateTags, services }: any) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [taggingItem, setTaggingItem] = useState<any | null>(null);
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1439,16 +1490,44 @@ const GalleryTab = ({ gallery, onDelete, onUpload }: any) => {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {gallery.map((item: any) => (
-                    <div key={item.id} className="relative aspect-square group rounded-lg overflow-hidden border border-white/10">
+                    <div key={item.id} className="relative aspect-square group rounded-lg overflow-hidden border border-white/10 bg-brand-dark/30">
                         <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button onClick={() => onDelete(item.id)} className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors">
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setTaggingItem(item)}
+                                className="p-2 bg-brand-primary/20 text-brand-primary rounded-full hover:bg-brand-primary hover:text-brand-dark transition-all"
+                                title="תייג מוצרים"
+                            >
+                                <Tag className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => onDelete(item.id)}
+                                className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-all"
+                                title="מחק תמונה"
+                            >
                                 <Trash2 className="w-5 h-5" />
                             </button>
                         </div>
+                        {item.taggedServices?.length > 0 && (
+                            <div className="absolute top-2 right-2 px-2 py-0.5 bg-brand-primary/90 text-brand-dark text-[10px] rounded-full font-bold shadow-lg">
+                                {item.taggedServices.length} תיוגים
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
+
+            <GalleryTaggingModal
+                isOpen={!!taggingItem}
+                onClose={() => setTaggingItem(null)}
+                image_url={taggingItem?.image_url}
+                services={services}
+                currentTags={taggingItem?.taggedServices?.map((s: any) => s.id)}
+                onSave={async (newTags: string[]) => {
+                    await onUpdateTags(taggingItem.id, newTags);
+                    setTaggingItem(null);
+                }}
+            />
         </Card>
     );
 };
@@ -1604,6 +1683,14 @@ const Admin: React.FC = () => {
         await api.updateSettings(newSettings);
         fetchData(silent);
     }
+
+    const handleUpdateGalleryTags = async (galleryItemId: string, serviceIds: string[]) => {
+        if (!settings) return;
+        const newTags = { ...(settings.gallery_tags || {}), [galleryItemId]: serviceIds };
+        const updatedSettings = { ...settings, gallery_tags: newTags };
+        await handleUpdateSettings(updatedSettings, true);
+        showNotification("התיוגים נשמרו בהצלחה", 'success');
+    };
     const handleStatusUpdate = async (id: string, status: string) => { await api.updateAppointmentStatus(id, status); fetchData(); }
     const handleAddService = async (service: any) => { await api.addService(service); fetchData(); }
     const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); fetchData(); }
@@ -1714,7 +1801,7 @@ const Admin: React.FC = () => {
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
-                        {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} />}
+                        {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} onUpdateTags={handleUpdateGalleryTags} />}
                         {activeTab === 'inventory' && <InventoryTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'coupons' && <CouponsTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
