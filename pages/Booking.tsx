@@ -8,6 +8,7 @@ import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { aiStylistService, AIAnalysisResult } from '../services/aiStylistService';
+import { StoryGallery } from '../components/StoryGallery';
 import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
@@ -356,6 +357,10 @@ const Booking: React.FC = () => {
     const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
     const [signatureData, setSignatureData] = useState<string | null>(null);
 
+    // Gallery State
+    const [galleryImages, setGalleryImages] = useState<any[]>([]);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
     // AI State
     const [isAiEnabled, setIsAiEnabled] = useState(true);
     const [aiImage, setAiImage] = useState<string | null>(null);
@@ -383,12 +388,14 @@ const Booking: React.FC = () => {
     useEffect(() => {
         const init = async () => {
             try {
-                const [fetchedServices, fetchedSettings] = await Promise.all([
+                const [fetchedServices, fetchedSettings, fetchedGallery] = await Promise.all([
                     api.getServices(),
-                    api.getSettings()
+                    api.getSettings(),
+                    api.getGallery()
                 ]);
                 setServices(fetchedServices);
                 setStudioSettings(fetchedSettings);
+                setGalleryImages(fetchedGallery || []);
 
                 // Hydrate Inventory from Settings
                 // @ts-ignore
@@ -811,6 +818,37 @@ const Booking: React.FC = () => {
                         <AnimatePresence mode="wait" initial={false}>
                             {step === BookingStep.SELECT_SERVICE && (
                                 <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                                    {galleryImages.length > 0 && (
+                                        <button
+                                            onClick={() => setIsGalleryOpen(true)}
+                                            className="w-full relative overflow-hidden group rounded-2xl border border-brand-primary/30 p-1"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/20 via-brand-surface/50 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="relative bg-brand-surface/40 backdrop-blur-sm rounded-xl p-4 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-full bg-brand-primary/20 flex items-center justify-center border border-brand-primary/30 text-brand-primary">
+                                                        <Sparkles className="w-6 h-6 animate-pulse" />
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <h3 className="font-serif text-lg text-white group-hover:text-brand-primary transition-colors">גלריית השראה</h3>
+                                                        <p className="text-xs text-slate-400">Shop The Look - בחרי את הלוק שלך</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex -space-x-2 space-x-reverse pl-2">
+                                                    {galleryImages.slice(0, 3).map((img, i) => (
+                                                        <div key={i} className="w-8 h-8 rounded-full border-2 border-brand-dark overflow-hidden">
+                                                            <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ))}
+                                                    {galleryImages.length > 3 && (
+                                                        <div className="w-8 h-8 rounded-full border-2 border-brand-dark bg-brand-surface flex items-center justify-center text-[10px] text-white font-medium">
+                                                            +{galleryImages.length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    )}
                                     <div className="flex gap-3 overflow-x-auto pb-2">
                                         {categories.map(cat => (
                                             <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`px-6 py-2 rounded-full text-sm transition-all whitespace-nowrap border ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
@@ -1211,6 +1249,18 @@ const Booking: React.FC = () => {
                     </m.div>
                 )}
             </AnimatePresence>
+
+            {/* Story Gallery Viewer */}
+            <StoryGallery
+                isOpen={isGalleryOpen}
+                onClose={() => setIsGalleryOpen(false)}
+                images={galleryImages}
+                services={services}
+                onBookService={(service: Service) => {
+                    toggleService(service);
+                    setStep(BookingStep.SELECT_SERVICE);
+                }}
+            />
         </div>
     );
 };
