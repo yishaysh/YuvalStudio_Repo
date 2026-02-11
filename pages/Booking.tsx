@@ -1059,14 +1059,20 @@ const Booking: React.FC = () => {
                                             <Input
                                                 label="אימייל"
                                                 type="email"
-                                                inputMode="email"
+                                                inputMode="url"
                                                 dir="ltr"
                                                 className="text-right"
                                                 value={formData.email}
-                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                onChange={e => {
+                                                    // Allow only English letters, numbers, and common email symbols
+                                                    const cleanValue = e.target.value.replace(/[^a-zA-Z0-9@._-]/g, '');
+                                                    setFormData({ ...formData, email: cleanValue });
+                                                }}
                                                 lang="en"
                                                 autoCapitalize="none"
                                                 autoCorrect="off"
+                                                spellCheck="false"
+                                                autoComplete="email"
                                             />
                                             <Input label="תעודת זהות" type="tel" inputMode="numeric" maxLength={9} value={formData.nationalId} onChange={e => setFormData({ ...formData, nationalId: e.target.value })} />
                                         </div>
