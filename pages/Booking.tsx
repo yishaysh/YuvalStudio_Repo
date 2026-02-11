@@ -1256,8 +1256,8 @@ const Booking: React.FC = () => {
                 onClose={() => setIsGalleryOpen(false)}
                 images={galleryImages}
                 services={services}
-                onBookService={(service: Service) => {
-                    toggleService(service);
+                onBookService={(services: Service[]) => {
+                    services.forEach(s => toggleService(s));
                     setStep(BookingStep.SELECT_SERVICE);
                 }}
             />
