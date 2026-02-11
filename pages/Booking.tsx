@@ -619,11 +619,11 @@ const Booking: React.FC = () => {
     const handleBook = useCallback(async () => {
         setIsSubmitting(true);
 
-        let finalImageUrl = aiImage; // Default to base64 if not uploaded
+        let finalImageUrl = null;
         let finalAiResult = aiResult;
 
-        // 1. Upload AI Image if exists and not already a URL
-        if (aiImage && !aiImage.startsWith('http')) {
+        // 1. Upload AI Image ONLY if jewelry was selected from recommendations
+        if (aiImage && selectedJewelry.length > 0 && !aiImage.startsWith('http')) {
             try {
                 const uploadedUrl = await api.uploadBase64Image(aiImage, 'gallery-images');
                 if (uploadedUrl) {
@@ -635,16 +635,21 @@ const Booking: React.FC = () => {
                 }
             } catch (e) {
                 console.error("Image upload failed, fallback to base64 in json", e);
+                // If upload fails but jewelry selected, use base64
+                finalImageUrl = aiImage;
             }
+        } else if (aiImage && selectedJewelry.length > 0) {
+            // Image is already a URL and jewelry selected
+            finalImageUrl = aiImage;
         }
 
-        // 2. Prepare Visual Plan JSON
-        const visualPlanString = JSON.stringify({
+        // 2. Prepare Visual Plan JSON (only if jewelry selected)
+        const visualPlanString = selectedJewelry.length > 0 ? JSON.stringify({
             original_image: finalImageUrl,
             recommendations: finalAiResult?.recommendations,
             selected_items: selectedJewelry.map(j => j.id),
-            userImage: finalImageUrl // Adding userImage explicitly as well for clarity
-        });
+            userImage: finalImageUrl
+        }) : '';
 
         // 3. Price Calculation (Services + Jewelry - Discount)
         const servicesSum = selectedServices.reduce((sum, s) => sum + s.price, 0);
@@ -868,9 +873,9 @@ const Booking: React.FC = () => {
                                                 {/* Container wrapper for positioning */}
                                                 <div className="relative w-full max-w-md mx-auto">
                                                     {/* Image Container with clipping */}
-                                                    <div className="relative rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black/40">
-                                                        <img src={aiImage} alt="Ear upload" className="w-full h-auto block" />
-                                                        {isAnalyzing && <ScanningOverlay />}
+                                                    <div className="relative rounded-2xl border-2 border-brand-primary/30 shadow-2xl bg-black/40">
+                                                        <img src={aiImage} alt="Ear upload" className="w-full h-auto block rounded-2xl" />
+                                                        {isAnalyzing && <div className="absolute inset-0 rounded-2xl overflow-hidden"><ScanningOverlay /></div>}
 
                                                         {/* Visual Jewelry Try-On Overlays - Positioned absolutely within image container */}
                                                         {!isAnalyzing && aiResult && (
@@ -887,16 +892,13 @@ const Booking: React.FC = () => {
                                                                         <div
                                                                             key={i}
                                                                             style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
-                                                                            className="absolute w-0 h-0"
+                                                                            className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
+                                                                            onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(selectedRecommendation === i ? null : i); }}
+                                                                            title={rec.location}
                                                                         >
-                                                                            {/* Jewelry Render Marker */}
-                                                                            <button
-                                                                                onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(i); }}
-                                                                                className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${selectedRecommendation === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
-                                                                            >
-                                                                                <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
-                                                                                {!selectedRecommendation && selectedRecommendation !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
-                                                                            </button>
+                                                                            <div className="w-full h-full rounded-full border-2 border-brand-primary bg-white overflow-hidden shadow-[0_0_15px_rgba(212,181,133,0.5)] hover:scale-110 transition-transform">
+                                                                                <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
+                                                                            </div>
 
                                                                             {/* Smart Popup - Edge Aware */}
                                                                             <AnimatePresence>
