@@ -1688,7 +1688,7 @@ const Admin: React.FC = () => {
         if (!settings) return;
         const newTags = { ...(settings.gallery_tags || {}), [galleryItemId]: serviceIds };
         const updatedSettings = { ...settings, gallery_tags: newTags };
-        await handleUpdateSettings(updatedSettings, true);
+        await handleUpdateSettings(updatedSettings, false); // Changed from true to false to refresh data
         showNotification("התיוגים נשמרו בהצלחה", 'success');
     };
     const handleStatusUpdate = async (id: string, status: string) => { await api.updateAppointmentStatus(id, status); fetchData(); }

@@ -670,10 +670,13 @@ const Booking: React.FC = () => {
         const duration = selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0) || 30;
         const endTime = new Date(selectedDate!.getTime() + duration * 60000).toISOString();
 
-        // 5. Append Image URL to notes for easy admin access
+        // 5. Append Image URL and National ID to notes for easy admin access
         let updatedNotes = formData.notes;
         if (finalImageUrl && finalImageUrl.startsWith('http')) {
             updatedNotes += `\n\n[תמונת לקוח מצורפת](${finalImageUrl})`;
+        }
+        if (formData.nationalId) {
+            updatedNotes += `\nת.ז: ${formData.nationalId}`;
         }
 
         try {
