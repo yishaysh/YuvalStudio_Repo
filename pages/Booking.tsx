@@ -1056,7 +1056,18 @@ const Booking: React.FC = () => {
                                             <Input label="טלפון" type="tel" inputMode="numeric" dir="ltr" className="text-right" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <Input label="אימייל" type="email" inputMode="email" dir="ltr" className="text-right" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                            <Input
+                                                label="אימייל"
+                                                type="email"
+                                                inputMode="email"
+                                                dir="ltr"
+                                                className="text-right"
+                                                value={formData.email}
+                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                lang="en"
+                                                autoCapitalize="none"
+                                                autoCorrect="off"
+                                            />
                                             <Input label="תעודת זהות" type="tel" inputMode="numeric" maxLength={9} value={formData.nationalId} onChange={e => setFormData({ ...formData, nationalId: e.target.value })} />
                                         </div>
                                         <div className="flex flex-col gap-2">
