@@ -373,7 +373,8 @@ const Booking: React.FC = () => {
     const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
     const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const galleryInputRef = useRef<HTMLInputElement>(null);
     const datePickerRef = useRef<HTMLInputElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
@@ -527,6 +528,8 @@ const Booking: React.FC = () => {
         });
         setAppliedCoupon(null);
         setCouponCode('');
+        // Close the popup after adding/removing jewelry
+        setSelectedRecommendation(null);
     }, []);
 
     const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -827,9 +830,9 @@ const Booking: React.FC = () => {
                                         {!aiImage ? (
                                             <div className="py-12 flex flex-col items-center">
                                                 <div
-                                                    onClick={() => fileInputRef.current?.click()}
+                                                    onClick={() => cameraInputRef.current?.click()}
                                                     className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30 cursor-pointer hover:bg-brand-primary/20 transition-all hover:scale-105 active:scale-95"
-                                                    title="לחץ להעלאת תמונה"
+                                                    title="צלם תמונה"
                                                 >
                                                     <Camera className="w-10 h-10" />
                                                 </div>
@@ -837,14 +840,24 @@ const Booking: React.FC = () => {
                                                 <p className="text-slate-400 text-sm mb-8 max-w-sm">העלה תמונה ברורה של האוזן שלך וקבל המלצות סטיילינג מותאמות אישית מהבינה המלאכותית שלנו.</p>
 
                                                 <div className="flex gap-4">
+                                                    {/* Camera Input - Opens Camera */}
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        capture="user"
+                                                        className="hidden"
+                                                        ref={cameraInputRef}
+                                                        onChange={handleImageUpload}
+                                                    />
+                                                    {/* Gallery Input - Opens Gallery */}
                                                     <input
                                                         type="file"
                                                         accept="image/*"
                                                         className="hidden"
-                                                        ref={fileInputRef}
+                                                        ref={galleryInputRef}
                                                         onChange={handleImageUpload}
                                                     />
-                                                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2">
+                                                    <Button onClick={() => galleryInputRef.current?.click()} variant="outline" className="gap-2">
                                                         <Upload className="w-4 h-4" /> בחר תמונה
                                                     </Button>
                                                     <Button onClick={handleNextStep} variant="ghost">דלג על השלב</Button>
@@ -858,86 +871,86 @@ const Booking: React.FC = () => {
                                                     <div className="relative rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black/40">
                                                         <img src={aiImage} alt="Ear upload" className="w-full h-auto block" />
                                                         {isAnalyzing && <ScanningOverlay />}
-                                                    </div>
 
-                                                    {/* Visual Jewelry Try-On Overlays - Absolute inset over the relative container */}
-                                                    {!isAnalyzing && aiResult && (
-                                                        <div className="absolute inset-0 z-20" onClick={() => setSelectedRecommendation(null)}>
-                                                            {aiResult.recommendations.map((rec, i) => {
-                                                                const jewelry = jewelryCatalog.find(j => j.id === rec.jewelry_id);
-                                                                if (!jewelry) return null;
+                                                        {/* Visual Jewelry Try-On Overlays - Positioned absolutely within image container */}
+                                                        {!isAnalyzing && aiResult && (
+                                                            <div className="absolute inset-0" onClick={() => setSelectedRecommendation(null)}>
+                                                                {aiResult.recommendations.map((rec, i) => {
+                                                                    const jewelry = jewelryCatalog.find(j => j.id === rec.jewelry_id);
+                                                                    if (!jewelry) return null;
 
-                                                                const isRightEdge = rec.x > 70;
-                                                                const isLeftEdge = rec.x < 30;
-                                                                const isBottomEdge = rec.y > 70;
+                                                                    const isRightEdge = rec.x > 70;
+                                                                    const isLeftEdge = rec.x < 30;
+                                                                    const isBottomEdge = rec.y > 70;
 
-                                                                return (
-                                                                    <div
-                                                                        key={i}
-                                                                        style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
-                                                                        className="absolute w-0 h-0"
-                                                                    >
-                                                                        {/* Jewelry Render Marker */}
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(i); }}
-                                                                            className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${selectedRecommendation === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
+                                                                    return (
+                                                                        <div
+                                                                            key={i}
+                                                                            style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
+                                                                            className="absolute w-0 h-0"
                                                                         >
-                                                                            <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
-                                                                            {!selectedRecommendation && selectedRecommendation !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
-                                                                        </button>
+                                                                            {/* Jewelry Render Marker */}
+                                                                            <button
+                                                                                onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(i); }}
+                                                                                className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${selectedRecommendation === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
+                                                                            >
+                                                                                <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover bg-white" />
+                                                                                {!selectedRecommendation && selectedRecommendation !== i && <div className="absolute inset-0 bg-brand-primary/20 animate-pulse"></div>}
+                                                                            </button>
 
-                                                                        {/* Smart Popup - Edge Aware */}
-                                                                        <AnimatePresence>
-                                                                            {selectedRecommendation === i && (
-                                                                                <m.div
-                                                                                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                                                                                    initial={{ opacity: 0, scale: 0.9 }}
-                                                                                    animate={{ opacity: 1, scale: 1 }}
-                                                                                    exit={{ opacity: 0, scale: 0.9 }}
-                                                                                    className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 
+                                                                            {/* Smart Popup - Edge Aware */}
+                                                                            <AnimatePresence>
+                                                                                {selectedRecommendation === i && (
+                                                                                    <m.div
+                                                                                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                                                        initial={{ opacity: 0, scale: 0.9 }}
+                                                                                        animate={{ opacity: 1, scale: 1 }}
+                                                                                        exit={{ opacity: 0, scale: 0.9 }}
+                                                                                        className={`absolute z-[60] w-56 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/30 rounded-xl p-3 shadow-2xl flex flex-col gap-2 
                                                                                     ${isRightEdge ? 'right-full mr-3' : isLeftEdge ? 'left-full ml-3' : 'left-1/2 -translate-x-1/2 mt-3'} 
                                                                                     ${isBottomEdge ? 'bottom-0' : 'top-0'}`}
-                                                                                >
-                                                                                    <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">
-                                                                                        <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <div className="text-xs text-brand-primary font-bold uppercase mb-0.5">{rec.location}</div>
-                                                                                        <div className="text-sm font-medium text-white mb-1">{jewelry.name}</div>
-                                                                                        <div className="text-[10px] text-slate-400 mb-2 leading-tight line-clamp-2">{jewelry.description}</div>
-                                                                                        <div className="flex items-center justify-between mt-2">
-                                                                                            <span className="text-brand-primary font-serif font-bold">₪{jewelry.price}</span>
-                                                                                            {selectedJewelry.find(j => j.id === jewelry.id) ? (
-                                                                                                <button
-                                                                                                    onClick={() => toggleJewelry(jewelry)}
-                                                                                                    className="px-3 py-1 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500 hover:text-white transition-colors"
-                                                                                                >
-                                                                                                    הסר
-                                                                                                </button>
-                                                                                            ) : (
-                                                                                                <button
-                                                                                                    onClick={() => toggleJewelry(jewelry)}
-                                                                                                    className="px-3 py-1 bg-brand-primary text-brand-dark text-xs font-bold rounded hover:bg-white transition-colors"
-                                                                                                >
-                                                                                                    הוסף לתור
-                                                                                                </button>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <button
-                                                                                        onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(null); }}
-                                                                                        className="absolute top-2 right-2 p-1 bg-black/40 rounded-full text-white/80 hover:text-white md:hidden"
                                                                                     >
-                                                                                        <X className="w-3 h-3" />
-                                                                                    </button>
-                                                                                </m.div>
-                                                                            )}
-                                                                        </AnimatePresence>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
+                                                                                        <div className="aspect-square w-full rounded-lg overflow-hidden bg-brand-dark/50">
+                                                                                            <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <div className="text-xs text-brand-primary font-bold uppercase mb-0.5">{rec.location}</div>
+                                                                                            <div className="text-sm font-medium text-white mb-1">{jewelry.name}</div>
+                                                                                            <div className="text-[10px] text-slate-400 mb-2 leading-tight line-clamp-2">{jewelry.description}</div>
+                                                                                            <div className="flex items-center justify-between mt-2">
+                                                                                                <span className="text-brand-primary font-serif font-bold">₪{jewelry.price}</span>
+                                                                                                {selectedJewelry.find(j => j.id === jewelry.id) ? (
+                                                                                                    <button
+                                                                                                        onClick={() => toggleJewelry(jewelry)}
+                                                                                                        className="px-3 py-1 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500 hover:text-white transition-colors"
+                                                                                                    >
+                                                                                                        הסר
+                                                                                                    </button>
+                                                                                                ) : (
+                                                                                                    <button
+                                                                                                        onClick={() => toggleJewelry(jewelry)}
+                                                                                                        className="px-3 py-1 bg-brand-primary text-brand-dark text-xs font-bold rounded hover:bg-white transition-colors"
+                                                                                                    >
+                                                                                                        הוסף לתור
+                                                                                                    </button>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <button
+                                                                                            onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(null); }}
+                                                                                            className="absolute top-2 right-2 p-1 bg-black/40 rounded-full text-white/80 hover:text-white md:hidden"
+                                                                                        >
+                                                                                            <X className="w-3 h-3" />
+                                                                                        </button>
+                                                                                    </m.div>
+                                                                                )}
+                                                                            </AnimatePresence>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
 
                                                     <button onClick={() => { setAiImage(null); setAiResult(null); setAiError(null); setSelectedJewelry([]); }} className="absolute top-2 left-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors z-40">
                                                         <X className="w-4 h-4" />
