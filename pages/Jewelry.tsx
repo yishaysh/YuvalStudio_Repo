@@ -129,7 +129,7 @@ const JewelryPage: React.FC = () => {
 
   const handleFinalBooking = () => {
     if (!selectedServices.length) return;
-    navigate('/booking', { state: { preSelectedServices: selectedServices } });
+    navigate('/booking', { state: { preSelectedServices: selectedServices, skipAi: true } });
   };
 
   const totalPrice = taggedServices.reduce((acc, item) => acc + item.price, 0);

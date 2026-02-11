@@ -406,8 +406,9 @@ const Booking: React.FC = () => {
                     const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
                     if (validPreSelected.length > 0) {
                         setSelectedServices(validPreSelected);
-                        // Dynamically set step based on AI toggle
-                        setStep(aiSetting !== false ? BookingStep.AI_STYLIST : BookingStep.SELECT_DATE);
+                        // Skip AI if skipAi flag is present OR if AI is disabled in settings
+                        const shouldSkipAi = location.state.skipAi || aiSetting === false;
+                        setStep(shouldSkipAi ? BookingStep.SELECT_DATE : BookingStep.AI_STYLIST);
                     }
                     window.history.replaceState({}, document.title);
                 }
