@@ -8,6 +8,7 @@ import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { aiStylistService, AIAnalysisResult } from '../services/aiStylistService';
+import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
 
@@ -54,7 +55,7 @@ const compressImage = async (file: File): Promise<string> => {
 
 // --- Sub-Components ---
 
-const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Service, isSelected: boolean, onClick: () => void }) => {
+const ServiceCard = React.memo(({ service, isSelected, onClick, priority = false }: { service: Service, isSelected: boolean, onClick: () => void, priority?: boolean }) => {
     const meta = getMeta(service.category);
 
     return (
@@ -64,10 +65,10 @@ const ServiceCard = React.memo(({ service, isSelected, onClick }: { service: Ser
         >
             <div className="flex h-full">
                 <div className="w-32 shrink-0 relative overflow-hidden bg-brand-dark/50">
-                    <img
+                    <SmartImage
                         src={service.image_url}
                         alt={service.name}
-                        loading="lazy"
+                        priority={priority}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors" />
@@ -412,6 +413,12 @@ const Booking: React.FC = () => {
                     }
                     window.history.replaceState({}, document.title);
                 }
+
+                // Pre-warm images
+                fetchedServices.forEach(s => {
+                    const img = new Image();
+                    img.src = s.image_url;
+                });
             } catch (e) {
                 console.error("Failed to initialize booking:", e);
             }
@@ -799,10 +806,11 @@ const Booking: React.FC = () => {
                                         ))}
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {filteredServices.map((service) => (
+                                        {filteredServices.map((service, idx) => (
                                             <ServiceCard
                                                 key={service.id}
                                                 service={service}
+                                                priority={idx < 4}
                                                 isSelected={selectedServices.some(s => s.id === service.id)}
                                                 onClick={() => toggleService(service)}
                                             />
