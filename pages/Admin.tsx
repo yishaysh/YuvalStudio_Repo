@@ -1816,18 +1816,21 @@ const Admin: React.FC = () => {
             <Modal isOpen={!!visualPlanData} onClose={() => setVisualPlanData(null)} title="תוכנית עיצוב AI">
                 {visualPlanData && (
                     <div className="space-y-4">
-                        <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black border border-white/10">
+                        <div className="relative w-full rounded-2xl overflow-hidden bg-black/40 border border-white/10 shadow-2xl">
                             <img
                                 src={visualPlanData.userImage || visualPlanData.original_image}
                                 alt="AI Plan"
-                                className="w-full h-auto rounded-lg shadow-2xl"
+                                className="w-full h-auto block"
                                 onError={(e) => {
-                                    // אם התמונה לא נטענת, נציג פלייס-הולדר
                                     (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Image+Not+Found';
                                 }}
                             />
                             {/* Render Recommendations with Actual Jewelry Images */}
                             {visualPlanData.recommendations?.map((rec: any, idx: number) => {
+                                // Filter: Only show if this item was selected by the user
+                                const isSelected = visualPlanData.selected_items?.includes(rec.jewelry_id);
+                                if (!isSelected) return null;
+
                                 const jewelry = JEWELRY_CATALOG.find(j => j.id === rec.jewelry_id);
                                 return (
                                     <div
@@ -1836,7 +1839,7 @@ const Admin: React.FC = () => {
                                         className="absolute w-8 h-8 transform -translate-x-1/2 -translate-y-1/2"
                                         title={rec.location}
                                     >
-                                        <div className="w-full h-full rounded-full border-2 border-brand-primary bg-white overflow-hidden shadow-lg">
+                                        <div className="w-full h-full rounded-full border-2 border-brand-primary bg-white overflow-hidden shadow-[0_0_15px_rgba(212,181,133,0.5)]">
                                             {jewelry ? (
                                                 <img src={jewelry.image_url} alt={jewelry.name} className="w-full h-full object-cover" />
                                             ) : (

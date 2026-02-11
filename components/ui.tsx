@@ -10,15 +10,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
-  children, 
-  variant = 'primary', 
-  className = '', 
+export const Button: React.FC<ButtonProps> = ({
+  children,
+  variant = 'primary',
+  className = '',
   isLoading,
-  ...props 
+  ...props
 }) => {
   const baseStyle = "relative px-6 py-3 text-sm font-medium tracking-wide transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.98]";
-  
+
   const variants = {
     primary: "bg-brand-primary text-brand-dark hover:bg-brand-primaryHover",
     secondary: "bg-brand-surface text-white border border-brand-border hover:bg-brand-border",
@@ -28,7 +28,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   return (
-    <button 
+    <button
       className={`${baseStyle} ${variants[variant]} ${className}`}
       disabled={isLoading || props.disabled}
       {...props}
@@ -52,7 +52,7 @@ interface CardProps extends Omit<HTMLMotionProps<"div">, "children"> {
 
 export const Card: React.FC<CardProps> = ({ children, className = '', ...props }) => {
   return (
-    <m.div 
+    <m.div
       className={`bg-brand-surface/50 backdrop-blur-md border border-white/5 p-6 rounded-2xl shadow-xl ${className}`}
       {...props}
     >
@@ -70,7 +70,7 @@ export const Input: React.FC<InputProps> = ({ label, className = '', ...props })
   return (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-slate-400 ms-1">{label}</label>
-      <input 
+      <input
         className={`bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 ${className}`}
         {...props}
       />
@@ -107,44 +107,47 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="absolute inset-0 bg-brand-dark/90 backdrop-blur-md"
+          />
+
+          {/* Modal Content */}
+          <m.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl relative z-10 max-h-[90vh] flex flex-col overflow-hidden"
           >
-            {/* Modal Content */}
-            <m.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="w-full max-w-md bg-brand-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative"
-            >
-              <button 
+            {/* Header */}
+            <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
+              <h3 className="text-xl font-serif text-white">{title}</h3>
+              <button
                 onClick={onClose}
-                className="absolute top-4 left-4 text-slate-400 hover:text-white transition-colors"
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
 
-              <div className="p-8 text-center">
-                {icon && (
-                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
-                    {icon}
-                  </div>
-                )}
-                <h3 className="text-2xl font-serif text-white mb-4">{title}</h3>
-                <div className="text-slate-400 text-sm leading-relaxed mb-8">
-                  {children}
+            {/* Scrollable Body */}
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+              {icon && (
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+                  {icon}
                 </div>
+              )}
+              <div className="text-slate-400 text-sm leading-relaxed">
+                {children}
               </div>
-            </m.div>
+            </div>
           </m.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -163,15 +166,15 @@ interface ConfirmationModalProps {
   children?: React.ReactNode;
 }
 
-export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ 
-  isOpen, onClose, onConfirm, title, description, 
+export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+  isOpen, onClose, onConfirm, title, description,
   confirmText = 'אישור', cancelText = 'ביטול', variant = 'primary',
   children
 }) => {
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
       title={title}
       icon={variant === 'danger' ? <AlertTriangle className="w-8 h-8 text-red-400" /> : undefined}
     >
@@ -181,8 +184,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <Button variant="ghost" onClick={onClose} className="flex-1">
           {cancelText}
         </Button>
-        <Button 
-          variant={variant} 
+        <Button
+          variant={variant}
           onClick={() => { onConfirm(); onClose(); }}
           className="flex-1"
         >

@@ -840,7 +840,6 @@ const Booking: React.FC = () => {
                                                     <input
                                                         type="file"
                                                         accept="image/*"
-                                                        capture="user"
                                                         className="hidden"
                                                         ref={fileInputRef}
                                                         onChange={handleImageUpload}
@@ -854,14 +853,14 @@ const Booking: React.FC = () => {
                                         ) : (
                                             <div className="space-y-6">
                                                 {/* Container wrapper for positioning */}
-                                                <div className="relative w-full max-w-md mx-auto aspect-[3/4]">
-                                                    {/* Image Layer - Clipped for rounded corners */}
-                                                    <div className="absolute inset-0 rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black">
-                                                        <img src={aiImage} alt="Ear upload" className="w-full h-full object-cover" />
+                                                <div className="relative w-full max-w-md mx-auto">
+                                                    {/* Image Container with clipping */}
+                                                    <div className="relative rounded-2xl overflow-hidden border-2 border-brand-primary/30 shadow-2xl bg-black/40">
+                                                        <img src={aiImage} alt="Ear upload" className="w-full h-auto block" />
                                                         {isAnalyzing && <ScanningOverlay />}
                                                     </div>
 
-                                                    {/* Visual Jewelry Try-On Overlays - Unclipped to allow popups to overflow */}
+                                                    {/* Visual Jewelry Try-On Overlays - Absolute inset over the relative container */}
                                                     {!isAnalyzing && aiResult && (
                                                         <div className="absolute inset-0 z-20" onClick={() => setSelectedRecommendation(null)}>
                                                             {aiResult.recommendations.map((rec, i) => {
@@ -878,7 +877,7 @@ const Booking: React.FC = () => {
                                                                         style={{ left: `${rec.x}%`, top: `${rec.y}%` }}
                                                                         className="absolute w-0 h-0"
                                                                     >
-                                                                        {/* Jewelry Render Marker - using actual image */}
+                                                                        {/* Jewelry Render Marker */}
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); setSelectedRecommendation(i); }}
                                                                             className={`relative -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 transition-all duration-300 overflow-hidden shadow-lg ${selectedRecommendation === i ? 'border-brand-primary scale-125 z-50' : 'border-white/50 hover:scale-110 z-10'}`}
