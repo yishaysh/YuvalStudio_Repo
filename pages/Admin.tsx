@@ -685,7 +685,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                                         </div>
                                     </div>
 
-                                    <label className="relative inline-flex items-center cursor-pointer" title="In Stock Toggle">
+                                    <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"

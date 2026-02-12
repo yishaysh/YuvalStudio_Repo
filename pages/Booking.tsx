@@ -818,7 +818,7 @@ const Booking: React.FC = () => {
                         <AnimatePresence mode="wait" initial={false}>
                             {step === BookingStep.SELECT_SERVICE && (
                                 <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                                    {galleryImages.length > 0 && (
+                                    {galleryImages.length > 0 && (studioSettings?.enable_gallery ?? true) && (
                                         <m.button
                                             layoutId="story-gallery-opener"
                                             onClick={() => setIsGalleryOpen(true)}

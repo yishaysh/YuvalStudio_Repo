@@ -16,37 +16,37 @@ export interface Appointment {
   client_email: string;
   client_phone: string;
   service_id: string;
-  service_name?: string; 
-  service_price?: number; 
+  service_name?: string;
+  service_price?: number;
   start_time: string;
-  end_time?: string; 
+  end_time?: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   notes?: string;
-  signature?: string; 
-  created_at?: string; 
-  coupon_code?: string; 
-  
+  signature?: string;
+  created_at?: string;
+  coupon_code?: string;
+
   // --- שדות מעודכנים/חדשים ---
-  final_price?: number; 
+  final_price?: number;
   price?: number;            // הוספנו כדי לתמוך בשליחה הישירה מה-Booking
   visual_plan?: string;      // השדה החדש שבו נשמר ה-JSON של ה-AI
-  ai_recommendation_text?: string; 
+  ai_recommendation_text?: string;
 }
 
 // שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך
 export interface JewelryItem extends Service {
-    in_stock?: boolean;
+  in_stock?: boolean;
 }
 
 export interface DayAvailability {
   date: Date;
   isAvailable: boolean;
-  slots: string[]; 
+  slots: string[];
 }
 
 export interface TimeRange {
-  start: number; 
-  end: number;   
+  start: number;
+  end: number;
 }
 
 export interface DaySchedule {
@@ -70,22 +70,23 @@ export interface Coupon {
   id: string;
   code: string;
   discountType: 'fixed' | 'percentage';
-  value: number; 
+  value: number;
   minOrderAmount: number;
   isActive: boolean;
-  maxUses?: number; 
-  usedCount?: number; 
+  maxUses?: number;
+  usedCount?: number;
 }
 
 export interface StudioSettings {
   working_hours: {
-    [key: string]: DaySchedule; 
+    [key: string]: DaySchedule;
   };
   studio_details: StudioDetails;
   monthly_goals: MonthlyGoals;
-  gallery_tags?: Record<string, string[]>; 
+  gallery_tags?: Record<string, string[]>;
   coupons: Coupon[];
-  enable_ai?: boolean; 
+  enable_ai?: boolean;
+  enable_gallery?: boolean;
 }
 
 export enum BookingStep {
