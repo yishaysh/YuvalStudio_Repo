@@ -108,15 +108,22 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                             {images.map((_, idx) => (
                                 <div key={idx} className="h-full flex-1 bg-white/20 rounded-full overflow-hidden">
                                     <motion.div
-                                        initial={{ width: idx < currentIndex ? "100%" : "0%" }}
-                                        animate={{
-                                            width: idx === currentIndex
-                                                ? (isPaused || showProducts ? "100%" : "100%")
-                                                : idx < currentIndex ? "100%" : "0%"
-                                        }}
-                                        transition={{
-                                            duration: idx === currentIndex ? STORY_DURATION / 1000 : 0,
-                                            ease: "linear"
+                                        initial="waiting"
+                                        animate={
+                                            idx === currentIndex ? "active"
+                                                : idx < currentIndex ? "completed"
+                                                    : "waiting"
+                                        }
+                                        variants={{
+                                            waiting: { width: "0%", transition: { duration: 0 } },
+                                            active: {
+                                                width: "100%",
+                                                transition: { duration: STORY_DURATION / 1000, ease: "linear" }
+                                            },
+                                            completed: {
+                                                width: "100%",
+                                                transition: { duration: 0 }
+                                            }
                                         }}
                                         className="h-full bg-white"
                                     />
