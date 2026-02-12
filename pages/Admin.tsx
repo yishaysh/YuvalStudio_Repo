@@ -1265,6 +1265,33 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                 </div>
             </Card>
 
+            <Card className="border-brand-primary/20 bg-brand-primary/5">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-brand-primary/20 rounded-xl text-brand-primary">
+                            <ImageIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-medium text-white">גלריית סטורי</h3>
+                            <p className="text-sm text-slate-400">הצג או הסתר את גלריית ההשראה בבחירת הטיפול</p>
+                        </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={localSettings.enable_gallery !== false}
+                            onChange={() => {
+                                const newVal = localSettings.enable_gallery === false;
+                                setLocalSettings({ ...localSettings, enable_gallery: newVal });
+                                onUpdate({ ...localSettings, enable_gallery: newVal }, true);
+                            }}
+                        />
+                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
+                    </label>
+                </div>
+            </Card>
+
             <Card>
                 <div className="flex justify-between items-center mb-6">
                     <SectionHeading title="שעות פעילות" />
