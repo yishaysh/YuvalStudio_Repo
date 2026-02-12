@@ -4,8 +4,8 @@ import { Appointment, Service, StudioSettings, Coupon } from '../types';
 import { supabase } from './supabaseClient';
 
 export interface TimeSlot {
-    time: string;
-    available: boolean;
+  time: string;
+  available: boolean;
 }
 
 // --- In-Memory Cache ---
@@ -16,103 +16,107 @@ let cachedSettings: StudioSettings | null = null;
 export const api = {
   // --- Settings ---
   getSettings: async (): Promise<StudioSettings> => {
-      if (cachedSettings) return cachedSettings;
+    if (cachedSettings) return cachedSettings;
 
-      const defaultSettings: StudioSettings = { 
-        working_hours: DEFAULT_WORKING_HOURS,
-        studio_details: DEFAULT_STUDIO_DETAILS,
-        monthly_goals: DEFAULT_MONTHLY_GOALS,
-        gallery_tags: {},
-        coupons: [],
-        enable_ai: true // Default to true
-      };
-      
-      if (!supabase) {
-          cachedSettings = defaultSettings;
-          return defaultSettings;
+    const defaultSettings: StudioSettings = {
+      working_hours: DEFAULT_WORKING_HOURS,
+      studio_details: DEFAULT_STUDIO_DETAILS,
+      monthly_goals: DEFAULT_MONTHLY_GOALS,
+      gallery_tags: {},
+      coupons: [],
+      enable_ai: true,
+      enable_gallery: true
+    };
+
+    if (!supabase) {
+      cachedSettings = defaultSettings;
+      return defaultSettings;
+    }
+
+    try {
+      // Fetch settings keys
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery']);
+
+      if (error || !data) {
+        cachedSettings = defaultSettings;
+        return defaultSettings;
       }
 
-      try {
-          // Fetch settings keys
-          const { data, error } = await supabase
-            .from('settings')
-            .select('*')
-            .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai']);
+      const newSettings = { ...defaultSettings };
 
-          if (error || !data) {
-              cachedSettings = defaultSettings;
-              return defaultSettings;
+      data.forEach(row => {
+        if (row.key === 'working_hours') {
+          // Legacy check
+          if (row.value['0'] && row.value['0'].start !== undefined) {
+            // Ignore legacy format
+          } else {
+            newSettings.working_hours = row.value;
           }
+        } else if (row.key === 'studio_details') {
+          newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
+        } else if (row.key === 'monthly_goals') {
+          newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
+        } else if (row.key === 'gallery_tags') {
+          newSettings.gallery_tags = row.value;
+        } else if (row.key === 'coupons') {
+          newSettings.coupons = row.value;
+        } else if (row.key === 'enable_ai') {
+          newSettings.enable_ai = row.value;
+        } else if (row.key === 'enable_gallery') {
+          newSettings.enable_gallery = row.value;
+        }
+      });
 
-          const newSettings = { ...defaultSettings };
-          
-          data.forEach(row => {
-            if (row.key === 'working_hours') {
-               // Legacy check
-               if (row.value['0'] && row.value['0'].start !== undefined) {
-                  // Ignore legacy format
-               } else {
-                  newSettings.working_hours = row.value;
-               }
-            } else if (row.key === 'studio_details') {
-               newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
-            } else if (row.key === 'monthly_goals') {
-               newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
-            } else if (row.key === 'gallery_tags') {
-               newSettings.gallery_tags = row.value;
-            } else if (row.key === 'coupons') {
-               newSettings.coupons = row.value;
-            } else if (row.key === 'enable_ai') {
-               newSettings.enable_ai = row.value;
-            }
-          });
-          
-          cachedSettings = newSettings;
-          return newSettings;
-      } catch (e) {
-          console.error(e);
-          return defaultSettings;
-      }
+      cachedSettings = newSettings;
+      return newSettings;
+    } catch (e) {
+      console.error(e);
+      return defaultSettings;
+    }
   },
 
   updateSettings: async (settings: StudioSettings): Promise<boolean> => {
-      if (!supabase) return false;
-      
-      const updates = [
-        { key: 'working_hours', value: settings.working_hours },
-        { key: 'studio_details', value: settings.studio_details },
-        { key: 'monthly_goals', value: settings.monthly_goals },
-        { key: 'gallery_tags', value: settings.gallery_tags },
-        { key: 'coupons', value: settings.coupons },
-        { key: 'enable_ai', value: settings.enable_ai }
-      ];
+    if (!supabase) return false;
 
-      const { error } = await supabase
-        .from('settings')
-        .upsert(updates, { onConflict: 'key' });
-      
-      if (!error) {
-          // Update local cache immediately to prevent desync
-          cachedSettings = { ...settings };
-      }
-      return !error;
+    const updates = [
+      { key: 'working_hours', value: settings.working_hours },
+      { key: 'studio_details', value: settings.studio_details },
+      { key: 'monthly_goals', value: settings.monthly_goals },
+      { key: 'gallery_tags', value: settings.gallery_tags },
+      { key: 'coupons', value: settings.coupons },
+      { key: 'enable_ai', value: settings.enable_ai },
+      { key: 'enable_gallery', value: settings.enable_gallery }
+    ];
+
+    const { error } = await supabase
+      .from('settings')
+      .upsert(updates, { onConflict: 'key' });
+
+    if (!error) {
+      // Update local cache immediately to prevent desync
+      cachedSettings = { ...settings };
+    }
+    return !error;
   },
 
   validateCoupon: async (code: string, cartTotal: number): Promise<{ isValid: boolean, error?: string, coupon?: Coupon }> => {
-      const settings = await api.getSettings();
-      // Case insensitive check
-      const coupon = settings.coupons?.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-      
-      if (!coupon) return { isValid: false, error: 'קופון לא נמצא' };
-      if (!coupon.isActive) return { isValid: false, error: 'קופון זה אינו פעיל' };
-      if (cartTotal < coupon.minOrderAmount) return { isValid: false, error: `מותנה בהזמנה מעל ₪${coupon.minOrderAmount}` };
-      
-      // Check usage limits
-      if (coupon.maxUses && (coupon.usedCount || 0) >= coupon.maxUses) {
-          return { isValid: false, error: 'קופון זה הגיע למכסת השימוש המקסימלית' };
-      }
-      
-      return { isValid: true, coupon };
+    const settings = await api.getSettings();
+    // Case insensitive check
+    const coupon = settings.coupons?.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
+
+    if (!coupon) return { isValid: false, error: 'קופון לא נמצא' };
+    if (!coupon.isActive) return { isValid: false, error: 'קופון זה אינו פעיל' };
+    if (cartTotal < coupon.minOrderAmount) return { isValid: false, error: `מותנה בהזמנה מעל ₪${coupon.minOrderAmount}` };
+
+    // Check usage limits
+    if (coupon.maxUses && (coupon.usedCount || 0) >= coupon.maxUses) {
+      return { isValid: false, error: 'קופון זה הגיע למכסת השימוש המקסימלית' };
+    }
+
+    return { isValid: true, coupon };
   },
 
   // --- Services ---
@@ -127,7 +131,7 @@ export const api = {
         .eq('is_active', true)
         .order('price', { ascending: true });
       if (error) throw error;
-      
+
       cachedServices = data || SERVICES;
       return cachedServices;
     } catch (err) {
@@ -136,11 +140,11 @@ export const api = {
     }
   },
 
-  addService: async (service:  Omit<Service, 'id'>): Promise<Service | null> => {
+  addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
     if (!supabase) return null;
     const { data, error } = await supabase.from('services').insert([service]).select().single();
     if (error) { console.error(error); return null; }
-    
+
     cachedServices = null; // Invalidate cache
     return data;
   },
@@ -149,7 +153,7 @@ export const api = {
     if (!supabase) return null;
     const { data, error } = await supabase.from('services').update(updates).eq('id', id).select().single();
     if (error) { console.error(error); return null; }
-    
+
     cachedServices = null; // Invalidate cache
     return data;
   },
@@ -157,7 +161,7 @@ export const api = {
   deleteService: async (id: string): Promise<boolean> => {
     if (!supabase) return false;
     const { error } = await supabase.from('services').update({ is_active: false }).eq('id', id);
-    
+
     if (!error) cachedServices = null; // Invalidate cache
     return !error;
   },
@@ -167,14 +171,14 @@ export const api = {
     // 1. Fetch Settings (Use cache if available)
     let workingHours = DEFAULT_WORKING_HOURS;
     if (supabase) {
-        if (cachedSettings) {
-            workingHours = cachedSettings.working_hours;
-        } else {
-            const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
-            if (data?.value && data.value['0'] && data.value['0'].ranges) { 
-                workingHours = data.value;
-            }
+      if (cachedSettings) {
+        workingHours = cachedSettings.working_hours;
+      } else {
+        const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+        if (data?.value && data.value['0'] && data.value['0'].ranges) {
+          workingHours = data.value;
         }
+      }
     }
 
     // 2. Identify Day Config
@@ -183,19 +187,19 @@ export const api = {
 
     // If day is closed or config missing
     if (!dayConfig || !dayConfig.isOpen || !dayConfig.ranges || dayConfig.ranges.length === 0) {
-        return [];
+      return [];
     }
 
     // 3. Generate All Slots for that specific day (Iterate through all ranges)
     let allSlots: string[] = [];
-    
+
     dayConfig.ranges.forEach(range => {
-        for (let hour = range.start; hour < range.end; hour++) {
-            allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
-            allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
-        }
+      for (let hour = range.start; hour < range.end; hour++) {
+        allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+        allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
     });
-    
+
     // Sort slots just in case ranges were out of order
     allSlots.sort();
 
@@ -223,21 +227,21 @@ export const api = {
 
       // Convert existing appointments to timestamp ranges
       const busyRanges = existingAppointments?.map(app => ({
-          start: new Date(app.start_time).getTime(),
-          end: new Date(app.end_time).getTime()
+        start: new Date(app.start_time).getTime(),
+        end: new Date(app.end_time).getTime()
       })) || [];
 
       // Update availability status
       return slotsWithStatus.map(slot => {
-          const [h, m] = slot.time.split(':').map(Number);
-          const slotDate = new Date(date);
-          slotDate.setHours(h, m, 0, 0);
-          const slotTime = slotDate.getTime();
+        const [h, m] = slot.time.split(':').map(Number);
+        const slotDate = new Date(date);
+        slotDate.setHours(h, m, 0, 0);
+        const slotTime = slotDate.getTime();
 
-          // A slot is unavailable if its start time is >= existing start time AND < existing end time
-          const isBusy = busyRanges.some(range => slotTime >= range.start && slotTime < range.end);
-          
-          return { ...slot, available: !isBusy };
+        // A slot is unavailable if its start time is >= existing start time AND < existing end time
+        const isBusy = busyRanges.some(range => slotTime >= range.start && slotTime < range.end);
+
+        return { ...slot, available: !isBusy };
       });
 
     } catch (err) {
@@ -248,39 +252,39 @@ export const api = {
 
   createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
     if (!supabase) {
-        // Mock fallback
-        return {
-            id: 'mock',
-            ...appt
-        } as Appointment;
+      // Mock fallback
+      return {
+        id: 'mock',
+        ...appt
+      } as Appointment;
     }
-    
+
     const startTime = new Date(appt.start_time!);
-    const duration = 30; 
-    
+    const duration = 30;
+
     // @ts-ignore
     let endTime = appt.end_time;
     if (!endTime) {
-        endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
+      endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
     }
 
     // Append coupon info to notes if present
     let finalNotes = appt.notes || '';
     if (appt.coupon_code) {
-        finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
+      finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
     }
 
     // --- Transaction-like Logic for Coupon ---
     // In a real DB we'd use a transaction. Here we optimistically update settings.
     if (appt.coupon_code) {
-        const settings = await api.getSettings();
-        const updatedCoupons = settings.coupons.map(c => {
-            if (c.code === appt.coupon_code) {
-                return { ...c, usedCount: (c.usedCount || 0) + 1 };
-            }
-            return c;
-        });
-        await api.updateSettings({ ...settings, coupons: updatedCoupons });
+      const settings = await api.getSettings();
+      const updatedCoupons = settings.coupons.map(c => {
+        if (c.code === appt.coupon_code) {
+          return { ...c, usedCount: (c.usedCount || 0) + 1 };
+        }
+        return c;
+      });
+      await api.updateSettings({ ...settings, coupons: updatedCoupons });
     }
 
     const payload = {
@@ -300,13 +304,13 @@ export const api = {
     };
 
     const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
-    
+
     if (error) {
-        if (error.code === 'PGRST204') {
-            console.error("Schema Mismatch: Missing columns in 'appointments' table. Please run migration SQL.");
-            throw new Error("שגיאת מערכת: מבנה הנתונים אינו מעודכן. אנא פנה למנהל המערכת.");
-        }
-        throw error;
+      if (error.code === 'PGRST204') {
+        console.error("Schema Mismatch: Missing columns in 'appointments' table. Please run migration SQL.");
+        throw new Error("שגיאת מערכת: מבנה הנתונים אינו מעודכן. אנא פנה למנהל המערכת.");
+      }
+      throw error;
     }
 
     return {
@@ -337,14 +341,14 @@ export const api = {
         .order('start_time', { ascending: false });
 
       if (error) throw error;
-      
+
       return data.map((item: any) => ({
         id: item.id,
         client_name: item.guest_name || 'לקוח רשום',
         client_email: item.guest_email,
         client_phone: item.guest_phone,
         service_id: item.service_id,
-        service_name: item.services?.name, 
+        service_name: item.services?.name,
         service_price: item.services?.price,
         start_time: item.start_time,
         status: item.status,
@@ -362,69 +366,69 @@ export const api = {
   },
 
   updateAppointmentStatus: async (id: string, status: string): Promise<boolean> => {
-      if (!supabase) return true;
-      const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
-      return !error;
+    if (!supabase) return true;
+    const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
+    return !error;
   },
 
   updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
-      if (!supabase) return true;
-      const { error } = await supabase.from('appointments').update(updates).eq('id', id);
-      return !error;
+    if (!supabase) return true;
+    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+    return !error;
   },
 
   // --- DELETE ALL FUNCTION ---
   clearAppointments: async (): Promise<boolean> => {
-      if (!supabase) return false;
-      // We use a filter that matches all rows to satisfy safe delete policies if strict, 
-      // or just straight delete.
-      // NOTE: RLS Policies must allow DELETE for this to work.
-      const { error } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      return !error;
+    if (!supabase) return false;
+    // We use a filter that matches all rows to satisfy safe delete policies if strict, 
+    // or just straight delete.
+    // NOTE: RLS Policies must allow DELETE for this to work.
+    const { error } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    return !error;
   },
 
   // --- Stats ---
   getMonthlyStats: async () => {
-      if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };
-      
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+    if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };
 
-      const { data } = await supabase
-        .from('appointments')
-        .select(`status, services(price), final_price`)
-        .gte('start_time', startOfMonth)
-        .lte('start_time', endOfMonth)
-        .neq('status', 'cancelled');
-        
-      let revenue = 0;
-      let pending = 0;
-      
-      data?.forEach((app: any) => {
-          if (app.status !== 'cancelled') {
-             // Prefer final_price if exists, else service price
-             revenue += (app.final_price !== undefined && app.final_price !== null) ? app.final_price : (app.services?.price || 0);
-          }
-          if (app.status === 'pending') pending++;
-      });
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
 
-      return {
-          revenue,
-          appointments: data?.length || 0,
-          pending
-      };
+    const { data } = await supabase
+      .from('appointments')
+      .select(`status, services(price), final_price`)
+      .gte('start_time', startOfMonth)
+      .lte('start_time', endOfMonth)
+      .neq('status', 'cancelled');
+
+    let revenue = 0;
+    let pending = 0;
+
+    data?.forEach((app: any) => {
+      if (app.status !== 'cancelled') {
+        // Prefer final_price if exists, else service price
+        revenue += (app.final_price !== undefined && app.final_price !== null) ? app.final_price : (app.services?.price || 0);
+      }
+      if (app.status === 'pending') pending++;
+    });
+
+    return {
+      revenue,
+      appointments: data?.length || 0,
+      pending
+    };
   },
 
   // --- Gallery ---
   getGallery: async () => {
     if (cachedGallery) return cachedGallery;
 
-    if(!supabase) return [];
-    
+    if (!supabase) return [];
+
     // Fetch gallery images
     const { data: galleryData } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
-    
+
     if (!galleryData) return [];
 
     // Fetch tags from settings
@@ -434,88 +438,88 @@ export const api = {
 
     // Map tags to full service objects
     const enrichedGallery = galleryData.map((item: any) => {
-        const itemTags = tags[item.id] || [];
-        const taggedServices = itemTags.map((tagId: string) => services.find(s => s.id === tagId)).filter(Boolean);
-        return {
-            ...item,
-            taggedServices
-        };
+      const itemTags = tags[item.id] || [];
+      const taggedServices = itemTags.map((tagId: string) => services.find(s => s.id === tagId)).filter(Boolean);
+      return {
+        ...item,
+        taggedServices
+      };
     });
-    
+
     cachedGallery = enrichedGallery;
     return enrichedGallery;
   },
 
   addToGallery: async (imageUrl: string) => {
-      if(!supabase) return;
-      await supabase.from('gallery').insert([{ image_url: imageUrl }]);
-      cachedGallery = null; // Invalidate cache
+    if (!supabase) return;
+    await supabase.from('gallery').insert([{ image_url: imageUrl }]);
+    cachedGallery = null; // Invalidate cache
   },
 
   deleteFromGallery: async (id: string) => {
-      if(!supabase) return false;
-      const { error } = await supabase.from('gallery').delete().eq('id', id);
-      
-      if (!error) cachedGallery = null; // Invalidate cache
-      return !error;
+    if (!supabase) return false;
+    const { error } = await supabase.from('gallery').delete().eq('id', id);
+
+    if (!error) cachedGallery = null; // Invalidate cache
+    return !error;
   },
 
   // --- Storage ---
   uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
-      if(!supabase) return null;
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
+    if (!supabase) return null;
 
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
-      if (uploadError) {
-          console.error(uploadError);
-          return null;
-      }
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${fileName}`;
 
-      const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-      return data.publicUrl;
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
+    if (uploadError) {
+      console.error(uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return data.publicUrl;
   },
 
   // Convert Base64 Data URL to File/Blob and upload
   uploadBase64Image: async (base64Data: string, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
-      if (!supabase) return null;
+    if (!supabase) return null;
 
-      try {
-          // 1. Convert Base64 to Blob
-          // Assume base64Data is without the "data:image/jpeg;base64," prefix or clean it
-          const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-          
-          const byteCharacters = atob(cleanBase64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: 'image/jpeg' });
+    try {
+      // 1. Convert Base64 to Blob
+      // Assume base64Data is without the "data:image/jpeg;base64," prefix or clean it
+      const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
-          // 2. Generate Path
-          const fileName = `ai_upload_${Math.random().toString(36).substring(2)}.jpg`;
-          
-          // 3. Upload
-          const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, blob, {
-              contentType: 'image/jpeg',
-              upsert: false
-          });
-
-          if (uploadError) {
-              console.error("Supabase Upload Error:", uploadError);
-              return null;
-          }
-
-          // 4. Get URL
-          const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
-          return data.publicUrl;
-
-      } catch (e) {
-          console.error("Error converting/uploading base64 image:", e);
-          return null;
+      const byteCharacters = atob(cleanBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+      // 2. Generate Path
+      const fileName = `ai_upload_${Math.random().toString(36).substring(2)}.jpg`;
+
+      // 3. Upload
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, blob, {
+        contentType: 'image/jpeg',
+        upsert: false
+      });
+
+      if (uploadError) {
+        console.error("Supabase Upload Error:", uploadError);
+        return null;
+      }
+
+      // 4. Get URL
+      const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      return data.publicUrl;
+
+    } catch (e) {
+      console.error("Error converting/uploading base64 image:", e);
+      return null;
+    }
   }
 };
