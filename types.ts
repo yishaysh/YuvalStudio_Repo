@@ -1,4 +1,3 @@
-
 export interface Service {
   id: string;
   name: string;
@@ -86,7 +85,7 @@ export interface StudioSettings {
   gallery_tags?: Record<string, string[]>;
   coupons: Coupon[];
   enable_ai?: boolean;
-  enable_gallery?: boolean;
+
 }
 
 export enum BookingStep {

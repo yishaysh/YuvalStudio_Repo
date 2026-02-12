@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, AlertCircle, Info, Plus } from 'lucide-react';
@@ -818,7 +817,7 @@ const Booking: React.FC = () => {
                         <AnimatePresence mode="wait" initial={false}>
                             {step === BookingStep.SELECT_SERVICE && (
                                 <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                                    {galleryImages.length > 0 && (studioSettings?.enable_gallery ?? true) && (
+                                    {galleryImages.length > 0 && (
                                         <m.button
                                             layoutId="story-gallery-opener"
                                             onClick={() => setIsGalleryOpen(true)}
