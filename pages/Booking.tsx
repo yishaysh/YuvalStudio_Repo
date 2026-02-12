@@ -819,9 +819,10 @@ const Booking: React.FC = () => {
                             {step === BookingStep.SELECT_SERVICE && (
                                 <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                                     {galleryImages.length > 0 && (
-                                        <button
+                                        <m.button
+                                            layoutId="story-gallery-opener"
                                             onClick={() => setIsGalleryOpen(true)}
-                                            className="w-full relative overflow-hidden group rounded-2xl border border-brand-primary/30 p-1"
+                                            className="w-full relative overflow-hidden group rounded-2xl border border-brand-primary/30 p-1 block text-right"
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/20 via-brand-surface/50 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
                                             <div className="relative bg-brand-surface/40 backdrop-blur-sm rounded-xl p-4 flex items-center justify-between">
@@ -847,7 +848,7 @@ const Booking: React.FC = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                        </button>
+                                        </m.button>
                                     )}
                                     <div className="flex gap-3 overflow-x-auto pb-2">
                                         {categories.map(cat => (

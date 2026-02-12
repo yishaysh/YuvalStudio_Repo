@@ -93,9 +93,10 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         <AnimatePresence>
             {isOpen && (
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
+                    layoutId="story-gallery-opener"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
                     className="fixed inset-0 z-[100] bg-black text-white flex flex-col md:flex-row h-[100dvh]"
                 >
@@ -114,7 +115,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                                                 : idx < currentIndex ? "100%" : "0%"
                                         }}
                                         transition={{
-                                            duration: idx === currentIndex ? STORY_DURATION / 1000 : 0.2, // Smooth fill for previous
+                                            duration: idx === currentIndex ? STORY_DURATION / 1000 : 0,
                                             ease: "linear"
                                         }}
                                         className="h-full bg-white"
