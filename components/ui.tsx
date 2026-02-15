@@ -265,7 +265,7 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
                 className="flex flex-col items-center gap-3 p-4 rounded-xl bg-[#33CCFF]/10 border border-[#33CCFF]/20 hover:bg-[#33CCFF]/20 transition-all group"
               >
                 <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Waze_2020.svg/1024px-Waze_2020.svg.png"
+                  src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Waze_2020.svg"
                   alt="Waze"
                   className="w-10 h-10 object-contain drop-shadow-lg group-hover:scale-110 transition-transform"
                 />
@@ -277,7 +277,7 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
                 className="flex flex-col items-center gap-3 p-4 rounded-xl bg-[#4285F4]/10 border border-[#4285F4]/20 hover:bg-[#4285F4]/20 transition-all group"
               >
                 <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Google_Maps_icon_%282020%29.svg/1024px-Google_Maps_icon_%282020%29.svg.png"
+                  src="https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.svg"
                   alt="Google Maps"
                   className="w-10 h-10 object-contain drop-shadow-lg group-hover:scale-110 transition-transform"
                 />
