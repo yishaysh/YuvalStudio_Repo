@@ -1215,6 +1215,13 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                         onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, email: e.target.value } })}
                         onBlur={handleSilentSave}
                     />
+                    <Input
+                        label="קישור לאינסטגרם"
+                        value={localSettings.studio_details.instagram_url || ''}
+                        onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, instagram_url: e.target.value } })}
+                        onBlur={handleSilentSave}
+                        placeholder="https://instagram.com/..."
+                    />
                 </div>
             </Card>
 

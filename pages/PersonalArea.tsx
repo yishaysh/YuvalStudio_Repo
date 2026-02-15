@@ -91,12 +91,9 @@ const PersonalArea: React.FC = () => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
-                            className="text-slate-400 max-w-md"
+                            className="text-slate-400 max-w-2xl text-lg leading-relaxed"
                         >
-                            {isFemale
-                                ? "ברוכה הבאה לאזור האישי שלך. כאן תוכלי לראות את היסטוריית הטיפולים, לתכנן את הפרויקט הבא ולנהל את הפרופיל שלך."
-                                : "ברוך הבא לאזור האישי שלך. כאן תוכל לראות את היסטוריית הטיפולים, לתכנן את הפרויקט הבא ולנהל את הפרופיל שלך."
-                            }
+                            האיזור האישי שלך לניהול תורים וצפייה בהיסטוריית הטיפולים.
                         </motion.p>
                     </div>
 

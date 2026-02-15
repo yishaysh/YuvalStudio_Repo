@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Appointment } from '../../types';
 import { Calendar, CheckCircle2, Clock, XCircle, MapPin, Sparkles, FileText } from 'lucide-react';
-import { Card } from '../ui';
+import { Card, NavigationModal } from '../ui';
 import { DEFAULT_STUDIO_DETAILS } from '../../constants';
 
 interface AppointmentTimelineProps {
@@ -59,6 +59,7 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
 
 const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isFuture: boolean }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [isNavOpen, setIsNavOpen] = useState(false);
     const { status, start_time, service_name } = appointment;
     const date = new Date(start_time);
 
@@ -128,11 +129,16 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                                             <div className="font-medium text-white">מיקום</div>
                                             <div
                                                 className="text-xs cursor-pointer hover:text-brand-primary hover:underline transition-colors"
-                                                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(DEFAULT_STUDIO_DETAILS.address)}`, '_blank')}
+                                                onClick={() => setIsNavOpen(true)}
                                                 title="לחץ לניווט"
                                             >
                                                 {DEFAULT_STUDIO_DETAILS.address} ({DEFAULT_STUDIO_DETAILS.name})
                                             </div>
+                                            <NavigationModal
+                                                isOpen={isNavOpen}
+                                                onClose={() => setIsNavOpen(false)}
+                                                address={DEFAULT_STUDIO_DETAILS.address}
+                                            />
                                         </div>
                                     </div>
                                     {/* Receipt Download Removed */}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, Navigation } from 'lucide-react';
 
 const m = motion as any;
 
@@ -193,5 +193,91 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         </Button>
       </div>
     </Modal>
+  );
+};
+
+// --- Navigation Modal ---
+interface NavigationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  address: string;
+}
+
+export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClose, address }) => {
+  const encodedAddress = encodeURIComponent(address);
+
+  const handleNavigation = (app: 'waze' | 'google') => {
+    let url = '';
+    if (app === 'waze') {
+      // Waze deep link
+      url = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+    } else {
+      // Google Maps
+      url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    }
+    window.open(url, '_blank');
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-[100]"
+          />
+          <m.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-brand-surface border border-white/10 rounded-2xl shadow-2xl z-[101] p-6 text-center"
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-primary">
+              <Navigation className="w-8 h-8" />
+            </div>
+
+            <h3 className="text-xl font-serif text-white mb-2">בחר אפליקציית ניווט</h3>
+            <p className="text-slate-400 text-sm mb-6">כיצד תרצה לנווט לסטודיו?</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => handleNavigation('waze')}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl bg-[#33CCFF]/10 border border-[#33CCFF]/20 hover:bg-[#33CCFF]/20 transition-all group"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Waze_2020.svg/1024px-Waze_2020.svg.png"
+                  alt="Waze"
+                  className="w-10 h-10 object-contain drop-shadow-lg group-hover:scale-110 transition-transform"
+                />
+                <span className="text-sm font-bold text-white">Waze</span>
+              </button>
+
+              <button
+                onClick={() => handleNavigation('google')}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl bg-[#4285F4]/10 border border-[#4285F4]/20 hover:bg-[#4285F4]/20 transition-all group"
+              >
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Google_Maps_icon_%282020%29.svg/1024px-Google_Maps_icon_%282020%29.svg.png"
+                  alt="Google Maps"
+                  className="w-10 h-10 object-contain drop-shadow-lg group-hover:scale-110 transition-transform"
+                />
+                <span className="text-sm font-bold text-white">Google Maps</span>
+              </button>
+            </div>
+          </m.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 };

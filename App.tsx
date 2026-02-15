@@ -7,6 +7,7 @@ import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginModal } from './components/LoginModal';
+import { NavigationModal } from './components/ui';
 
 // Lazy Load Pages - Must use explicit string literals for static analysis
 const Home = lazy(() => import('./pages/Home'));
@@ -178,6 +179,8 @@ const App: React.FC = () => {
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
   const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
   const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
+  const [instagramUrl, setInstagramUrl] = useState(DEFAULT_STUDIO_DETAILS.instagram_url);
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   useEffect(() => {
     // Non-blocking fetch
@@ -186,6 +189,9 @@ const App: React.FC = () => {
         setAddress(settings.studio_details.address);
         setPhone(settings.studio_details.phone);
         setEmail(settings.studio_details.email);
+        if (settings.studio_details.instagram_url) {
+          setInstagramUrl(settings.studio_details.instagram_url);
+        }
       }
     });
   }, []);
@@ -225,17 +231,24 @@ const App: React.FC = () => {
                 <ul className="space-y-4 text-sm text-slate-400">
                   <li className="flex items-center justify-center md:justify-start gap-3">
                     <MapPin className="w-4 h-4 text-brand-primary" />
-                    {address}
+                    <button onClick={() => setIsNavOpen(true)} className="hover:text-white hover:underline transition-colors text-right">
+                      {address}
+                    </button>
                   </li>
                   <li>{phone}</li>
                   <li>{email}</li>
                 </ul>
+                <NavigationModal
+                  isOpen={isNavOpen}
+                  onClose={() => setIsNavOpen(false)}
+                  address={address}
+                />
               </div>
 
               <div>
                 <h4 className="text-white font-medium mb-6">עקבו אחרינו</h4>
                 <div className="flex justify-center md:justify-start gap-4">
-                  <a href={DEFAULT_STUDIO_DETAILS.instagram_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all">
+                  <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all">
                     <Instagram className="w-5 h-5" />
                   </a>
                 </div>
