@@ -68,6 +68,7 @@ export interface StudioDetails {
   phone: string;
   address: string;
   email: string;
+  instagram_url?: string;
 }
 
 export interface MonthlyGoals {

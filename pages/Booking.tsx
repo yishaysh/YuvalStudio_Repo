@@ -685,10 +685,16 @@ const Booking: React.FC = () => {
         }
         const finalPriceToSave = Math.max(0, Math.round(total));
 
-        // 4. Determine Service Duration
+        // 4. Determine Service Duration & Exact Time
         // If combined services, sum them up or take max, or default 30
         const duration = selectedServices.reduce((acc, s) => acc + s.duration_minutes, 0) || 30;
-        const endTime = new Date(selectedDate!.getTime() + duration * 60000).toISOString();
+
+        // COMBINE DATE AND TIME
+        const [hours, minutes] = selectedSlot!.split(':').map(Number);
+        const appointmentStart = new Date(selectedDate!);
+        appointmentStart.setHours(hours, minutes, 0, 0);
+
+        const endTime = new Date(appointmentStart.getTime() + duration * 60000).toISOString();
 
         // 5. Append Image URL and National ID to notes for easy admin access
         let updatedNotes = formData.notes;
@@ -704,7 +710,7 @@ const Booking: React.FC = () => {
                 client_id: user?.id,
                 service_id: selectedServices[0]?.id || 'combined',
                 service_name: selectedServices.map(s => s.name).join(' + '),
-                start_time: selectedDate!.toISOString(),
+                start_time: appointmentStart.toISOString(),
                 end_time: endTime,
                 client_name: formData.name,
                 client_phone: formData.phone,

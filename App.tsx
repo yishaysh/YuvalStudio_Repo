@@ -235,11 +235,8 @@ const App: React.FC = () => {
               <div>
                 <h4 className="text-white font-medium mb-6">עקבו אחרינו</h4>
                 <div className="flex justify-center md:justify-start gap-4">
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all">
+                  <a href={DEFAULT_STUDIO_DETAILS.instagram_url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all">
                     <Instagram className="w-5 h-5" />
-                  </a>
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all">
-                    <Facebook className="w-5 h-5" />
                   </a>
                 </div>
               </div>

@@ -126,7 +126,13 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                                         <MapPin className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
                                         <div>
                                             <div className="font-medium text-white">מיקום</div>
-                                            <div className="text-xs">{DEFAULT_STUDIO_DETAILS.address} ({DEFAULT_STUDIO_DETAILS.name})</div>
+                                            <div
+                                                className="text-xs cursor-pointer hover:text-brand-primary hover:underline transition-colors"
+                                                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(DEFAULT_STUDIO_DETAILS.address)}`, '_blank')}
+                                                title="לחץ לניווט"
+                                            >
+                                                {DEFAULT_STUDIO_DETAILS.address} ({DEFAULT_STUDIO_DETAILS.name})
+                                            </div>
                                         </div>
                                     </div>
                                     {/* Receipt Download Removed */}

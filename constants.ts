@@ -127,7 +127,8 @@ export const DEFAULT_STUDIO_DETAILS: StudioDetails = {
   name: 'Yuval Studio',
   phone: '0547513343',
   address: 'ברקת 40 מעלה שומרון',
-  email: 'shavlev.yuval@gmail.com'
+  email: 'shavlev.yuval@gmail.com',
+  instagram_url: 'https://www.instagram.com/yuval_studio'
 };
 
 export const DEFAULT_MONTHLY_GOALS: MonthlyGoals = {

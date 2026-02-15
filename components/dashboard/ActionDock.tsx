@@ -15,7 +15,7 @@ export const ActionDock: React.FC<ActionDockProps> = ({ onBookNew, onViewGallery
             <div className="w-full sm:w-auto flex gap-3">
                 <Button onClick={onBookNew} className="flex-1 sm:flex-none shadow-[0_0_20px_rgba(212,181,133,0.3)] gap-2">
                     <Plus className="w-4 h-4" />
-                    קבעי תור חדש
+                    קביעת תור חדש
                 </Button>
 
                 {/* Mobile Only Extras */}
