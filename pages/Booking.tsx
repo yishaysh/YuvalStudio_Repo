@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { aiStylistService, AIAnalysisResult } from '../services/aiStylistService';
 import { StoryGallery } from '../components/StoryGallery';
 import { SmartImage } from '../components/SmartImage';
+import { useAuth } from '../contexts/AuthContext';
 
 const m = motion as any;
 
@@ -382,6 +383,19 @@ const Booking: React.FC = () => {
     const datePickerRef = useRef<HTMLInputElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
+    const { user, profile } = useAuth();
+
+    // --- Pre-fill Data ---
+    useEffect(() => {
+        if (profile || user) {
+            setFormData(prev => ({
+                ...prev,
+                name: profile?.full_name || user?.user_metadata?.full_name || prev.name,
+                email: profile?.email || user?.email || prev.email,
+                phone: profile?.phone || prev.phone
+            }));
+        }
+    }, [profile, user]);
 
     // --- Initialization ---
     useEffect(() => {
@@ -687,6 +701,7 @@ const Booking: React.FC = () => {
 
         try {
             await api.createAppointment({
+                client_id: user?.id,
                 service_id: selectedServices[0]?.id || 'combined',
                 service_name: selectedServices.map(s => s.name).join(' + '),
                 start_time: selectedDate!.toISOString(),

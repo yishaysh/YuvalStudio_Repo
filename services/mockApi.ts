@@ -288,6 +288,7 @@ export const api = {
     }
 
     const payload = {
+      client_id: appt.client_id,
       service_id: appt.service_id,
       start_time: appt.start_time,
       end_time: endTime,
@@ -315,6 +316,7 @@ export const api = {
 
     return {
       id: data.id,
+      client_id: data.client_id,
       client_name: data.guest_name,
       client_email: data.guest_email,
       client_phone: data.guest_phone,
@@ -362,6 +364,44 @@ export const api = {
     } catch (err) {
       console.error(err);
       return MOCK_APPOINTMENTS as Appointment[];
+    }
+  },
+
+  getAppointmentsForUser: async (userId: string): Promise<Appointment[]> => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+            *,
+            services (name, price)
+        `)
+        .eq('client_id', userId)
+        .order('start_time', { ascending: false });
+
+      if (error) throw error;
+
+      return data.map((item: any) => ({
+        id: item.id,
+        client_id: item.client_id,
+        client_name: item.guest_name || 'לקוח רשום',
+        client_email: item.guest_email,
+        client_phone: item.guest_phone,
+        service_id: item.service_id,
+        service_name: item.services?.name,
+        service_price: item.services?.price,
+        start_time: item.start_time,
+        status: item.status,
+        notes: item.notes,
+        signature: item.signature,
+        created_at: item.created_at,
+        final_price: item.final_price,
+        visual_plan: item.visual_plan,
+        ai_recommendation_text: item.ai_recommendation_text
+      }));
+    } catch (err) {
+      console.error(err);
+      return [];
     }
   },
 

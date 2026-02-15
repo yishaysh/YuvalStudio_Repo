@@ -9,8 +9,18 @@ export interface Service {
   pain_level: number; // 1-10
 }
 
+export interface Profile {
+  id: string;
+  email: string;
+  full_name?: string;
+  phone?: string;
+  role: 'client' | 'admin';
+  created_at?: string;
+}
+
 export interface Appointment {
   id: string;
+  client_id?: string; // Foreign Key to Profile
   client_name: string;
   client_email: string;
   client_phone: string;
