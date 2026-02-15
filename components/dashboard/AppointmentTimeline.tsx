@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Appointment } from '../../types';
+import { Appointment, StudioDetails } from '../../types';
 import { Calendar, CheckCircle2, Clock, XCircle, MapPin, Sparkles, FileText } from 'lucide-react';
 import { Card, NavigationModal } from '../ui';
 import { DEFAULT_STUDIO_DETAILS } from '../../constants';
 
 interface AppointmentTimelineProps {
     appointments: Appointment[];
+    studioDetails?: StudioDetails;
 }
 
-export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appointments }) => {
+export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appointments, studioDetails }) => {
+    const details = studioDetails || DEFAULT_STUDIO_DETAILS;
     const now = new Date();
 
     // Sort logic: Future (Ascending), Past (Descending)
@@ -34,7 +36,7 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
                 </h3>
                 {future.length > 0 ? (
                     future.map(app => (
-                        <TimelineNode key={app.id} appointment={app} isFuture={true} />
+                        <TimelineNode key={app.id} appointment={app} isFuture={true} studioDetails={details} />
                     ))
                 ) : (
                     <div className="pr-4 text-slate-500 italic text-sm">אין תורים עתידיים כרגע.</div>
@@ -49,7 +51,7 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
                         היסטוריה
                     </h3>
                     {past.map(app => (
-                        <TimelineNode key={app.id} appointment={app} isFuture={false} />
+                        <TimelineNode key={app.id} appointment={app} isFuture={false} studioDetails={details} />
                     ))}
                 </div>
             )}
@@ -57,7 +59,7 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
     );
 };
 
-const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isFuture: boolean }) => {
+const TimelineNode = ({ appointment, isFuture, studioDetails }: { appointment: Appointment, isFuture: boolean, studioDetails: StudioDetails }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const { status, start_time, service_name } = appointment;
@@ -135,12 +137,13 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                                                 }}
                                                 title="לחץ לניווט"
                                             >
-                                                <span className="underline decoration-brand-primary/30 underline-offset-4">{DEFAULT_STUDIO_DETAILS.address}</span>
+                                                <span className="underline decoration-brand-primary/30 underline-offset-4">{studioDetails.address}</span>
                                             </div>
                                             <NavigationModal
                                                 isOpen={isNavOpen}
                                                 onClose={() => setIsNavOpen(false)}
-                                                address={DEFAULT_STUDIO_DETAILS.address}
+                                                address={studioDetails.address}
+                                                coordinates={studioDetails.coordinates}
                                             />
                                         </div>
                                     </div>

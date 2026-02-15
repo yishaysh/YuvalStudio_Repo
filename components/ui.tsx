@@ -202,22 +202,37 @@ interface NavigationModalProps {
   isOpen: boolean;
   onClose: () => void;
   address: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 // ... (keep existing interfaces)
 
-export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClose, address }) => {
+export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClose, address, coordinates }) => {
   const encodedAddress = encodeURIComponent(address);
 
   const handleNavigation = (app: 'waze' | 'google') => {
     let url = '';
-    if (app === 'waze') {
-      // Waze deep link
-      url = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+
+    if (coordinates && coordinates.lat && coordinates.lng) {
+      if (app === 'waze') {
+        // Waze deep link with coordinates
+        url = `https://waze.com/ul?ll=${coordinates.lat},${coordinates.lng}&navigate=yes`;
+      } else {
+        // Google Maps with coordinates
+        url = `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lng}`;
+      }
     } else {
-      // Google Maps
-      url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      // Fallback to address
+      if (app === 'waze') {
+        url = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+      } else {
+        url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      }
     }
+
     window.open(url, '_blank');
     onClose();
   };

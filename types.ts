@@ -69,6 +69,10 @@ export interface StudioDetails {
   address: string;
   email: string;
   instagram_url?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export interface MonthlyGoals {

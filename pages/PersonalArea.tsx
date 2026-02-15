@@ -4,6 +4,7 @@ import { api } from '../services/mockApi';
 import { Appointment } from '../types';
 import { AppointmentTimeline } from '../components/dashboard/AppointmentTimeline';
 import { ActionDock } from '../components/dashboard/ActionDock';
+import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { Button } from '../components/ui';
 import { Loader2, LogOut, User, Calendar, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -27,19 +28,27 @@ const PersonalArea: React.FC = () => {
             !['יהודה', 'יונה', 'שילה', 'נח', 'פטריק', 'מושיקו'].some(m => firstName.includes(m));
     }, [name]);
 
+    const [studioDetails, setStudioDetails] = useState(DEFAULT_STUDIO_DETAILS);
+
     useEffect(() => {
         const fetchData = async () => {
+            // Parallel fetch
             if (user?.id) {
                 try {
-                    const data = await api.getAppointmentsForUser(user.id);
-                    setAppointments(data);
+                    const [appointmentsData, settingsData] = await Promise.all([
+                        api.getAppointmentsForUser(user.id),
+                        api.getSettings()
+                    ]);
+                    setAppointments(appointmentsData);
+                    if (settingsData.studio_details) {
+                        setStudioDetails(settingsData.studio_details);
+                    }
                 } catch (error) {
-                    console.error("Failed to fetch appointments:", error);
+                    console.error("Failed to fetch data:", error);
                 } finally {
                     setLoadingAppointments(false);
                 }
             } else if (!authLoading && !user) {
-                // Should be protected route, but safety check
                 navigate('/');
             }
         };
@@ -119,7 +128,7 @@ const PersonalArea: React.FC = () => {
                         transition={{ delay: 0.4 }}
                         className="lg:col-span-5 order-2 lg:order-1"
                     >
-                        <AppointmentTimeline appointments={appointments} />
+                        <AppointmentTimeline appointments={appointments} studioDetails={studioDetails} />
                     </motion.div>
 
                     {/* Visual Area - Right Side (Desktop) */}

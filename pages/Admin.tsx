@@ -1209,6 +1209,43 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                         onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, address: e.target.value } })}
                         onBlur={handleSilentSave}
                     />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input
+                            label="קו רוחב (Latitude)"
+                            value={localSettings.studio_details.coordinates?.lat || ''}
+                            onChange={e => setLocalSettings({
+                                ...localSettings,
+                                studio_details: {
+                                    ...localSettings.studio_details,
+                                    coordinates: {
+                                        ...localSettings.studio_details.coordinates || { lat: 0, lng: 0 },
+                                        lat: Number(e.target.value)
+                                    }
+                                }
+                            })}
+                            onBlur={handleSilentSave}
+                            placeholder="לדוגמה: 32.0853"
+                        />
+                        <Input
+                            label="קו אורך (Longitude)"
+                            value={localSettings.studio_details.coordinates?.lng || ''}
+                            onChange={e => setLocalSettings({
+                                ...localSettings,
+                                studio_details: {
+                                    ...localSettings.studio_details,
+                                    coordinates: {
+                                        ...localSettings.studio_details.coordinates || { lat: 0, lng: 0 },
+                                        lng: Number(e.target.value)
+                                    }
+                                }
+                            })}
+                            onBlur={handleSilentSave}
+                            placeholder="לדוגמה: 34.7818"
+                        />
+                    </div>
+                    <div className="text-xs text-slate-500 -mt-2 mb-2">
+                        * ניתן למצוא את הקואורדינטות ב-Google Maps (לחיצה ימנית על המיקום).
+                    </div>
                     <Input
                         label="אימייל"
                         value={localSettings.studio_details.email}

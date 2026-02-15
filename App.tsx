@@ -180,6 +180,7 @@ const App: React.FC = () => {
   const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
   const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_STUDIO_DETAILS.instagram_url);
+  const [coordinates, setCoordinates] = useState(DEFAULT_STUDIO_DETAILS.coordinates);
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   useEffect(() => {
@@ -191,6 +192,9 @@ const App: React.FC = () => {
         setEmail(settings.studio_details.email);
         if (settings.studio_details.instagram_url) {
           setInstagramUrl(settings.studio_details.instagram_url);
+        }
+        if (settings.studio_details.coordinates) {
+          setCoordinates(settings.studio_details.coordinates);
         }
       }
     });
@@ -242,6 +246,7 @@ const App: React.FC = () => {
                   isOpen={isNavOpen}
                   onClose={() => setIsNavOpen(false)}
                   address={address}
+                  coordinates={coordinates}
                 />
               </div>
 
