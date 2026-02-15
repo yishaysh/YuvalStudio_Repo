@@ -264,11 +264,13 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
                 onClick={() => handleNavigation('waze')}
                 className="flex flex-col items-center gap-3 p-4 rounded-xl bg-[#33CCFF]/10 border border-[#33CCFF]/20 hover:bg-[#33CCFF]/20 transition-all group"
               >
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Waze_2020.svg"
-                  alt="Waze"
-                  className="w-10 h-10 object-contain drop-shadow-lg group-hover:scale-110 transition-transform"
-                />
+                <div className="w-10 h-10 drop-shadow-lg group-hover:scale-110 transition-transform">
+                  <svg viewBox="0 0 512 512" fill="currentColor" className="text-[#33CCFF]">
+                    <path d="M502.2 387.4L372.6 156.6c-28.7-50.6-88.8-62.5-128.8-29.3l-18 15.1c-10.4-1.7-21-2.6-31.8-2.6-67.7 0-128.7 34.1-163.6 85.3l-20.5 30c-15.3 22.5-9.3 53.1 13.2 68.4 22.5 15.3 53.1 9.3 68.4-13.2l20.5-30c18.5-27.1 50.8-45.2 86.8-45.2 5.6 0 11.2.5 16.6 1.4l-75.5 133.7c-21.7 38.3-8.2 86.5 30.1 108.2 12.7 7.2 26.6 10.7 40.3 10.7 27.5 0 54-13.9 67.9-38.6l15.1-26.7c18.2 12.1 40.1 19.3 63.6 19.3 63 0 114.1-51.1 114.1-114.1 0-35.3-16-66.9-41.2-87.9l75.6-7.8c27.1-2.8 46.5-27 43.7-54.1-3.2-27.5-30.8-46.1-57.3-43.2zM368.6 384.8c-23.2 0-42.1-18.9-42.1-42.1s18.9-42.1 42.1-42.1c23.2 0 42.1 18.9 42.1 42.1s-18.9 42.1-42.1 42.1z" />
+                    <circle cx="152" cy="272" r="24" className="text-white" fill="white" />
+                    <circle cx="280" cy="272" r="24" className="text-white" fill="white" />
+                  </svg>
+                </div>
                 <span className="text-sm font-bold text-white">Waze</span>
               </button>
 
@@ -276,11 +278,12 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
                 onClick={() => handleNavigation('google')}
                 className="flex flex-col items-center gap-3 p-4 rounded-xl bg-[#4285F4]/10 border border-[#4285F4]/20 hover:bg-[#4285F4]/20 transition-all group"
               >
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.svg"
-                  alt="Google Maps"
-                  className="w-10 h-10 object-contain drop-shadow-lg group-hover:scale-110 transition-transform"
-                />
+                <div className="w-10 h-10 drop-shadow-lg group-hover:scale-110 transition-transform">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.6 2.8C15.8 0.9 13.4 0 10.9 0 8.2 0 5.7 1 3.9 3 1 5.9 0 9.2 0 12.3c0 2.2 1 5.3 1.9 6.8l7.9 13.8c0.4 0.7 1.4 0.7 1.8 0l8.3-14.7c0.8-1.5 1.5-3.8 1.5-5.9C21.4 9.1 20.3 5.4 17.6 2.8z" fill="#EA4335" />
+                    <circle cx="10.9" cy="9.1" r="3.6" fill="#fff" />
+                  </svg>
+                </div>
                 <span className="text-sm font-bold text-white">Google Maps</span>
               </button>
             </div>
