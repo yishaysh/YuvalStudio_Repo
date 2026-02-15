@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/mockApi';
 import { Appointment } from '../types';
 import { AppointmentTimeline } from '../components/dashboard/AppointmentTimeline';
-import { EarIdentity } from '../components/dashboard/EarIdentity';
 import { ActionDock } from '../components/dashboard/ActionDock';
 import { Button } from '../components/ui';
 import { Loader2, LogOut, User, Calendar, Settings } from 'lucide-react';
@@ -109,37 +108,15 @@ const PersonalArea: React.FC = () => {
                         <AppointmentTimeline appointments={appointments} />
                     </motion.div>
 
-                    {/* Visual Area - Ear Identity (Center/Left) */}
+                    {/* Visual Area - Right Side (Desktop) */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="lg:col-span-7 order-1 lg:order-2 sticky top-24"
+                        className="lg:col-span-5 order-1 lg:order-2 sticky top-24"
                     >
-                        {/* 3D / Visual Representation */}
-                        <div className="bg-white/5 border border-white/5 rounded-3xl p-8 backdrop-blur-sm relative overflow-hidden group hover:border-brand-primary/20 transition-colors duration-500">
-                            <div className="absolute top-0 right-0 p-6 flex flex-col gap-2 z-20">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider">Project ID</div>
-                                <div className="font-mono text-brand-primary text-sm">#8821-X</div>
-                            </div>
-
-                            <EarIdentity />
-
-                            <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/80 to-transparent">
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <h3 className="text-xl font-serif text-white mb-1">האוזן הדיגיטל שלך</h3>
-                                        <p className="text-sm text-slate-400">הדמיה ויזואלית של כל הניקובים והתכשיטים.</p>
-                                    </div>
-                                    <Button variant="outline" className="border-white/10 hover:bg-white/10 text-xs">
-                                        עריכה
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Quick Actions Dock */}
-                        <div className="mt-8">
+                        {/* Quick Actions Dock - Now prominent */}
+                        <div className="mt-0">
                             <ActionDock
                                 onBookNew={() => navigate('/booking')}
                                 onViewGallery={() => console.log('View Gallery')}
