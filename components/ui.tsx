@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, Navigation } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 const m = motion as any;
 
@@ -203,6 +204,8 @@ interface NavigationModalProps {
   address: string;
 }
 
+// ... (keep existing interfaces)
+
 export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClose, address }) => {
   const encodedAddress = encodeURIComponent(address);
 
@@ -219,7 +222,11 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
     onClose();
   };
 
-  return (
+  // Prevent rendering if not open (optimization)
+  // However, AnimatePresence needs the component to be mounted to animate out.
+  // We will conditionally render the Portal content.
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -228,13 +235,15 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-[9999]"
           />
           <m.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-brand-surface border border-white/10 rounded-2xl shadow-2xl z-[101] p-6 text-center"
+            initial={{ opacity: 0, scale: 0.95, y: '-50%', x: '-50%' }}
+            animate={{ opacity: 1, scale: 1, y: '-50%', x: '-50%' }}
+            exit={{ opacity: 0, scale: 0.95, y: '-50%', x: '-50%' }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="fixed top-1/2 left-1/2 w-[90%] max-w-sm bg-brand-surface border border-white/10 rounded-2xl shadow-2xl z-[10000] p-6 text-center origin-center"
+            style={{ transform: 'translate(-50%, -50%)' }} // Fallback / Ensure centering
           >
             <button
               onClick={onClose}
@@ -278,6 +287,7 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
           </m.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
