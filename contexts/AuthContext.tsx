@@ -55,11 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
-                .single();
+                .maybeSingle();
 
             if (error) {
                 console.warn('Error fetching profile:', error);
-            } else {
+            } else if (data) {
                 setProfile(data);
             }
         } catch (err) {

@@ -15,6 +15,18 @@ const PersonalArea: React.FC = () => {
     const [loadingAppointments, setLoadingAppointments] = useState(true);
     const navigate = useNavigate();
 
+    const name = profile?.full_name || user?.user_metadata?.full_name || 'אורח';
+
+    // Simple heuristic for gender estimation (Hebrew)
+    // Default to Male (as requested by user who is male)
+    const isFemale = React.useMemo(() => {
+        if (!name || name === 'אורח') return false;
+        const firstName = name.split(' ')[0].trim();
+        // Check for common female endings
+        return (firstName.endsWith('ה') || firstName.endsWith('ת') || firstName.endsWith('ית')) &&
+            !['יהודה', 'יונה', 'שילה', 'נח', 'פטריק', 'מושיקו'].some(m => firstName.includes(m));
+    }, [name]);
+
     useEffect(() => {
         const fetchData = async () => {
             if (user?.id) {
@@ -45,17 +57,7 @@ const PersonalArea: React.FC = () => {
         );
     }
 
-    const name = profile?.full_name || user?.user_metadata?.full_name || 'אורח';
 
-    // Simple heuristic for gender estimation (Hebrew)
-    // Default to Male (as requested by user who is male)
-    const isFemale = React.useMemo(() => {
-        if (!name || name === 'אורח') return false;
-        const firstName = name.split(' ')[0].trim();
-        // Check for common female endings
-        return (firstName.endsWith('ה') || firstName.endsWith('ת') || firstName.endsWith('ית')) &&
-            !['יהודה', 'יונה', 'שילה', 'נח', 'פטריק', 'מושיקו'].some(m => firstName.includes(m));
-    }, [name]);
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
