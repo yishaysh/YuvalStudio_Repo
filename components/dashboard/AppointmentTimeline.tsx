@@ -128,11 +128,14 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                                         <div>
                                             <div className="font-medium text-white">מיקום</div>
                                             <div
-                                                className="text-xs cursor-pointer hover:text-brand-primary hover:underline transition-colors"
-                                                onClick={() => setIsNavOpen(true)}
+                                                className="text-white hover:text-brand-primary cursor-pointer transition-colors mt-1 flex items-center gap-2"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsNavOpen(true);
+                                                }}
                                                 title="לחץ לניווט"
                                             >
-                                                {DEFAULT_STUDIO_DETAILS.address} ({DEFAULT_STUDIO_DETAILS.name})
+                                                <span className="underline decoration-brand-primary/30 underline-offset-4">{DEFAULT_STUDIO_DETAILS.address}</span>
                                             </div>
                                             <NavigationModal
                                                 isOpen={isNavOpen}
