@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Appointment } from '../../types';
 import { Calendar, CheckCircle2, Clock, XCircle, MapPin, Sparkles, FileText } from 'lucide-react';
 import { Card } from '../ui';
+import { DEFAULT_STUDIO_DETAILS } from '../../constants';
 
 interface AppointmentTimelineProps {
     appointments: Appointment[];
@@ -58,7 +59,20 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
 
 const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isFuture: boolean }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const date = new Date(appointment.start_time);
+    const { status, start_time, service_name } = appointment;
+    const date = new Date(start_time);
+
+    const getStatusConfig = (s: string) => {
+        switch (s) {
+            case 'confirmed': return { label: 'מאושר', color: 'text-brand-primary bg-brand-primary/10 border-brand-primary/20' };
+            case 'pending': return { label: 'ממתין לאישור', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' };
+            case 'cancelled': return { label: 'מבוטל', color: 'text-red-500 bg-red-500/10 border-red-500/20' };
+            case 'completed': return { label: 'הושלם', color: 'text-green-500 bg-green-500/10 border-green-500/20' };
+            default: return { label: s, color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' };
+        }
+    };
+
+    const statusConfig = getStatusConfig(status);
 
     return (
         <motion.div
@@ -82,7 +96,7 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                 <div className="p-5 flex justify-between items-start">
                     <div className="space-y-1">
                         <div className="text-xs font-medium text-brand-primary uppercase tracking-widest mb-1">
-                            {appointment.service_name || 'טיפול כללי'}
+                            {service_name || 'טיפול כללי'}
                         </div>
                         <div className="text-xl font-serif text-white">
                             {date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -92,11 +106,10 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                             {date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     </div>
-                    {isFuture && (
-                        <div className="px-3 py-1 bg-brand-primary/10 text-brand-primary text-xs rounded-full font-bold border border-brand-primary/20">
-                            מאושר
-                        </div>
-                    )}
+
+                    <div className={`px-3 py-1 text-xs rounded-full font-bold border ${statusConfig.color}`}>
+                        {statusConfig.label}
+                    </div>
                 </div>
 
                 <AnimatePresence>
@@ -108,21 +121,15 @@ const TimelineNode = ({ appointment, isFuture }: { appointment: Appointment, isF
                             className="bg-black/20 border-t border-white/5"
                         >
                             <div className="p-5 space-y-4 text-sm text-slate-300">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                     <div className="flex items-start gap-2">
                                         <MapPin className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
                                         <div>
                                             <div className="font-medium text-white">מיקום</div>
-                                            <div className="text-xs">Yuval Studio, הרצליה</div>
+                                            <div className="text-xs">{DEFAULT_STUDIO_DETAILS.address} ({DEFAULT_STUDIO_DETAILS.name})</div>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-2">
-                                        <FileText className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
-                                        <div>
-                                            <div className="font-medium text-white">קבלה</div>
-                                            <div className="text-xs text-brand-primary underline cursor-pointer">הורד קבלה</div>
-                                        </div>
-                                    </div>
+                                    {/* Receipt Download Removed */}
                                 </div>
 
                                 {appointment.visual_plan && (

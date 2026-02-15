@@ -45,6 +45,18 @@ const PersonalArea: React.FC = () => {
         );
     }
 
+    const name = profile?.full_name || user?.user_metadata?.full_name || 'אורח';
+
+    // Simple heuristic for gender estimation (Hebrew)
+    // Default to Male (as requested by user who is male)
+    const isFemale = React.useMemo(() => {
+        if (!name || name === 'אורח') return false;
+        const firstName = name.split(' ')[0].trim();
+        // Check for common female endings
+        return (firstName.endsWith('ה') || firstName.endsWith('ת') || firstName.endsWith('ית')) &&
+            !['יהודה', 'יונה', 'שילה', 'נח', 'פטריק', 'מושיקו'].some(m => firstName.includes(m));
+    }, [name]);
+
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
             {/* Background Ambience */}
@@ -71,7 +83,7 @@ const PersonalArea: React.FC = () => {
                             transition={{ delay: 0.1 }}
                             className="text-4xl md:text-6xl font-serif font-bold text-white mb-2"
                         >
-                            שלום, {profile?.full_name || user?.user_metadata?.full_name || 'אורח'}
+                            שלום, {name}
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -79,7 +91,10 @@ const PersonalArea: React.FC = () => {
                             transition={{ delay: 0.2 }}
                             className="text-slate-400 max-w-md"
                         >
-                            ברוכה הבאה לאזור האישי שלך. כאן תוכלי לראות את היסטוריית הטיפולים, לתכנן את הפרויקט הבא ולנהל את הפרופיל שלך.
+                            {isFemale
+                                ? "ברוכה הבאה לאזור האישי שלך. כאן תוכלי לראות את היסטוריית הטיפולים, לתכנן את הפרויקט הבא ולנהל את הפרופיל שלך."
+                                : "ברוך הבא לאזור האישי שלך. כאן תוכל לראות את היסטוריית הטיפולים, לתכנן את הפרויקט הבא ולנהל את הפרופיל שלך."
+                            }
                         </motion.p>
                     </div>
 
