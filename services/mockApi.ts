@@ -121,6 +121,7 @@ export const api = {
 
   // --- Helper to ensure profile exists ---
   ensureProfileExists: async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
     // 1. Check if exists
     const { data } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
     if (data) return true;
