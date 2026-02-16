@@ -641,18 +641,49 @@ export const api = {
       return [];
     }
 
-    const ids = profile?.wishlist || [];
+    const ids: string[] = profile?.wishlist || [];
     console.log("Wishlist IDs found:", ids);
 
     if (ids.length === 0) return [];
 
-    // 2. Fetch Services (Cached)
+    // 2. Fetch Services (from cache, filtering by ID)
     const allServices = await api.getServices();
     const serviceMatches = allServices.filter(s => ids.includes(s.id));
 
-    // 3. Fetch Gallery (Use standard getGallery to ensure same RLS/Logic as Jewelry page)
-    const galleryItems = await api.getGallery();
-    const galleryMatches = galleryItems.filter((item: any) => ids.includes(item.id));
+    // 3. Fetch Gallery Items (Only fetch relevant IDs from DB)
+    let galleryMatches: any[] = [];
+    try {
+      // Determine which IDs are NOT services (potential gallery items)
+      // This is a heuristic: if it's not in serviceMatches, check gallery
+      const serviceIds = new Set(serviceMatches.map(s => s.id));
+      const potentialGalleryIds = ids.filter(id => !serviceIds.has(id));
+
+      if (potentialGalleryIds.length > 0) {
+        const { data: galleryData, error: galleryError } = await supabase
+          .from('gallery')
+          .select('*')
+          .in('id', potentialGalleryIds);
+
+        if (galleryError) {
+          console.error("Error fetching gallery items for wishlist:", galleryError);
+        } else if (galleryData) {
+          // Enrich with tags using cached settings
+          const settings = await api.getSettings();
+          const tags = settings.gallery_tags || {};
+
+          galleryMatches = galleryData.map((item: any) => {
+            const itemTags = tags[item.id] || [];
+            const taggedServices = itemTags.map((tagId: string) => allServices.find(s => s.id === tagId)).filter(Boolean);
+            return {
+              ...item,
+              taggedServices
+            };
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Error optimizing gallery fetch:", e);
+    }
 
     console.log("Gallery matches found:", galleryMatches.length);
 
@@ -670,7 +701,7 @@ export const api = {
     // Combine results
     const combined = [...serviceMatches, ...mappedGalleryItems];
 
-    // Deduplicate
+    // Deduplicate (just in case)
     const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
 
     console.log("Total unique wishlist items:", unique.length);
