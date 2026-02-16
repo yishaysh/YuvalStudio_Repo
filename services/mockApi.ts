@@ -602,6 +602,9 @@ export const api = {
   toggleWishlist: async (userId: string, serviceId: string): Promise<string[]> => {
     if (!supabase) return [];
 
+    // Ensure profile exists before trying to read/write
+    await api.ensureProfileExists(userId);
+
     // 1. Get current profile
     const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
     let currentWishlist: string[] = profile?.wishlist || [];
