@@ -119,6 +119,42 @@ export const api = {
     return { isValid: true, coupon };
   },
 
+  // --- Helper to ensure profile exists ---
+  ensureProfileExists: async (userId: string): Promise<boolean> => {
+    // 1. Check if exists
+    const { data } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+    if (data) return true;
+
+    console.log("Profile missing for user", userId, " - Attempting to create...");
+
+    // 2. Fetch User Email from Auth
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Safety check: ensure the logged in user matches the target ID
+    if (!user || user.id !== userId) {
+      console.error("Cannot create profile: Auth user mismatch or not logged in.");
+      return false;
+    }
+
+    // 3. Insert new profile
+    const { error } = await supabase.from('profiles').insert([
+      {
+        id: userId,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || 'User',
+        role: 'client'
+      }
+    ]);
+
+    if (error) {
+      console.error("Failed to create profile:", error);
+      return false;
+    }
+
+    console.log("Profile created successfully.");
+    return true;
+  },
+
   // --- Services ---
   getServices: async (): Promise<Service[]> => {
     if (cachedServices) return cachedServices;
@@ -640,6 +676,9 @@ export const api = {
   // --- Aftercare Persistence ---
   checkInAftercare: async (userId: string): Promise<boolean> => {
     if (!supabase) return false;
+
+    await api.ensureProfileExists(userId);
+
     const now = new Date().toISOString();
 
     // Use select() to confirm the update happened
