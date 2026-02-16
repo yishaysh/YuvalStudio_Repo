@@ -7,6 +7,7 @@ create table if not exists public.profiles (
   full_name text,
   phone text,
   role text default 'client' check (role in ('client', 'admin')),
+  wishlist text[] default '{}',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

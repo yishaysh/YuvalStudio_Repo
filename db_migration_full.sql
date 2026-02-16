@@ -56,3 +56,11 @@ begin
       alter table public.appointments add column visual_plan text;
   end if;
 end $$;
+
+-- 8. Add 'wishlist' to profiles (safe run)
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'wishlist') then
+      alter table public.profiles add column wishlist text[] default '{}';
+  end if;
+end $$;
