@@ -26,13 +26,21 @@ export const AftercareAssistant: React.FC<AftercareAssistantProps> = ({ appointm
     useEffect(() => {
         const checkStatus = async () => {
             if (user?.id) {
-                const lastCheckin = await api.getLastAftercareCheckin(user.id);
-                if (lastCheckin) {
-                    const today = new Date().toDateString();
-                    const checkinDate = new Date(lastCheckin).toDateString();
-                    if (today === checkinDate) {
-                        setCompletedTask(true);
+                try {
+                    const lastCheckin = await api.getLastAftercareCheckin(user.id);
+                    console.log("Aftercare: Loaded last checkin:", lastCheckin);
+
+                    if (lastCheckin) {
+                        const today = new Date().toDateString();
+                        const checkinDate = new Date(lastCheckin).toDateString();
+                        console.log("Aftercare: Comparing dates - Today:", today, "Checkin:", checkinDate);
+
+                        if (today === checkinDate) {
+                            setCompletedTask(true);
+                        }
                     }
+                } catch (e) {
+                    console.error("Aftercare: Error checking status", e);
                 }
             }
         };

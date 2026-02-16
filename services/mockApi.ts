@@ -591,39 +591,49 @@ export const api = {
   getWishlist: async (userId: string): Promise<any[]> => {
     if (!supabase) return [];
 
+    console.log("Fetching wishlist for user:", userId);
+
     // 1. Get IDs from profile
-    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
+
+    if (profileError) {
+      console.error("Error fetching profile wishlist:", profileError);
+      return [];
+    }
+
     const ids = profile?.wishlist || [];
+    console.log("Wishlist IDs found:", ids);
 
     if (ids.length === 0) return [];
 
-    // 2. Try finding in Services first
+    // 2. Fetch Services (Cached)
     const allServices = await api.getServices();
     const serviceMatches = allServices.filter(s => ids.includes(s.id));
 
-    // 3. Try finding in Gallery (Since user specifically mentioned Gallery images)
-    // We need to fetch all gallery items or query by IDs
-    const { data: galleryItems } = await supabase.from('gallery').select('*').in('id', ids);
+    // 3. Fetch Gallery (Use standard getGallery to ensure same RLS/Logic as Jewelry page)
+    const galleryItems = await api.getGallery();
+    const galleryMatches = galleryItems.filter((item: any) => ids.includes(item.id));
 
-    // Enrich gallery items with tags if needed, or just return as is
-    // For WishlistSection which expects "Service" structure, we might need to map them
-    const mappedGalleryItems = (galleryItems || []).map((item: any) => ({
+    console.log("Gallery matches found:", galleryMatches.length);
+
+    // Map gallery items to match Service interface for display
+    const mappedGalleryItems = galleryMatches.map((item: any) => ({
       id: item.id,
-      name: 'פריט גלריה', // Fallback name
-      price: 0, // Gallery items might not have price directly
+      name: 'פריט גלריה',
+      price: item.taggedServices?.[0]?.price || 0, // Try to inherit price from first tag
       image_url: item.image_url,
       category: 'Jewelry',
-      description: 'פריט שנשמר מהגלריה'
+      description: 'פריט שנשמר מהגלריה',
+      taggedServices: item.taggedServices // Keep tags for future use
     }));
 
     // Combine results
-    // We prefer the "Service" version if an ID exists in both (unlikely)
-    // Actually, distinct by ID
     const combined = [...serviceMatches, ...mappedGalleryItems];
 
-    // Deduplicate just in case
+    // Deduplicate
     const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
 
+    console.log("Total unique wishlist items:", unique.length);
     return unique;
   },
 
@@ -631,14 +641,33 @@ export const api = {
   checkInAftercare: async (userId: string): Promise<boolean> => {
     if (!supabase) return false;
     const now = new Date().toISOString();
-    const { error } = await supabase.from('profiles').update({ last_aftercare_checkin: now }).eq('id', userId);
-    return !error;
+
+    // Use select() to confirm the update happened
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ last_aftercare_checkin: now })
+      .eq('id', userId)
+      .select();
+
+    if (error) {
+      console.error("Failed to check in aftercare:", error);
+      return false;
+    }
+
+    // Check if any row was actually returned (implies update success)
+    return data && data.length > 0;
   },
 
   getLastAftercareCheckin: async (userId: string): Promise<string | null> => {
     if (!supabase) return null;
     const { data, error } = await supabase.from('profiles').select('last_aftercare_checkin').eq('id', userId).maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.error("Failed to fetch last checkin:", error);
+      return null;
+    }
+    if (!data) return null;
+
+    console.log("Fetched Last Checkin:", data.last_aftercare_checkin);
     return data.last_aftercare_checkin;
   }
 };
