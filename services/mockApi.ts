@@ -567,7 +567,7 @@ export const api = {
     if (!supabase) return [];
 
     // 1. Get current profile
-    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).single();
+    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
     let currentWishlist: string[] = profile?.wishlist || [];
 
     // 2. Toggle
@@ -592,7 +592,7 @@ export const api = {
     if (!supabase) return [];
 
     // 1. Get IDs
-    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).single();
+    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
     const ids = profile?.wishlist || [];
 
     if (ids.length === 0) return [];
