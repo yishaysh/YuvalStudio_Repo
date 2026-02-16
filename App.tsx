@@ -122,9 +122,31 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Toggle */}
-          <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-white hover:text-brand-primary transition-colors">
-            {isOpen ? <X /> : <Menu />}
-          </button>
+          {/* Mobile Toggle & User Icon */}
+          <div className="md:hidden flex items-center gap-4">
+            {/* User Icon (Mobile) */}
+            {user ? (
+              <Link
+                to="/dashboard"
+                title="אזור אישי"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-all border border-brand-primary/20"
+              >
+                <User className="w-4 h-4" />
+              </Link>
+            ) : (
+              <button
+                onClick={() => setIsLoginOpen(true)}
+                title="התחברות לאזור אישי"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <User className="w-4 h-4" />
+              </button>
+            )}
+
+            <button onClick={() => setIsOpen(!isOpen)} className="text-white hover:text-brand-primary transition-colors">
+              {isOpen ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
