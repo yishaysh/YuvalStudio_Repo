@@ -4,9 +4,11 @@ import { api } from '../services/mockApi';
 import { Appointment } from '../types';
 import { AppointmentTimeline } from '../components/dashboard/AppointmentTimeline';
 import { ActionDock } from '../components/dashboard/ActionDock';
+import { AftercareAssistant } from '../components/dashboard/AftercareAssistant';
+import { WishlistSection } from '../components/dashboard/WishlistSection';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { Button } from '../components/ui';
-import { Loader2, LogOut, User, Calendar, Settings } from 'lucide-react';
+import { Loader2, LogOut, User, Calendar, Settings, Clock, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -126,9 +128,25 @@ const PersonalArea: React.FC = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4 }}
-                        className="lg:col-span-5 order-2 lg:order-1"
+                        className="lg:col-span-8 order-2 lg:order-1"
                     >
-                        <AppointmentTimeline appointments={appointments} studioDetails={studioDetails} />
+                        <AftercareAssistant appointments={appointments} />
+
+                        <div className="mb-12">
+                            <h2 className="text-2xl font-serif text-white mb-6 flex items-center gap-2">
+                                <Clock className="w-5 h-5 text-brand-primary" />
+                                ציר הזמן שלי
+                            </h2>
+                            <AppointmentTimeline appointments={appointments} studioDetails={studioDetails} />
+                        </div>
+
+                        <div className="mb-12">
+                            <h2 className="text-2xl font-serif text-white mb-6 flex items-center gap-2">
+                                <Heart className="w-5 h-5 text-brand-primary" />
+                                רשימת המשאלות שלי
+                            </h2>
+                            <WishlistSection />
+                        </div>
                     </motion.div>
 
                     {/* Visual Area - Right Side (Desktop) */}
@@ -136,7 +154,7 @@ const PersonalArea: React.FC = () => {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="lg:col-span-5 order-1 lg:order-2 sticky top-24"
+                        className="lg:col-span-4 order-1 lg:order-2 sticky top-24"
                     >
                         {/* Quick Actions Dock - Now prominent */}
                         <div className="mt-0">

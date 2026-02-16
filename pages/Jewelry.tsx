@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { api } from '../services/mockApi';
-import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle, Heart } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { Service } from '../types';
@@ -10,6 +11,7 @@ import { SmartImage } from '../components/SmartImage';
 const m = motion as any;
 
 const JewelryPage: React.FC = () => {
+  const { user } = useAuth();
   const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -192,9 +194,34 @@ const JewelryPage: React.FC = () => {
                 onClick={() => { setDirection(1); setSelectedIndex(i); }}
                 whileHover={{ y: -5 }}
               >
+                {/* Wishlist Button Overlay */}
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    // toggle visual state immediately for responsiveness
+                    const icon = e.currentTarget.querySelector('.wishlist-icon');
+                    if (icon) {
+                      icon.classList.toggle('text-red-500');
+                      icon.classList.toggle('fill-current');
+                    }
+
+                    if (user?.id) {
+                      try {
+                        await api.toggleWishlist(user.id, item.id);
+                      } catch (err) { console.error(err); }
+                    } else {
+                      // Optional: Prompt login
+                      console.log("User not logged in");
+                    }
+                  }}
+                  className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn"
+                >
+                  <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
+                </button>
+
                 {/* Overlay - Centered "Get The Look" */}
                 {item.taggedServices?.length > 0 && (
-                  <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center pointer-events-none">
                     <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
                       <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
                         <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
@@ -219,9 +246,11 @@ const JewelryPage: React.FC = () => {
         )}
       </div>
 
+      {/* Legacy code continues... */}
       <AnimatePresence>
         {selectedIndex !== null && (
           <m.div
+            // ... (rest of modal code)
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -229,10 +258,12 @@ const JewelryPage: React.FC = () => {
             onClick={() => setSelectedIndex(null)}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-0 md:p-8 backdrop-blur-xl"
           >
+            {/* ... modal content ... */}
             <div
               className="relative w-full max-w-6xl h-full md:h-auto md:max-h-[90vh] bg-brand-surface rounded-none md:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/10"
               onClick={(e: any) => e.stopPropagation()}
             >
+              {/* ... */}
               <button
                 onClick={() => setSelectedIndex(null)}
                 className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all border border-white/10"
@@ -241,7 +272,7 @@ const JewelryPage: React.FC = () => {
               </button>
 
               <div className="w-full md:w-2/3 h-[40vh] md:h-auto relative bg-black flex items-center justify-center group overflow-hidden">
-                {/* Navigation Arrows - Centered Vertically */}
+                {/* Navigation Arrows */}
                 <button onClick={handlePrev} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5">
                   <ChevronRight className="w-6 h-6" />
                 </button>
@@ -249,7 +280,7 @@ const JewelryPage: React.FC = () => {
                   <ChevronLeft className="w-6 h-6" />
                 </button>
 
-                {/* Image with Swipe */}
+                {/* Image */}
                 <AnimatePresence initial={false} custom={direction}>
                   <m.img
                     key={selectedIndex}
@@ -288,7 +319,7 @@ const JewelryPage: React.FC = () => {
                           <h2 className="text-3xl font-serif text-white mb-2">Get The Look</h2>
                           <p className="text-slate-400 text-sm">הפריטים המופיעים בתמונה זו</p>
                         </div>
-
+                        {/* Items List */}
                         {taggedServices.length > 0 ? (
                           <div className="space-y-4">
                             {taggedServices.map((item, idx) => (
@@ -339,6 +370,7 @@ const JewelryPage: React.FC = () => {
                       exit={{ opacity: 0, x: -20 }}
                       className="flex flex-col h-full bg-brand-dark"
                     >
+                      {/* Selection Mode Content */}
                       <div className="p-6 border-b border-white/10 flex items-center justify-between">
                         <div>
                           <h2 className="text-2xl font-serif text-white">הרכבת הלוק</h2>
@@ -359,6 +391,7 @@ const JewelryPage: React.FC = () => {
                                 onClick={() => toggleServiceSelection(item)}
                                 className={`flex justify-between items-center p-4 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
                               >
+                                { /* Item Row Content */}
                                 <div className="flex items-center gap-4">
                                   <div className={`transition-colors ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}>
                                     {isSelected ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}

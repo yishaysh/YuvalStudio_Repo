@@ -16,6 +16,7 @@ export interface Profile {
   phone?: string;
   role: 'client' | 'admin';
   created_at?: string;
+  wishlist?: string[]; // Array of Service IDs
 }
 
 export interface Appointment {

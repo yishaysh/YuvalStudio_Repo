@@ -561,5 +561,44 @@ export const api = {
       console.error("Error converting/uploading base64 image:", e);
       return null;
     }
+  },
+  // --- Wishlist ---
+  toggleWishlist: async (userId: string, serviceId: string): Promise<string[]> => {
+    if (!supabase) return [];
+
+    // 1. Get current profile
+    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).single();
+    let currentWishlist: string[] = profile?.wishlist || [];
+
+    // 2. Toggle
+    if (currentWishlist.includes(serviceId)) {
+      currentWishlist = currentWishlist.filter(id => id !== serviceId);
+    } else {
+      currentWishlist = [...currentWishlist, serviceId];
+    }
+
+    // 3. Update
+    const { error } = await supabase.from('profiles').update({ wishlist: currentWishlist }).eq('id', userId);
+
+    if (error) {
+      console.error("Failed to update wishlist:", error);
+      return [];
+    }
+
+    return currentWishlist;
+  },
+
+  getWishlist: async (userId: string): Promise<Service[]> => {
+    if (!supabase) return [];
+
+    // 1. Get IDs
+    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).single();
+    const ids = profile?.wishlist || [];
+
+    if (ids.length === 0) return [];
+
+    // 2. Fetch Services
+    const allServices = await api.getServices();
+    return allServices.filter(s => ids.includes(s.id));
   }
 };
