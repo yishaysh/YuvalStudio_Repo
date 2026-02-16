@@ -588,17 +588,57 @@ export const api = {
     return currentWishlist;
   },
 
-  getWishlist: async (userId: string): Promise<Service[]> => {
+  getWishlist: async (userId: string): Promise<any[]> => {
     if (!supabase) return [];
 
-    // 1. Get IDs
+    // 1. Get IDs from profile
     const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
     const ids = profile?.wishlist || [];
 
     if (ids.length === 0) return [];
 
-    // 2. Fetch Services
+    // 2. Try finding in Services first
     const allServices = await api.getServices();
-    return allServices.filter(s => ids.includes(s.id));
+    const serviceMatches = allServices.filter(s => ids.includes(s.id));
+
+    // 3. Try finding in Gallery (Since user specifically mentioned Gallery images)
+    // We need to fetch all gallery items or query by IDs
+    const { data: galleryItems } = await supabase.from('gallery').select('*').in('id', ids);
+
+    // Enrich gallery items with tags if needed, or just return as is
+    // For WishlistSection which expects "Service" structure, we might need to map them
+    const mappedGalleryItems = (galleryItems || []).map((item: any) => ({
+      id: item.id,
+      name: 'פריט גלריה', // Fallback name
+      price: 0, // Gallery items might not have price directly
+      image_url: item.image_url,
+      category: 'Jewelry',
+      description: 'פריט שנשמר מהגלריה'
+    }));
+
+    // Combine results
+    // We prefer the "Service" version if an ID exists in both (unlikely)
+    // Actually, distinct by ID
+    const combined = [...serviceMatches, ...mappedGalleryItems];
+
+    // Deduplicate just in case
+    const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+
+    return unique;
+  },
+
+  // --- Aftercare Persistence ---
+  checkInAftercare: async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('profiles').update({ last_aftercare_checkin: now }).eq('id', userId);
+    return !error;
+  },
+
+  getLastAftercareCheckin: async (userId: string): Promise<string | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('profiles').select('last_aftercare_checkin').eq('id', userId).maybeSingle();
+    if (error || !data) return null;
+    return data.last_aftercare_checkin;
   }
 };

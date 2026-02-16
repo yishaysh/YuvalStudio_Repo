@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const WishlistSection: React.FC = () => {
     const { user } = useAuth();
-    const [wishlistItems, setWishlistItems] = useState<Service[]>([]);
+    const [wishlistItems, setWishlistItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/mockApi';
 import { Appointment } from '../../types';
 import { Card, Button } from '../ui';
 import { CheckCircle2, AlertCircle, Sparkles, Clock, ShieldCheck } from 'lucide-react';
@@ -17,7 +19,32 @@ const getDaysDifference = (date: string) => {
 };
 
 export const AftercareAssistant: React.FC<AftercareAssistantProps> = ({ appointments }) => {
+    const { user } = useAuth();
     const [completedTask, setCompletedTask] = useState(false);
+
+    // Check status on mount
+    useEffect(() => {
+        const checkStatus = async () => {
+            if (user?.id) {
+                const lastCheckin = await api.getLastAftercareCheckin(user.id);
+                if (lastCheckin) {
+                    const today = new Date().toDateString();
+                    const checkinDate = new Date(lastCheckin).toDateString();
+                    if (today === checkinDate) {
+                        setCompletedTask(true);
+                    }
+                }
+            }
+        };
+        checkStatus();
+    }, [user]);
+
+    const handleCheckin = async () => {
+        setCompletedTask(true);
+        if (user?.id) {
+            await api.checkInAftercare(user.id);
+        }
+    };
 
     // Find latest completed/confirmed appointment
     const latestAppointment = appointments
@@ -124,7 +151,7 @@ export const AftercareAssistant: React.FC<AftercareAssistantProps> = ({ appointm
                     <AnimatePresence mode="wait">
                         {!completedTask ? (
                             <Button
-                                onClick={() => setCompletedTask(true)}
+                                onClick={handleCheckin}
                                 className="w-full bg-white/10 hover:bg-white/20 border border-white/10"
                             >
                                 חיטיתי היום 💧

@@ -64,3 +64,11 @@ begin
       alter table public.profiles add column wishlist text[] default '{}';
   end if;
 end $$;
+
+-- 9. Add 'last_aftercare_checkin' to profiles (safe run)
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'last_aftercare_checkin') then
+      alter table public.profiles add column last_aftercare_checkin timestamp with time zone;
+  end if;
+end $$;

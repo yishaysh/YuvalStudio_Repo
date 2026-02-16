@@ -17,6 +17,14 @@ export interface Profile {
   role: 'client' | 'admin';
   created_at?: string;
   wishlist?: string[]; // Array of Service IDs
+  last_aftercare_checkin?: string; // ISO Date string
+}
+
+export interface GalleryItem {
+  id: string;
+  image_url: string;
+  created_at: string;
+  taggedServices?: Service[];
 }
 
 export interface Appointment {
