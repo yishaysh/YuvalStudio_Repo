@@ -10,13 +10,20 @@ export interface TimeSlot {
 
 // --- In-Memory Cache ---
 let cachedServices: Service[] | null = null;
+let servicesPromise: Promise<Service[]> | null = null;
+
 let cachedGallery: any[] | null = null;
+// gallery usually changes more often or has specific filters, but we can cache the full list if needed
+// For wishlist we use specific IDs so we don't cache the partial results here.
+
 let cachedSettings: StudioSettings | null = null;
+let settingsPromise: Promise<StudioSettings> | null = null;
 
 export const api = {
   // --- Settings ---
   getSettings: async (): Promise<StudioSettings> => {
     if (cachedSettings) return cachedSettings;
+    if (settingsPromise) return settingsPromise;
 
     const defaultSettings: StudioSettings = {
       working_hours: DEFAULT_WORKING_HOURS,
@@ -33,49 +40,55 @@ export const api = {
       return defaultSettings;
     }
 
-    try {
-      // Fetch settings keys
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery']);
+    settingsPromise = (async () => {
+      try {
+        // Fetch settings keys
+        const { data, error } = await supabase
+          .from('settings')
+          .select('*')
+          .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery']);
 
-      if (error || !data) {
-        cachedSettings = defaultSettings;
-        return defaultSettings;
-      }
-
-      const newSettings = { ...defaultSettings };
-
-      data.forEach(row => {
-        if (row.key === 'working_hours') {
-          // Legacy check
-          if (row.value['0'] && row.value['0'].start !== undefined) {
-            // Ignore legacy format
-          } else {
-            newSettings.working_hours = row.value;
-          }
-        } else if (row.key === 'studio_details') {
-          newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
-        } else if (row.key === 'monthly_goals') {
-          newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
-        } else if (row.key === 'gallery_tags') {
-          newSettings.gallery_tags = row.value;
-        } else if (row.key === 'coupons') {
-          newSettings.coupons = row.value;
-        } else if (row.key === 'enable_ai') {
-          newSettings.enable_ai = row.value;
-        } else if (row.key === 'enable_gallery') {
-          newSettings.enable_gallery = row.value;
+        if (error || !data) {
+          cachedSettings = defaultSettings;
+          return defaultSettings;
         }
-      });
 
-      cachedSettings = newSettings;
-      return newSettings;
-    } catch (e) {
-      console.error(e);
-      return defaultSettings;
-    }
+        const newSettings = { ...defaultSettings };
+
+        data.forEach(row => {
+          if (row.key === 'working_hours') {
+            // Legacy check
+            if (row.value['0'] && row.value['0'].start !== undefined) {
+              // Ignore legacy format
+            } else {
+              newSettings.working_hours = row.value;
+            }
+          } else if (row.key === 'studio_details') {
+            newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
+          } else if (row.key === 'monthly_goals') {
+            newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
+          } else if (row.key === 'gallery_tags') {
+            newSettings.gallery_tags = row.value;
+          } else if (row.key === 'coupons') {
+            newSettings.coupons = row.value;
+          } else if (row.key === 'enable_ai') {
+            newSettings.enable_ai = row.value;
+          } else if (row.key === 'enable_gallery') {
+            newSettings.enable_gallery = row.value;
+          }
+        });
+
+        cachedSettings = newSettings;
+        return newSettings;
+      } catch (e) {
+        console.error(e);
+        return defaultSettings;
+      } finally {
+        settingsPromise = null;
+      }
+    })();
+
+    return settingsPromise;
   },
 
   updateSettings: async (settings: StudioSettings): Promise<boolean> => {
@@ -159,22 +172,30 @@ export const api = {
   // --- Services ---
   getServices: async (): Promise<Service[]> => {
     if (cachedServices) return cachedServices;
+    if (servicesPromise) return servicesPromise;
 
     if (!supabase) return SERVICES;
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
-      if (error) throw error;
 
-      cachedServices = data || SERVICES;
-      return cachedServices;
-    } catch (err) {
-      console.error('Error fetching services:', err);
-      return SERVICES;
-    }
+    servicesPromise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('services')
+          .select('*')
+          .eq('is_active', true)
+          .order('price', { ascending: true });
+        if (error) throw error;
+
+        cachedServices = data || SERVICES;
+        return cachedServices;
+      } catch (err) {
+        console.error('Error fetching services:', err);
+        return SERVICES;
+      } finally {
+        servicesPromise = null;
+      }
+    })();
+
+    return servicesPromise;
   },
 
   addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
