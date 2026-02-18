@@ -35,8 +35,7 @@ export const UserSettings: React.FC = () => {
 
             const updateData = {
                 full_name: fullName,
-                phone: phone,
-                updated_at: new Date().toISOString()
+                phone: phone
             };
 
             if (!supabase) {
