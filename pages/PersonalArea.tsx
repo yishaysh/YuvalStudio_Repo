@@ -159,8 +159,8 @@ const PersonalArea: React.FC = () => {
                         <div className="mt-0">
                             <ActionDock
                                 onBookNew={() => navigate('/booking')}
-                                onViewGallery={() => console.log('View Gallery')}
-                                onOpenSettings={() => console.log('Settings')}
+                                onViewGallery={() => navigate('/dashboard/gallery')}
+                                onOpenSettings={() => navigate('/dashboard/settings')}
                                 onLogout={signOut}
                             />
                         </div>

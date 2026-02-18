@@ -17,6 +17,8 @@ const ServicesPage = lazy(() => import('./pages/Services'));
 const JewelryPage = lazy(() => import('./pages/Jewelry'));
 const AftercarePage = lazy(() => import('./pages/Aftercare'));
 const PersonalArea = lazy(() => import('./pages/PersonalArea'));
+const UserGallery = lazy(() => import('./components/dashboard/UserGallery').then(module => ({ default: module.UserGallery })));
+const UserSettings = lazy(() => import('./components/dashboard/UserSettings').then(module => ({ default: module.UserSettings })));
 
 const m = motion as any;
 
@@ -236,6 +238,8 @@ const App: React.FC = () => {
               <Route path="/jewelry" element={<JewelryPage />} />
               <Route path="/aftercare" element={<AftercarePage />} />
               <Route path="/dashboard" element={<PersonalArea />} />
+              <Route path="/dashboard/gallery" element={<UserGallery />} />
+              <Route path="/dashboard/settings" element={<UserSettings />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<Home />} />
             </Routes>
