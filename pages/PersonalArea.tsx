@@ -72,11 +72,10 @@ const PersonalArea: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
-            {/* Background Ambience */}
+            {/* Background Ambience - Simplified for Performance */}
             <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-brand-primary/5 rounded-full blur-[120px] opacity-30"></div>
-                <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[100px] opacity-20"></div>
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+                <div className="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-b from-brand-primary/10 to-transparent opacity-40"></div>
+                <div className="absolute bottom-0 left-0 w-full h-[500px] bg-gradient-to-t from-blue-900/10 to-transparent opacity-30"></div>
             </div>
 
             <div className="container mx-auto px-4 pt-24 pb-24 relative z-10">

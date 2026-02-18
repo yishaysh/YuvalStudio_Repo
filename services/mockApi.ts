@@ -519,22 +519,31 @@ export const api = {
   },
 
   // --- Gallery ---
-  getGallery: async () => {
-    if (cachedGallery) return cachedGallery;
+  // --- Gallery ---
+  getGallery: async (page = 1, limit = 12) => {
+    // If no pagination args provided (legacy calls), we might return all or default first page.
+    // However, to be safe during refactor, let's just support pagination.
 
-    if (!supabase) return [];
+    if (!supabase) return { items: [], total: 0 };
 
-    // Fetch gallery images
-    const { data: galleryData } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    if (!galleryData) return [];
+    // Fetch gallery images range + total count
+    const { data: galleryData, count, error } = await supabase
+      .from('gallery')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-    // Fetch tags from settings
+    if (error || !galleryData) return { items: [], total: 0 };
+
+    // Fetch tags and services (cached)
     const settings = await api.getSettings();
     const tags = settings.gallery_tags || {};
     const services = await api.getServices();
 
-    // Map tags to full service objects
+    // Enrichment
     const enrichedGallery = galleryData.map((item: any) => {
       const itemTags = tags[item.id] || [];
       const taggedServices = itemTags.map((tagId: string) => services.find(s => s.id === tagId)).filter(Boolean);
@@ -544,10 +553,9 @@ export const api = {
       };
     });
 
-    cachedGallery = enrichedGallery;
-    return enrichedGallery;
+    return { items: enrichedGallery, total: count || 0 };
   },
-
+  // --- Storage ---
   addToGallery: async (imageUrl: string) => {
     if (!supabase) return;
     await supabase.from('gallery').insert([{ image_url: imageUrl }]);
@@ -562,7 +570,6 @@ export const api = {
     return !error;
   },
 
-  // --- Storage ---
   uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
     if (!supabase) return null;
 

@@ -13,6 +13,9 @@ const m = motion as any;
 const JewelryPage: React.FC = () => {
   const { user } = useAuth();
   const [galleryItems, setGalleryItems] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   // Selection Dialog State
@@ -39,17 +42,34 @@ const JewelryPage: React.FC = () => {
     galleryItemsRef.current = galleryItems;
   }, [galleryItems]);
 
-  useEffect(() => {
-    const loadGallery = async () => {
-      try {
-        const data = await api.getGallery();
-        setGalleryItems(data);
-      } catch (error) {
-        console.error("Failed to load gallery images", error);
+  const loadGallery = async (pageNum: number) => {
+    try {
+      setLoading(true);
+      const { items, total } = await api.getGallery(pageNum, 12);
+
+      if (pageNum === 1) {
+        setGalleryItems(items);
+      } else {
+        setGalleryItems(prev => [...prev, ...items]);
       }
-    };
-    loadGallery();
+
+      setHasMore(galleryItems.length + items.length < total && items.length > 0);
+    } catch (error) {
+      console.error("Failed to load gallery images", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadGallery(1);
   }, []);
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadGallery(nextPage);
+  };
 
   // Lock body scroll when modal is open - dedicated effect with cleanup
   useEffect(() => {
@@ -182,67 +202,84 @@ const JewelryPage: React.FC = () => {
 
       <div className="container mx-auto px-6">
         {galleryItems.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {galleryItems.map((item, i) => (
-              <m.div
-                key={item.id || i}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "100px" }}
-                transition={{ duration: 0.4 }}
-                className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
-                onClick={() => { setDirection(1); setSelectedIndex(i); }}
-                whileHover={{ y: -5 }}
-              >
-                {/* Wishlist Button Overlay */}
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    // toggle visual state immediately for responsiveness
-                    const icon = e.currentTarget.querySelector('.wishlist-icon');
-                    if (icon) {
-                      icon.classList.toggle('text-red-500');
-                      icon.classList.toggle('fill-current');
-                    }
-
-                    if (user?.id) {
-                      try {
-                        await api.toggleWishlist(user.id, item.id);
-                      } catch (err) { console.error(err); }
-                    } else {
-                      // Optional: Prompt login
-                      console.log("User not logged in");
-                    }
-                  }}
-                  className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn"
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {galleryItems.map((item, i) => (
+                <m.div
+                  key={item.id || i}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "100px" }}
+                  transition={{ duration: 0.4 }}
+                  className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
+                  onClick={() => { setDirection(1); setSelectedIndex(i); }}
+                  whileHover={{ y: -5 }}
                 >
-                  <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
-                </button>
+                  {/* Wishlist Button Overlay */}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      // toggle visual state immediately for responsiveness
+                      const icon = e.currentTarget.querySelector('.wishlist-icon');
+                      if (icon) {
+                        icon.classList.toggle('text-red-500');
+                        icon.classList.toggle('fill-current');
+                      }
 
-                {/* Overlay - Centered "Get The Look" */}
-                {item.taggedServices?.length > 0 && (
-                  <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center pointer-events-none">
-                    <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
-                      <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
-                        <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
-                      </p>
+                      if (user?.id) {
+                        try {
+                          await api.toggleWishlist(user.id, item.id);
+                        } catch (err) { console.error(err); }
+                      } else {
+                        // Optional: Prompt login
+                        console.log("User not logged in");
+                      }
+                    }}
+                    className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn"
+                  >
+                    <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
+                  </button>
+
+                  {/* Overlay - Centered "Get The Look" */}
+                  {item.taggedServices?.length > 0 && (
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center pointer-events-none">
+                      <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
+                        <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
+                          <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <SmartImage
-                  src={item.image_url}
-                  alt={`Jewelry ${i}`}
-                  className="w-full h-full object-cover"
-                  priority={i < 4}
-                />
-              </m.div>
-            ))}
-          </div>
+                  <SmartImage
+                    src={item.image_url}
+                    alt={`Jewelry ${i}`}
+                    className="w-full h-full object-cover"
+                    priority={i < 4}
+                  />
+                </m.div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="mt-12 text-center">
+                <Button
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  className="px-8 py-3 text-lg bg-white/5 hover:bg-white/10 border-white/10"
+                >
+                  {loading ? 'טוען...' : 'הצג עוד'}
+                </Button>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/10">
-            <p className="text-slate-400 text-lg">הגלריה ריקה כרגע. תמונות יעלו בקרוב!</p>
-          </div>
+          !loading && (
+            <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/10">
+              <p className="text-slate-400 text-lg">הגלריה ריקה כרגע. תמונות יעלו בקרוב!</p>
+            </div>
+          )
         )}
       </div>
 

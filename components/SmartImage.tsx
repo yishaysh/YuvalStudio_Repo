@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Image as ImageIcon } from 'lucide-react';
 
 interface SmartImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -23,25 +22,21 @@ export const SmartImage: React.FC<SmartImageProps> = ({ src, alt, className = ''
 
   return (
     <div className={`relative overflow-hidden bg-brand-surface/50 ${className}`}>
-      <AnimatePresence>
-        {!isLoaded && !error && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 flex items-center justify-center bg-brand-surface z-10"
-          >
-             <div className="w-full h-full animate-pulse bg-white/5" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
+      {/* Loading Placeholder - CSS Only */}
+      {!isLoaded && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-brand-surface z-10 transition-opacity duration-500 ease-in-out opacity-100">
+          <div className="w-full h-full animate-pulse bg-white/5" />
+        </div>
+      )}
+
+      {/* Error State */}
       {error ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 bg-brand-surface z-10">
           <ImageIcon className="w-8 h-8 opacity-20 mb-2" />
           <span className="text-[10px]">תמונה לא זמינה</span>
         </div>
       ) : (
+        /* Image with CSS transition */
         <img
           src={src}
           alt={alt}
