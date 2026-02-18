@@ -209,6 +209,7 @@ const AppointmentsList = ({
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+    const [viewImage, setViewImage] = useState<string | null>(null);
 
     useEffect(() => {
         if (filterId && rowRefs.current[filterId]) {
@@ -337,319 +338,336 @@ const AppointmentsList = ({
     };
 
     return (
-        <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
-            {/* Filter Bar */}
-            {showFilters && (
-                <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-col sm:flex-row sm:flex-wrap gap-4 items-end">
-                    <div className="flex flex-col gap-1 w-full sm:w-auto">
-                        <label className="text-xs text-slate-400">סטטוס</label>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
-                        >
-                            <option value="all">הכל</option>
-                            <option value="pending">ממתין</option>
-                            <option value="confirmed">מאושר</option>
-                            <option value="cancelled">בוטל</option>
-                        </select>
-                    </div>
-
-                    <div className="flex flex-row gap-2 w-full sm:w-auto">
-                        <div className="flex flex-col gap-1 flex-1">
-                            <label className="text-xs text-slate-400">מתאריך</label>
-                            <input
-                                type="date"
-                                value={dateRange.start}
-                                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full min-w-0"
-                            />
+        <>
+            <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
+                {/* Filter Bar */}
+                {showFilters && (
+                    <div className="p-4 bg-brand-primary/5 border-b border-brand-primary/10 flex flex-col sm:flex-row sm:flex-wrap gap-4 items-end">
+                        <div className="flex flex-col gap-1 w-full sm:w-auto">
+                            <label className="text-xs text-slate-400">סטטוס</label>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
+                            >
+                                <option value="all">הכל</option>
+                                <option value="pending">ממתין</option>
+                                <option value="confirmed">מאושר</option>
+                                <option value="cancelled">בוטל</option>
+                            </select>
                         </div>
-                        <div className="flex flex-col gap-1 flex-1">
-                            <label className="text-xs text-slate-400">עד תאריך</label>
-                            <input
-                                type="date"
-                                value={dateRange.end}
-                                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full min-w-0"
-                            />
+
+                        <div className="flex flex-row gap-2 w-full sm:w-auto">
+                            <div className="flex flex-col gap-1 flex-1">
+                                <label className="text-xs text-slate-400">מתאריך</label>
+                                <input
+                                    type="date"
+                                    value={dateRange.start}
+                                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full min-w-0"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1 flex-1">
+                                <label className="text-xs text-slate-400">עד תאריך</label>
+                                <input
+                                    type="date"
+                                    value={dateRange.end}
+                                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                    className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full min-w-0"
+                                />
+                            </div>
                         </div>
+
+                        {/* Clear Filters */}
+                        {(statusFilter !== 'all' || dateRange.start || dateRange.end || filterId) && (
+                            <button
+                                onClick={() => {
+                                    setStatusFilter('all');
+                                    setDateRange({ start: '', end: '' });
+                                    onClearFilter();
+                                }}
+                                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 mb-2 mr-auto"
+                            >
+                                <X className="w-3 h-3" /> נקה סינון
+                            </button>
+                        )}
+
+                        {/* Google Bulk Sync */}
+                        {onBulkSync && (
+                            <button
+                                onClick={() => onBulkSync(sortedAppointments)}
+                                className="ml-auto flex items-center gap-2 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs transition-colors"
+                            >
+                                <RefreshCw className="w-3 h-3" /> סנכרן הכל לגוגל
+                            </button>
+                        )}
                     </div>
+                )}
 
-                    {/* Clear Filters */}
-                    {(statusFilter !== 'all' || dateRange.start || dateRange.end || filterId) && (
-                        <button
-                            onClick={() => {
-                                setStatusFilter('all');
-                                setDateRange({ start: '', end: '' });
-                                onClearFilter();
-                            }}
-                            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 mb-2 mr-auto"
-                        >
-                            <X className="w-3 h-3" /> נקה סינון
-                        </button>
-                    )}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right text-sm border-collapse">
+                        <thead className="">
+                            <tr className="border-b border-white/5 text-slate-500 text-xs bg-brand-dark/50 shadow-sm">
+                                <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('client_name')}>
+                                    לקוח <SortIcon column="client_name" />
+                                </th>
+                                <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('start_time')}>
+                                    מועד התור <SortIcon column="start_time" />
+                                </th>
+                                <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('created_at')}>
+                                    נוצר ב <SortIcon column="created_at" />
+                                </th>
+                                <th className="py-4 px-6 font-medium whitespace-nowrap">שירותים</th>
+                                <th className="py-4 px-6 font-medium whitespace-nowrap text-center">מחיר כולל</th>
+                                <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('status')}>
+                                    סטטוס <SortIcon column="status" />
+                                </th>
+                                <th className="py-4 px-6 text-left whitespace-nowrap">פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-slate-300 divide-y divide-white/5">
+                            {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
+                                const isHighlighted = apt.id === filterId;
+                                const { servicesList, calculatedBasePrice, finalPrice, couponCode, discount, jewelryPrice } = getCalculatedData(apt);
+                                const hasVisualPlan = !!(apt.visual_plan || apt.ai_recommendation_text);
+                                const isAiInfluenced = hasVisualPlan || jewelryPrice > 0;
 
-                    {/* Google Bulk Sync */}
-                    {onBulkSync && (
-                        <button
-                            onClick={() => onBulkSync(sortedAppointments)}
-                            className="ml-auto flex items-center gap-2 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs transition-colors"
-                        >
-                            <RefreshCw className="w-3 h-3" /> סנכרן הכל לגוגל
-                        </button>
-                    )}
-                </div>
-            )}
+                                let imageUrl = null;
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-right text-sm border-collapse">
-                    <thead className="">
-                        <tr className="border-b border-white/5 text-slate-500 text-xs bg-brand-dark/50 shadow-sm">
-                            <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('client_name')}>
-                                לקוח <SortIcon column="client_name" />
-                            </th>
-                            <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('start_time')}>
-                                מועד התור <SortIcon column="start_time" />
-                            </th>
-                            <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('created_at')}>
-                                נוצר ב <SortIcon column="created_at" />
-                            </th>
-                            <th className="py-4 px-6 font-medium whitespace-nowrap">שירותים</th>
-                            <th className="py-4 px-6 font-medium whitespace-nowrap text-center">מחיר כולל</th>
-                            <th className="py-4 px-6 font-medium whitespace-nowrap cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('status')}>
-                                סטטוס <SortIcon column="status" />
-                            </th>
-                            <th className="py-4 px-6 text-left whitespace-nowrap">פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-slate-300 divide-y divide-white/5">
-                        {sortedAppointments.length > 0 ? sortedAppointments.map((apt: any) => {
-                            const isHighlighted = apt.id === filterId;
-                            const { servicesList, calculatedBasePrice, finalPrice, couponCode, discount, jewelryPrice } = getCalculatedData(apt);
-                            const hasVisualPlan = !!(apt.visual_plan || apt.ai_recommendation_text);
-                            const isAiInfluenced = hasVisualPlan || jewelryPrice > 0;
+                                // 1. Try parsing visual plan for image
+                                if (apt.visual_plan) {
+                                    try {
+                                        const vp = typeof apt.visual_plan === 'string' ? JSON.parse(apt.visual_plan) : apt.visual_plan;
+                                        if (vp.original_image) imageUrl = vp.original_image;
+                                        else if (vp.userImage) imageUrl = vp.userImage;
+                                    } catch (e) { }
+                                } else if (apt.ai_recommendation_text) {
+                                    try {
+                                        const vp = typeof apt.ai_recommendation_text === 'string' ? JSON.parse(apt.ai_recommendation_text) : apt.ai_recommendation_text;
+                                        if (vp.original_image) imageUrl = vp.original_image;
+                                    } catch (e) { }
+                                }
 
-                            let imageUrl = null;
+                                // 2. Fallback to notes regex if not found in visual plan
+                                if (!imageUrl && apt.notes) {
+                                    const imageMatch = apt.notes.match(/\[.*?\]\((https?:\/\/[^\)]+)\)/) || apt.notes.match(/(https?:\/\/[^\s]+)/);
+                                    if (imageMatch) imageUrl = imageMatch[1] || imageMatch[0];
+                                }
 
-                            // 1. Try parsing visual plan for image
-                            if (apt.visual_plan) {
-                                try {
-                                    const vp = typeof apt.visual_plan === 'string' ? JSON.parse(apt.visual_plan) : apt.visual_plan;
-                                    if (vp.original_image) imageUrl = vp.original_image;
-                                    else if (vp.userImage) imageUrl = vp.userImage;
-                                } catch (e) { }
-                            } else if (apt.ai_recommendation_text) {
-                                try {
-                                    const vp = typeof apt.ai_recommendation_text === 'string' ? JSON.parse(apt.ai_recommendation_text) : apt.ai_recommendation_text;
-                                    if (vp.original_image) imageUrl = vp.original_image;
-                                } catch (e) { }
-                            }
-
-                            // 2. Fallback to notes regex if not found in visual plan
-                            if (!imageUrl && apt.notes) {
-                                const imageMatch = apt.notes.match(/\[.*?\]\((https?:\/\/[^\)]+)\)/) || apt.notes.match(/(https?:\/\/[^\s]+)/);
-                                if (imageMatch) imageUrl = imageMatch[1] || imageMatch[0];
-                            }
-
-                            return (
-                                <tr
-                                    key={apt.id}
-                                    ref={(el) => { rowRefs.current[apt.id] = el; }}
-                                    className={`transition-colors duration-300 ${isHighlighted ? 'bg-brand-primary/20 hover:bg-brand-primary/25 shadow-[inset_3px_0_0_0_#d4b585]' : 'hover:bg-white/[0.02]'}`}
-                                >
-                                    <td className="py-4 px-6 align-top">
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                onClick={() => onViewProfile && onViewProfile(apt)}
-                                                className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-brand-primary/50 transition-all flex-shrink-0"
-                                            >
-                                                {apt.client_avatar_url ? (
-                                                    <img src={apt.client_avatar_url} alt={apt.client_name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-brand-primary font-bold text-sm">{apt.client_name?.charAt(0)}</span>
-                                                )}
-                                            </div>
-                                            <div>
+                                return (
+                                    <tr
+                                        key={apt.id}
+                                        ref={(el) => { rowRefs.current[apt.id] = el; }}
+                                        className={`transition-colors duration-300 ${isHighlighted ? 'bg-brand-primary/20 hover:bg-brand-primary/25 shadow-[inset_3px_0_0_0_#d4b585]' : 'hover:bg-white/[0.02]'}`}
+                                    >
+                                        <td className="py-4 px-6 align-top">
+                                            <div className="flex items-center gap-3">
                                                 <div
-                                                    className={`font-medium cursor-pointer hover:text-brand-primary transition-colors ${isHighlighted ? 'text-brand-primary' : 'text-white'}`}
                                                     onClick={() => onViewProfile && onViewProfile(apt)}
+                                                    className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-brand-primary/50 transition-all flex-shrink-0"
                                                 >
-                                                    {apt.client_name}
+                                                    {apt.client_avatar_url ? (
+                                                        <img src={apt.client_avatar_url} alt={apt.client_name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-brand-primary font-bold text-sm">{apt.client_name?.charAt(0)}</span>
+                                                    )}
                                                 </div>
-                                                <div className="text-xs text-slate-500">{apt.client_phone}</div>
-                                            </div>
-                                            {imageUrl && (
-                                                <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-brand-primary transition-colors p-1" title="צפה בתמונת לקוח">
-                                                    <ImageIcon className="w-4 h-4" />
-                                                </a>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-slate-400 align-top">
-                                        <div>{new Date(apt.start_time).toLocaleDateString('he-IL')}</div>
-                                        <div className="text-xs">{new Date(apt.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
-                                    </td>
-                                    <td className="py-4 px-6 text-slate-500 text-xs align-top">
-                                        {apt.created_at ? new Date(apt.created_at).toLocaleDateString('he-IL') : '-'}
-                                    </td>
-                                    <td className="py-4 px-6 align-top">
-                                        <div className="flex flex-col gap-1.5">
-                                            {servicesList.map((svc: any, idx: number) => (
-                                                <div key={idx} className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs border w-fit gap-1 ${svc.type === 'jewelry' ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary' : 'bg-white/5 border-white/10 text-slate-300'}`}>
-                                                    {svc.type === 'jewelry' && <Sparkles className="w-2.5 h-2.5" />}
-                                                    {svc.name}
+                                                <div>
+                                                    <div
+                                                        className={`font-medium cursor-pointer hover:text-brand-primary transition-colors ${isHighlighted ? 'text-brand-primary' : 'text-white'}`}
+                                                        onClick={() => onViewProfile && onViewProfile(apt)}
+                                                    >
+                                                        {apt.client_name}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">{apt.client_phone}</div>
                                                 </div>
-                                            ))}
-                                            {apt.notes && !apt.notes.includes('--- חבילת שירותים משולבת ---') && (
-                                                <div className="text-[10px] text-slate-500 mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-center align-top relative">
-                                        <div className="group inline-block cursor-help relative">
-                                            <div className="flex flex-col items-center">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="font-bold text-emerald-400 text-sm">₪{finalPrice}</span>
-                                                    {isAiInfluenced && <Sparkles className="w-3 h-3 text-brand-primary" />}
-                                                </div>
-                                                {couponCode && (
-                                                    <span className="text-[10px] text-brand-primary bg-brand-primary/10 px-1.5 rounded mt-1 flex items-center gap-1">
-                                                        <Ticket className="w-2 h-2" /> {couponCode}
-                                                    </span>
+                                                {imageUrl && (
+                                                    <button onClick={() => setViewImage(imageUrl)} className="text-slate-400 hover:text-brand-primary transition-colors p-1" title="צפה בתמונת לקוח">
+                                                        <ImageIcon className="w-4 h-4" />
+                                                    </button>
                                                 )}
                                             </div>
-
-                                            {/* Price Breakdown Tooltip */}
-                                            <div className="absolute top-full right-1/2 translate-x-1/2 mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-3 pointer-events-none text-right">
-                                                <div className="text-xs space-y-2">
-                                                    <div className="flex justify-between text-slate-400 border-b border-white/5 pb-1">
-                                                        <span>טיפולים:</span>
-                                                        <span>₪{calculatedBasePrice - jewelryPrice}</span>
+                                        </td>
+                                        <td className="py-4 px-6 text-slate-400 align-top">
+                                            <div>{new Date(apt.start_time).toLocaleDateString('he-IL')}</div>
+                                            <div className="text-xs">{new Date(apt.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+                                        </td>
+                                        <td className="py-4 px-6 text-slate-500 text-xs align-top">
+                                            {apt.created_at ? new Date(apt.created_at).toLocaleDateString('he-IL') : '-'}
+                                        </td>
+                                        <td className="py-4 px-6 align-top">
+                                            <div className="flex flex-col gap-1.5">
+                                                {servicesList.map((svc: any, idx: number) => (
+                                                    <div key={idx} className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs border w-fit gap-1 ${svc.type === 'jewelry' ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary' : 'bg-white/5 border-white/10 text-slate-300'}`}>
+                                                        {svc.type === 'jewelry' && <Sparkles className="w-2.5 h-2.5" />}
+                                                        {svc.name}
                                                     </div>
-                                                    {jewelryPrice > 0 && (
-                                                        <div className="flex justify-between text-brand-primary/80 border-b border-white/5 pb-1">
-                                                            <span>תכשיטים:</span>
-                                                            <span>₪{jewelryPrice}</span>
-                                                        </div>
-                                                    )}
-                                                    {discount > 0 && (
-                                                        <div className="flex justify-between text-emerald-400">
-                                                            <span>הנחה:</span>
-                                                            <span>-₪{discount}</span>
-                                                        </div>
-                                                    )}
+                                                ))}
+                                                {apt.notes && !apt.notes.includes('--- חבילת שירותים משולבת ---') && (
+                                                    <div className="text-[10px] text-slate-500 mt-1 max-w-[150px] truncate" title={apt.notes}>{apt.notes}</div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6 text-center align-top relative">
+                                            <div className="group inline-block cursor-help relative">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-bold text-emerald-400 text-sm">₪{finalPrice}</span>
+                                                        {isAiInfluenced && <Sparkles className="w-3 h-3 text-brand-primary" />}
+                                                    </div>
                                                     {couponCode && (
-                                                        <div className="flex justify-between text-brand-primary text-[10px] pt-1">
-                                                            <span>קופון:</span>
-                                                            <span>{couponCode}</span>
-                                                        </div>
+                                                        <span className="text-[10px] text-brand-primary bg-brand-primary/10 px-1.5 rounded mt-1 flex items-center gap-1">
+                                                            <Ticket className="w-2 h-2" /> {couponCode}
+                                                        </span>
                                                     )}
-                                                    <div className="border-t border-white/10 pt-2 mt-1 flex justify-between font-bold text-white">
-                                                        <span>סה"כ:</span>
-                                                        <span>₪{finalPrice}</span>
-                                                    </div>
                                                 </div>
-                                                {/* Arrow */}
-                                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-brand-surface border-l border-t border-white/10 rotate-45"></div>
+
+                                                {/* Price Breakdown Tooltip */}
+                                                <div className="absolute top-full right-1/2 translate-x-1/2 mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-3 pointer-events-none text-right">
+                                                    <div className="text-xs space-y-2">
+                                                        <div className="flex justify-between text-slate-400 border-b border-white/5 pb-1">
+                                                            <span>טיפולים:</span>
+                                                            <span>₪{calculatedBasePrice - jewelryPrice}</span>
+                                                        </div>
+                                                        {jewelryPrice > 0 && (
+                                                            <div className="flex justify-between text-brand-primary/80 border-b border-white/5 pb-1">
+                                                                <span>תכשיטים:</span>
+                                                                <span>₪{jewelryPrice}</span>
+                                                            </div>
+                                                        )}
+                                                        {discount > 0 && (
+                                                            <div className="flex justify-between text-emerald-400">
+                                                                <span>הנחה:</span>
+                                                                <span>-₪{discount}</span>
+                                                            </div>
+                                                        )}
+                                                        {couponCode && (
+                                                            <div className="flex justify-between text-brand-primary text-[10px] pt-1">
+                                                                <span>קופון:</span>
+                                                                <span>{couponCode}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="border-t border-white/10 pt-2 mt-1 flex justify-between font-bold text-white">
+                                                            <span>סה"כ:</span>
+                                                            <span>₪{finalPrice}</span>
+                                                        </div>
+                                                    </div>
+                                                    {/* Arrow */}
+                                                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-brand-surface border-l border-t border-white/10 rotate-45"></div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 align-top">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${apt.status === 'confirmed'
-                                            ? 'bg-emerald-500/10 text-emerald-400'
-                                            : apt.status === 'cancelled'
-                                                ? 'bg-red-500/10 text-red-400'
-                                                : 'bg-amber-500/10 text-amber-400'
-                                            }`}>
-                                            {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-6 align-top">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <div className="flex bg-white/5 rounded-lg mr-2">
-                                                {/* AI Visual Plan Button */}
-                                                {hasVisualPlan && (
+                                        </td>
+                                        <td className="py-4 px-6 align-top">
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${apt.status === 'confirmed'
+                                                ? 'bg-emerald-500/10 text-emerald-400'
+                                                : apt.status === 'cancelled'
+                                                    ? 'bg-red-500/10 text-red-400'
+                                                    : 'bg-amber-500/10 text-amber-400'
+                                                }`}>
+                                                {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6 align-top">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <div className="flex bg-white/5 rounded-lg mr-2">
+                                                    {/* AI Visual Plan Button */}
+                                                    {hasVisualPlan && (
+                                                        <button
+                                                            onClick={() => onViewVisualPlan(apt)}
+                                                            className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
+                                                            title="צפה בתוכנית AI ותמונה"
+                                                        >
+                                                            <Wand2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+
                                                     <button
-                                                        onClick={() => onViewVisualPlan(apt)}
-                                                        className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
-                                                        title="צפה בתוכנית AI ותמונה"
+                                                        onClick={() => sendWhatsapp(apt, 'status_update', studioAddress)}
+                                                        className={`p-2 transition-colors ${!hasVisualPlan ? 'rounded-r-lg' : ''} border-l border-white/5 ${apt.status === 'confirmed'
+                                                            ? 'text-emerald-400 hover:bg-emerald-500/20'
+                                                            : (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
+                                                            }`}
+                                                        title={apt.status === 'cancelled' ? "שלח הודעת ביטול" : "שלח הודעת סטטוס"}
                                                     >
-                                                        <Wand2 className="w-4 h-4" />
+                                                        <Send className="w-4 h-4" />
+                                                    </button>
+
+                                                    {apt.status === 'confirmed' && (
+                                                        <button
+                                                            onClick={() => sendWhatsapp(apt, 'reminder', studioAddress)}
+                                                            className="p-2 text-slate-400 hover:bg-white/10 border-l border-white/5 transition-colors"
+                                                            title="שלח תזכורת"
+                                                        >
+                                                            <Clock className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+
+                                                    <button
+                                                        onClick={() => apt.signature && onDownloadPdf(apt)}
+                                                        disabled={!apt.signature}
+                                                        className={`p-2 transition-colors rounded-l-lg border-l border-white/5 ${apt.signature
+                                                            ? 'text-slate-400 hover:bg-white/10 hover:text-white'
+                                                            : 'text-slate-700 cursor-not-allowed opacity-50'
+                                                            }`}
+                                                        title={apt.signature ? "הורד הצהרת בריאות (PDF)" : "אין חתימה זמינה להורדה"}
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+
+                                                {/* Google Calendar Sync Button */}
+                                                {apt.status !== 'cancelled' && (
+                                                    <button
+                                                        onClick={() => onSyncToCalendar(apt)}
+                                                        className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors mr-1"
+                                                        title="סנכרן ליומן גוגל"
+                                                    >
+                                                        <CalendarPlus className="w-4 h-4" />
                                                     </button>
                                                 )}
 
-                                                <button
-                                                    onClick={() => sendWhatsapp(apt, 'status_update', studioAddress)}
-                                                    className={`p-2 transition-colors ${!hasVisualPlan ? 'rounded-r-lg' : ''} border-l border-white/5 ${apt.status === 'confirmed'
-                                                        ? 'text-emerald-400 hover:bg-emerald-500/20'
-                                                        : (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
-                                                        }`}
-                                                    title={apt.status === 'cancelled' ? "שלח הודעת ביטול" : "שלח הודעת סטטוס"}
-                                                >
-                                                    <Send className="w-4 h-4" />
-                                                </button>
 
-                                                {apt.status === 'confirmed' && (
-                                                    <button
-                                                        onClick={() => sendWhatsapp(apt, 'reminder', studioAddress)}
-                                                        className="p-2 text-slate-400 hover:bg-white/10 border-l border-white/5 transition-colors"
-                                                        title="שלח תזכורת"
-                                                    >
-                                                        <Clock className="w-4 h-4" />
+                                                {apt.status === 'pending' && (
+                                                    <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors" title="אשר תור">
+                                                        <Check className="w-4 h-4" />
                                                     </button>
                                                 )}
-
-                                                <button
-                                                    onClick={() => apt.signature && onDownloadPdf(apt)}
-                                                    disabled={!apt.signature}
-                                                    className={`p-2 transition-colors rounded-l-lg border-l border-white/5 ${apt.signature
-                                                        ? 'text-slate-400 hover:bg-white/10 hover:text-white'
-                                                        : 'text-slate-700 cursor-not-allowed opacity-50'
-                                                        }`}
-                                                    title={apt.signature ? "הורד הצהרת בריאות (PDF)" : "אין חתימה זמינה להורדה"}
-                                                >
-                                                    <FileText className="w-4 h-4" />
-                                                </button>
+                                                {apt.status !== 'cancelled' && (
+                                                    <button onClick={() => onCancelRequest(apt)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
-
-                                            {/* Google Calendar Sync Button */}
-                                            {apt.status !== 'cancelled' && (
-                                                <button
-                                                    onClick={() => onSyncToCalendar(apt)}
-                                                    className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors mr-1"
-                                                    title="סנכרן ליומן גוגל"
-                                                >
-                                                    <CalendarPlus className="w-4 h-4" />
-                                                </button>
-                                            )}
-
-
-                                            {apt.status === 'pending' && (
-                                                <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors" title="אשר תור">
-                                                    <Check className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                            {apt.status !== 'cancelled' && (
-                                                <button onClick={() => onCancelRequest(apt)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
+                                        </td>
+                                    </tr>
+                                );
+                            }) : (
+                                <tr>
+                                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                                        לא נמצאו תורים
                                     </td>
                                 </tr>
-                            );
-                        }) : (
-                            <tr>
-                                <td colSpan={7} className="py-12 text-center text-slate-500">
-                                    לא נמצאו תורים
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            {
+                viewImage && (
+                    <Modal isOpen={!!viewImage} onClose={() => setViewImage(null)} title="תמונת לקוח">
+                        <div className="flex justify-center items-center p-4">
+                            <img src={viewImage || ''} alt="Client" className="max-w-full max-h-[70vh] rounded-lg object-contain shadow-2xl" />
+                        </div>
+                        <div className="flex justify-center pb-4">
+                            <Button onClick={() => window.open(viewImage || '', '_blank')} variant="outline" className="text-xs">
+                                פתח בחלון חדש
+                            </Button>
+                        </div>
+                    </Modal>
+                )
+            }
+        </>
     );
 };
 
