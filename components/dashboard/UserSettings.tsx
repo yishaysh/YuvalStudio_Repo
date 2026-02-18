@@ -92,43 +92,37 @@ export const UserSettings: React.FC = () => {
 
                         <div className="space-y-4">
                             <div>
-                                <div className="relative">
-                                    <User className="absolute right-3 top-3 w-5 h-5 text-slate-500 z-10" />
-                                    <Input
-                                        label="שם מלא"
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                        className="pr-10"
-                                        placeholder="שמך המלא"
-                                        required
-                                    />
-                                </div>
+                                <Input
+                                    label="שם מלא"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    className="text-right"
+                                    placeholder="שמך המלא"
+                                    required
+                                    icon={<User className="w-5 h-5" />}
+                                />
                             </div>
 
                             <div>
-                                <div className="relative">
-                                    <Phone className="absolute right-3 top-3 w-5 h-5 text-slate-500 z-10" />
-                                    <Input
-                                        label="טלפון"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        className="pr-10 text-right"
-                                        placeholder="מספר טלפון"
-                                        dir="ltr"
-                                    />
-                                </div>
+                                <Input
+                                    label="טלפון"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    className="text-right"
+                                    placeholder="מספר טלפון"
+                                    dir="ltr"
+                                    icon={<Phone className="w-5 h-5" />}
+                                />
                             </div>
 
                             <div>
-                                <div className="relative">
-                                    <Mail className="absolute right-3 top-3 w-5 h-5 text-slate-500 z-10" />
-                                    <Input
-                                        label="אימייל (לקריאה בלבד)"
-                                        value={user?.email || ''}
-                                        readOnly
-                                        className="pr-10 opacity-60 cursor-not-allowed border-white/5 bg-white/5"
-                                    />
-                                </div>
+                                <Input
+                                    label="אימייל (לקריאה בלבד)"
+                                    value={user?.email || ''}
+                                    readOnly
+                                    className="opacity-60 cursor-not-allowed border-white/5 bg-white/5 text-left"
+                                    icon={<Mail className="w-5 h-5" />}
+                                />
                             </div>
                         </div>
 

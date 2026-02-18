@@ -22,6 +22,9 @@ export const ActionDock: React.FC<ActionDockProps> = ({ onBookNew, onViewGallery
                 <Button variant="outline" className="sm:hidden flex-1 border-white/10" onClick={onViewGallery}>
                     <Image className="w-4 h-4" />
                 </Button>
+                <Button variant="outline" className="sm:hidden flex-1 border-white/10" onClick={onOpenSettings}>
+                    <Settings className="w-4 h-4" />
+                </Button>
             </div>
 
             <div className="flex gap-1 w-full sm:w-auto justify-end">

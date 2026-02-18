@@ -65,16 +65,24 @@ export const Card: React.FC<CardProps> = ({ children, className = '', ...props }
 // --- Input ---
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  icon?: React.ReactNode;
 }
 
-export const Input: React.FC<InputProps> = ({ label, className = '', ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, icon, className = '', ...props }) => {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-slate-400 ms-1">{label}</label>
-      <input
-        className={`bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 ${className}`}
-        {...props}
-      />
+      <div className="relative">
+        <input
+          className={`w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 ${icon ? 'pl-12' : ''} ${className}`}
+          {...props}
+        />
+        {icon && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+            {icon}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
