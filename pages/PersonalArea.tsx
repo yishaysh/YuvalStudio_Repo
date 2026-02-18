@@ -81,30 +81,51 @@ const PersonalArea: React.FC = () => {
             <div className="container mx-auto px-4 pt-24 pb-24 relative z-10">
                 {/* Header */}
                 <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
-                    <div>
+                    <div className="flex items-center gap-6">
+                        {/* Avatar */}
                         <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-brand-primary font-medium tracking-widest text-sm uppercase mb-2"
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-brand-primary/30 overflow-hidden bg-brand-primary/10 flex-shrink-0"
                         >
-                            THE EAR IDENTITY PORTAL
+                            {(profile?.avatar_url || user?.user_metadata?.avatar_url) ? (
+                                <img
+                                    src={profile?.avatar_url || user?.user_metadata?.avatar_url}
+                                    alt={name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-3xl font-serif text-brand-primary">
+                                    {name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                         </motion.div>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-4xl md:text-6xl font-serif font-bold text-white mb-2"
-                        >
-                            שלום, {name}
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-slate-400 max-w-2xl text-lg leading-relaxed"
-                        >
-                            האיזור האישי שלך לניהול תורים וצפייה בהיסטוריית הטיפולים.
-                        </motion.p>
+
+                        <div>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-brand-primary font-medium tracking-widest text-sm uppercase mb-2"
+                            >
+                                THE EAR IDENTITY PORTAL
+                            </motion.div>
+                            <motion.h1
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="text-4xl md:text-6xl font-serif font-bold text-white mb-2"
+                            >
+                                שלום, {name}
+                            </motion.h1>
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-slate-400 max-w-2xl text-lg leading-relaxed"
+                            >
+                                האיזור האישי שלך לניהול תורים וצפייה בהיסטוריית הטיפולים.
+                            </motion.p>
+                        </div>
                     </div>
 
                     <motion.div

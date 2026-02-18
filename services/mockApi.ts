@@ -396,7 +396,8 @@ export const api = {
         .from('appointments')
         .select(`
             *,
-            services (name, price)
+            services (name, price),
+            profiles (avatar_url)
         `)
         .order('start_time', { ascending: false });
 
@@ -407,6 +408,7 @@ export const api = {
         client_name: item.guest_name || 'לקוח רשום',
         client_email: item.guest_email,
         client_phone: item.guest_phone,
+        client_avatar_url: item.profiles?.avatar_url, // Map avatar
         service_id: item.service_id,
         service_name: item.services?.name,
         service_price: item.services?.price,

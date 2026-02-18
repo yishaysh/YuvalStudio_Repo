@@ -116,6 +116,80 @@ ${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 
 // --- SHARED COMPONENTS ---
 
+// --- User Profile Modal ---
+const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
+    if (!isOpen || !user) return null;
+
+    const userAppointments = appointments.filter((apt: any) =>
+        apt.client_id === user.client_id || apt.client_phone === user.client_phone
+    ).sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+
+    const totalApts = userAppointments.length;
+    const cancelled = userAppointments.filter((a: any) => a.status === 'cancelled').length;
+    const completed = userAppointments.filter((a: any) => a.status === 'confirmed').length; // Assuming confirmed means completed/future confirmed
+    // Calculate total revenue from this user
+    const revenue = userAppointments.reduce((sum: number, apt: any) => sum + (apt.final_price || apt.services?.price || 0), 0);
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="פרופיל לקוח">
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="w-24 h-24 rounded-full bg-brand-primary/10 border-2 border-brand-primary/30 flex items-center justify-center overflow-hidden mb-4 shadow-lg shadow-brand-primary/10">
+                        {user.client_avatar_url ? (
+                            <img src={user.client_avatar_url} alt={user.client_name} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-3xl font-serif text-brand-primary">{user.client_name?.charAt(0)}</span>
+                        )}
+                    </div>
+                    <h2 className="text-2xl font-serif text-white">{user.client_name}</h2>
+                    <div className="flex items-center gap-2 text-slate-400 mt-1">
+                        <span className="text-sm">{user.client_phone}</span>
+                        {user.client_email && <span className="text-xs">• {user.client_email}</span>}
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-3 gap-4 w-full mt-6">
+                        <div className="text-center p-3 bg-brand-dark/50 rounded-xl border border-white/5">
+                            <div className="text-xl font-bold text-white">{totalApts}</div>
+                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">סה"כ תורים</div>
+                        </div>
+                        <div className="text-center p-3 bg-brand-dark/50 rounded-xl border border-white/5">
+                            <div className="text-xl font-bold text-emerald-400">{completed}</div>
+                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">הושלמו</div>
+                        </div>
+                        <div className="text-center p-3 bg-brand-dark/50 rounded-xl border border-white/5">
+                            <div className="text-xl font-bold text-brand-primary">₪{revenue}</div>
+                            <div className="text-[10px] text-slate-500 uppercase tracking-wider">הכנסות</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Recent History */}
+                <div>
+                    <h3 className="text-lg font-serif text-white mb-3">היסטוריית טיפולים</h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                        {userAppointments.length > 0 ? userAppointments.map((apt: any) => (
+                            <div key={apt.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 hover:border-brand-primary/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${apt.status === 'confirmed' ? 'bg-emerald-500' : apt.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
+                                    <div>
+                                        <div className="text-sm font-medium text-white">{apt.service_name || 'שירות כללי'}</div>
+                                        <div className="text-xs text-slate-500">{new Date(apt.start_time).toLocaleDateString('he-IL')} • {new Date(apt.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    </div>
+                                </div>
+                                <div className="text-sm font-bold text-brand-primary">₪{apt.final_price || apt.services?.price || '-'}</div>
+                            </div>
+                        )) : (
+                            <div className="text-center py-8 text-slate-500 text-sm">אין היסטוריית טיפולים</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 const AppointmentsList = ({
     appointments,
     onStatusUpdate,
@@ -128,7 +202,8 @@ const AppointmentsList = ({
     allServices = [],
     onSyncToCalendar,
     onBulkSync,
-    onViewVisualPlan
+    onViewVisualPlan,
+    onViewProfile
 }: any) => {
     const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
     const [statusFilter, setStatusFilter] = useState('all');
@@ -384,9 +459,24 @@ const AppointmentsList = ({
                                     className={`transition-colors duration-300 ${isHighlighted ? 'bg-brand-primary/20 hover:bg-brand-primary/25 shadow-[inset_3px_0_0_0_#d4b585]' : 'hover:bg-white/[0.02]'}`}
                                 >
                                     <td className="py-4 px-6 align-top">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                onClick={() => onViewProfile && onViewProfile(apt)}
+                                                className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-brand-primary/50 transition-all flex-shrink-0"
+                                            >
+                                                {apt.client_avatar_url ? (
+                                                    <img src={apt.client_avatar_url} alt={apt.client_name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-brand-primary font-bold text-sm">{apt.client_name?.charAt(0)}</span>
+                                                )}
+                                            </div>
                                             <div>
-                                                <div className={`font-medium ${isHighlighted ? 'text-brand-primary' : 'text-white'}`}>{apt.client_name}</div>
+                                                <div
+                                                    className={`font-medium cursor-pointer hover:text-brand-primary transition-colors ${isHighlighted ? 'text-brand-primary' : 'text-white'}`}
+                                                    onClick={() => onViewProfile && onViewProfile(apt)}
+                                                >
+                                                    {apt.client_name}
+                                                </div>
                                                 <div className="text-xs text-slate-500">{apt.client_phone}</div>
                                             </div>
                                             {imageUrl && (
@@ -1629,6 +1719,7 @@ const Admin: React.FC = () => {
 
     // New State for Visual Plan Viewer
     const [visualPlanData, setVisualPlanData] = useState<any | null>(null);
+    const [selectedUserProfile, setSelectedUserProfile] = useState<any | null>(null);
 
     const showNotification = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -1647,7 +1738,7 @@ const Admin: React.FC = () => {
         setServices(srvs);
         setSettings(stgs);
         setStats(sts);
-        setGallery(gall);
+        setGallery(gall.items);
         if (!silent) setIsLoading(false);
     }, []);
 
@@ -1868,6 +1959,7 @@ const Admin: React.FC = () => {
                                 onSyncToCalendar={handleSyncToCalendar}
                                 onBulkSync={handleBulkSync}
                                 onViewVisualPlan={handleViewVisualPlan}
+                                onViewProfile={(apt: Appointment) => setSelectedUserProfile(apt)}
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
@@ -1953,6 +2045,13 @@ const Admin: React.FC = () => {
                     </div>
                 )}
             </Modal>
+
+            <UserProfileModal
+                isOpen={!!selectedUserProfile}
+                onClose={() => setSelectedUserProfile(null)}
+                user={selectedUserProfile}
+                appointments={appointments}
+            />
 
             <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
                 {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}

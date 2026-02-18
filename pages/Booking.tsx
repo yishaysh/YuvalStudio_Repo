@@ -408,7 +408,7 @@ const Booking: React.FC = () => {
                 ]);
                 setServices(fetchedServices);
                 setStudioSettings(fetchedSettings);
-                setGalleryImages(fetchedGallery || []);
+                setGalleryImages(fetchedGallery?.items || []);
 
                 // Hydrate Inventory from Settings
                 // @ts-ignore

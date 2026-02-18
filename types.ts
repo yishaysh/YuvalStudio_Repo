@@ -16,6 +16,7 @@ export interface Profile {
   phone?: string;
   role: 'client' | 'admin';
   created_at?: string;
+  avatar_url?: string; // URL to profile image
   wishlist?: string[]; // Array of Service IDs
   last_aftercare_checkin?: string; // ISO Date string
 }
