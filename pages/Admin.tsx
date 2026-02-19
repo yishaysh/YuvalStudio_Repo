@@ -54,55 +54,68 @@ const isToday = (date: Date) => {
         date.getFullYear() === today.getFullYear();
 };
 
-const sendWhatsapp = (apt: any, type: 'status_update' | 'reminder', studioAddress?: string) => {
+const sendWhatsapp = (apt: any, type: 'status_update' | 'reminder', settings?: StudioSettings) => {
     let msg = '';
     const date = new Date(apt.start_time).toLocaleDateString('he-IL');
     const time = new Date(apt.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const address = studioAddress || DEFAULT_STUDIO_DETAILS.address;
+    const address = settings?.studio_details?.address || DEFAULT_STUDIO_DETAILS.address;
+    const templates = settings?.whatsapp_templates || {};
+
+    const replaceVars = (template: string) => {
+        return template
+            .replace(/{client_name}/g, apt.client_name)
+            .replace(/{date}/g, date)
+            .replace(/{time}/g, time)
+            .replace(/{address}/g, address)
+            .replace(/{service}/g, apt.service_name || 'פירסינג')
+            .replace(/{reason}/g, apt.notes?.match(/סיבת ביטול: (.*?)(\n|$)/)?.[1] || '');
+    };
 
     if (type === 'reminder') {
-        msg = `*תזכורת לתור* ⏰
-            
-היי ${apt.client_name},
+        const defaultTemplate = `*תזכורת לתור* ⏰
+
+היי {client_name},
 רצינו להזכיר לך לגבי התור שקבעת לסטודיו של יובל:
 
-📅 *מחר בשעה:* ${time}
-📍 *כתובת:* ${address}
+📅 *מחר בשעה:* {time}
+📍 *כתובת:* {address}
 
 מחכים לראותך! 🙏`;
+        msg = replaceVars(templates.appointment_reminder || defaultTemplate);
     } else {
         switch (apt.status) {
             case 'confirmed':
-                msg = `💎 *אישור תור - הסטודיו של יובל* 💎
+                const confirmTemplate = `💎 *אישור תור - הסטודיו של יובל* 💎
 
-היי ${apt.client_name}, שמחים לאשר את התור שלך!
+היי {client_name}, שמחים לאשר את התור שלך!
 
-🗓 *תאריך:* ${date}
-⌚ *שעה:* ${time}
-📍 *כתובת:* ${address}
-💫 *טיפול:* ${apt.service_name || 'פירסינג'}
+🗓 *תאריך:* {date}
+⌚ *שעה:* {time}
+📍 *כתובת:* {address}
+💫 *טיפול:* {service}
 
 נתראה בקרוב! ✨`;
+                msg = replaceVars(templates.booking_confirmation || confirmTemplate);
                 break;
             case 'cancelled':
-                const cancelReasonMatch = apt.notes?.match(/סיבת ביטול: (.*?)(\n|$)/);
-                const reason = cancelReasonMatch ? cancelReasonMatch[1] : '';
+                const cancelTemplate = `⛔ *עדכון לגבי התור שלך*
 
-                msg = `⛔ *עדכון לגבי התור שלך*
+היי {client_name},
+לצערנו התור שנקבע לתאריך {date} בשעה {time} בוטל.
 
-היי ${apt.client_name},
-לצערנו התור שנקבע לתאריך ${date} בשעה ${time} בוטל.
+📝 *סיבת הביטול:* {reason}
 
-${reason ? `📝 *סיבת הביטול:* ${reason}\n` : ''}
 ניתן לקבוע מחדש דרך האתר בכל עת.`;
+                msg = replaceVars(templates.booking_cancellation || cancelTemplate);
                 break;
             default: // pending
-                msg = `⏳ *התור שלך בבדיקה*
+                const pendingTemplate = `⏳ *התור שלך בבדיקה*
 
-היי ${apt.client_name},
-קיבלנו את בקשתך לתור בסטודיו של יובל לתאריך ${date}.
+היי {client_name},
+קיבלנו את בקשתך לתור בסטודיו של יובל לתאריך {date}.
 
 נעדכן ברגע שהתור יאושר סופית. 🕊️`;
+                msg = replaceVars(templates.booking_pending || pendingTemplate);
         }
     }
 
@@ -203,7 +216,8 @@ const AppointmentsList = ({
     onSyncToCalendar,
     onBulkSync,
     onViewVisualPlan,
-    onViewProfile
+    onViewProfile,
+    settings
 }: any) => {
     const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
     const [statusFilter, setStatusFilter] = useState('all');
@@ -582,7 +596,7 @@ const AppointmentsList = ({
                                                     )}
 
                                                     <button
-                                                        onClick={() => sendWhatsapp(apt, 'status_update', studioAddress)}
+                                                        onClick={() => sendWhatsapp(apt, 'status_update', settings)}
                                                         className={`p-2 transition-colors ${!hasVisualPlan ? 'rounded-r-lg' : ''} border-l border-white/5 ${apt.status === 'confirmed'
                                                             ? 'text-emerald-400 hover:bg-emerald-500/20'
                                                             : (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
@@ -594,7 +608,7 @@ const AppointmentsList = ({
 
                                                     {apt.status === 'confirmed' && (
                                                         <button
-                                                            onClick={() => sendWhatsapp(apt, 'reminder', studioAddress)}
+                                                            onClick={() => sendWhatsapp(apt, 'reminder', settings)}
                                                             className="p-2 text-slate-400 hover:bg-white/10 border-l border-white/5 transition-colors"
                                                             title="שלח תזכורת"
                                                         >
@@ -1445,6 +1459,70 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
             </Card>
 
             <Card>
+                <SectionHeading title="תבניות הודעות וואטסאפ" />
+                <div className="space-y-4">
+                    <div className="text-xs text-slate-500 mb-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <strong>משתנים זמינים:</strong> {'{client_name}'}, {'{date}'}, {'{time}'}, {'{address}'}, {'{service}'}, {'{reason}'}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-emerald-400 mb-2">אישור תור</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.booking_confirmation || ''}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_confirmation: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה תישלח כשהתור מאושר..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-amber-400 mb-2">תזכורת (ידנית)</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.appointment_reminder || ''}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, appointment_reminder: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה לתזכורת..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-red-400 mb-2">ביטול תור</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.booking_cancellation || ''}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_cancellation: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה בעת ביטול..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">תור בבדיקה (Pending)</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.booking_pending || ''}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_pending: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה ראשונית בעת קביעת תור..."
+                            />
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
+            <Card>
                 <div className="flex justify-between items-center mb-6">
                     <SectionHeading title="שעות פעילות" />
                 </div>
@@ -1978,6 +2056,7 @@ const Admin: React.FC = () => {
                                 onBulkSync={handleBulkSync}
                                 onViewVisualPlan={handleViewVisualPlan}
                                 onViewProfile={(apt: Appointment) => setSelectedUserProfile(apt)}
+                                settings={settings}
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}

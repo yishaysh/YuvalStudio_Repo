@@ -111,6 +111,7 @@ export interface StudioSettings {
   coupons: Coupon[];
   enable_ai?: boolean;
   enable_gallery?: boolean;
+  whatsapp_templates?: Record<string, string>;
 
 }
 
