@@ -54,6 +54,45 @@ const isToday = (date: Date) => {
         date.getFullYear() === today.getFullYear();
 };
 
+const DEFAULT_WHATSAPP_TEMPLATES = {
+    booking_confirmation: `💎 *אישור תור - הסטודיו של יובל* 💎
+
+היי {client_name}, שמחים לאשר את התור שלך!
+
+🗓 *תאריך:* {date}
+⌚ *שעה:* {time}
+📍 *כתובת:* {address}
+💫 *טיפול:* {service}
+
+נתראה בקרוב! ✨`,
+
+    appointment_reminder: `*תזכורת לתור* ⏰
+
+היי {client_name},
+רצינו להזכיר לך לגבי התור שקבעת לסטודיו של יובל:
+
+📅 *מחר בשעה:* {time}
+📍 *כתובת:* {address}
+
+מחכים לראותך! 🙏`,
+
+    booking_cancellation: `⛔ *עדכון לגבי התור שלך*
+
+היי {client_name},
+לצערנו התור שנקבע לתאריך {date} בשעה {time} בוטל.
+
+📝 *סיבת הביטול:* {reason}
+
+ניתן לקבוע מחדש דרך האתר בכל עת.`,
+
+    booking_pending: `⏳ *התור שלך בבדיקה*
+
+היי {client_name},
+קיבלנו את בקשתך לתור בסטודיו של יובל לתאריך {date}.
+
+נעדכן ברגע שהתור יאושר סופית. 🕊️`
+};
+
 const sendWhatsapp = (apt: any, type: 'status_update' | 'reminder', settings?: StudioSettings) => {
     let msg = '';
     const date = new Date(apt.start_time).toLocaleDateString('he-IL');
@@ -72,50 +111,17 @@ const sendWhatsapp = (apt: any, type: 'status_update' | 'reminder', settings?: S
     };
 
     if (type === 'reminder') {
-        const defaultTemplate = `*תזכורת לתור* ⏰
-
-היי {client_name},
-רצינו להזכיר לך לגבי התור שקבעת לסטודיו של יובל:
-
-📅 *מחר בשעה:* {time}
-📍 *כתובת:* {address}
-
-מחכים לראותך! 🙏`;
-        msg = replaceVars(templates.appointment_reminder || defaultTemplate);
+        msg = replaceVars(templates.appointment_reminder || DEFAULT_WHATSAPP_TEMPLATES.appointment_reminder);
     } else {
         switch (apt.status) {
             case 'confirmed':
-                const confirmTemplate = `💎 *אישור תור - הסטודיו של יובל* 💎
-
-היי {client_name}, שמחים לאשר את התור שלך!
-
-🗓 *תאריך:* {date}
-⌚ *שעה:* {time}
-📍 *כתובת:* {address}
-💫 *טיפול:* {service}
-
-נתראה בקרוב! ✨`;
-                msg = replaceVars(templates.booking_confirmation || confirmTemplate);
+                msg = replaceVars(templates.booking_confirmation || DEFAULT_WHATSAPP_TEMPLATES.booking_confirmation);
                 break;
             case 'cancelled':
-                const cancelTemplate = `⛔ *עדכון לגבי התור שלך*
-
-היי {client_name},
-לצערנו התור שנקבע לתאריך {date} בשעה {time} בוטל.
-
-📝 *סיבת הביטול:* {reason}
-
-ניתן לקבוע מחדש דרך האתר בכל עת.`;
-                msg = replaceVars(templates.booking_cancellation || cancelTemplate);
+                msg = replaceVars(templates.booking_cancellation || DEFAULT_WHATSAPP_TEMPLATES.booking_cancellation);
                 break;
             default: // pending
-                const pendingTemplate = `⏳ *התור שלך בבדיקה*
-
-היי {client_name},
-קיבלנו את בקשתך לתור בסטודיו של יובל לתאריך {date}.
-
-נעדכן ברגע שהתור יאושר סופית. 🕊️`;
-                msg = replaceVars(templates.booking_pending || pendingTemplate);
+                msg = replaceVars(templates.booking_pending || DEFAULT_WHATSAPP_TEMPLATES.booking_pending);
         }
     }
 
@@ -1470,7 +1476,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                             <label className="block text-sm font-medium text-emerald-400 mb-2">אישור תור</label>
                             <textarea
                                 className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.booking_confirmation || ''}
+                                value={localSettings.whatsapp_templates?.booking_confirmation || DEFAULT_WHATSAPP_TEMPLATES.booking_confirmation}
                                 onChange={e => {
                                     const newTemplates = { ...localSettings.whatsapp_templates, booking_confirmation: e.target.value };
                                     setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
@@ -1483,7 +1489,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                             <label className="block text-sm font-medium text-amber-400 mb-2">תזכורת (ידנית)</label>
                             <textarea
                                 className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.appointment_reminder || ''}
+                                value={localSettings.whatsapp_templates?.appointment_reminder || DEFAULT_WHATSAPP_TEMPLATES.appointment_reminder}
                                 onChange={e => {
                                     const newTemplates = { ...localSettings.whatsapp_templates, appointment_reminder: e.target.value };
                                     setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
@@ -1496,7 +1502,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                             <label className="block text-sm font-medium text-red-400 mb-2">ביטול תור</label>
                             <textarea
                                 className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.booking_cancellation || ''}
+                                value={localSettings.whatsapp_templates?.booking_cancellation || DEFAULT_WHATSAPP_TEMPLATES.booking_cancellation}
                                 onChange={e => {
                                     const newTemplates = { ...localSettings.whatsapp_templates, booking_cancellation: e.target.value };
                                     setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
@@ -1509,7 +1515,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                             <label className="block text-sm font-medium text-slate-400 mb-2">תור בבדיקה (Pending)</label>
                             <textarea
                                 className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.booking_pending || ''}
+                                value={localSettings.whatsapp_templates?.booking_pending || DEFAULT_WHATSAPP_TEMPLATES.booking_pending}
                                 onChange={e => {
                                     const newTemplates = { ...localSettings.whatsapp_templates, booking_pending: e.target.value };
                                     setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
