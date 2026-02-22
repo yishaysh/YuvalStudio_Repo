@@ -2,7 +2,7 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Instagram, Facebook, MapPin, Lock, User } from 'lucide-react';
+import { Menu, X, Instagram, Facebook, MapPin, Lock, User, Sparkles } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -16,6 +16,7 @@ const Admin = lazy(() => import('./pages/Admin'));
 const ServicesPage = lazy(() => import('./pages/Services'));
 const JewelryPage = lazy(() => import('./pages/Jewelry'));
 const AftercarePage = lazy(() => import('./pages/Aftercare'));
+const StyleMatcherPage = lazy(() => import('./pages/StyleMatcher'));
 const PersonalArea = lazy(() => import('./pages/PersonalArea'));
 const UserGallery = lazy(() => import('./components/dashboard/UserGallery').then(module => ({ default: module.UserGallery })));
 const UserSettings = lazy(() => import('./components/dashboard/UserSettings').then(module => ({ default: module.UserSettings })));
@@ -54,10 +55,19 @@ const StudioLogo = ({ className }: { className?: string }) => (
 const Navbar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isLoginOpen, setIsLoginOpen] = React.useState(false);
+  const [showStyleMatcher, setShowStyleMatcher] = React.useState(false);
   const location = useLocation();
   const { user } = useAuth();
 
-  useEffect(() => setIsOpen(false), [location]);
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location]);
+
+  useEffect(() => {
+    api.getSettings().then(settings => {
+      setShowStyleMatcher(settings.enable_style_matcher === true);
+    });
+  }, []);
 
   return (
     <>
@@ -77,7 +87,8 @@ const Navbar = () => {
               {[
                 { label: 'שירותים', path: '/services' },
                 { label: 'גלריה', path: '/jewelry' },
-                { label: 'הוראות טיפול', path: '/aftercare' }
+                { label: 'הוראות טיפול', path: '/aftercare' },
+                ...(showStyleMatcher ? [{ label: 'סטייל מאצ\'ר ✨', path: '/style-matcher' }] : [])
               ].map((item) => (
                 <Link key={item.path} to={item.path} className="text-sm font-medium text-slate-400 hover:text-white transition-colors relative group">
                   {item.label}
@@ -167,6 +178,11 @@ const Navbar = () => {
                 <Link to="/services" className="text-2xl font-serif text-white hover:text-brand-primary">שירותים ומחירים</Link>
                 <Link to="/jewelry" className="text-2xl font-serif text-white hover:text-brand-primary">גלריה ותכשיטים</Link>
                 <Link to="/aftercare" className="text-2xl font-serif text-white hover:text-brand-primary">הוראות טיפול</Link>
+                {showStyleMatcher && (
+                  <Link to="/style-matcher" className="text-2xl font-serif text-brand-primary hover:text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" /> סטייל מאצ'ר
+                  </Link>
+                )}
                 <div className="w-12 h-[1px] bg-white/10 my-2"></div>
                 {user ? (
                   <Link to="/dashboard" className="text-xl font-serif text-brand-primary">אזור אישי</Link>
@@ -237,6 +253,7 @@ const App: React.FC = () => {
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/jewelry" element={<JewelryPage />} />
               <Route path="/aftercare" element={<AftercarePage />} />
+              <Route path="/style-matcher" element={<StyleMatcherPage />} />
               <Route path="/dashboard" element={<PersonalArea />} />
               <Route path="/dashboard/gallery" element={<UserGallery />} />
               <Route path="/dashboard/settings" element={<UserSettings />} />
