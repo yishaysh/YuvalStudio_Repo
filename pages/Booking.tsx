@@ -423,14 +423,23 @@ const Booking: React.FC = () => {
                 const aiSetting = (fetchedSettings as any).enable_ai;
                 setIsAiEnabled(aiSetting !== false);
 
-                if (location.state && location.state.preSelectedServices) {
-                    const preSelected = location.state.preSelectedServices as Service[];
-                    const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
-                    if (validPreSelected.length > 0) {
-                        setSelectedServices(validPreSelected);
-                        // Skip AI if skipAi flag is present OR if AI is disabled in settings
-                        const shouldSkipAi = location.state.skipAi || aiSetting === false;
-                        setStep(shouldSkipAi ? BookingStep.SELECT_DATE : BookingStep.AI_STYLIST);
+                if (location.state) {
+                    const aiSetting = (fetchedSettings as any).enable_ai !== false;
+
+                    if (location.state.preSelectedServices) {
+                        const preSelected = location.state.preSelectedServices as Service[];
+                        const validPreSelected = preSelected.filter(ps => fetchedServices.some(s => s.id === ps.id));
+                        if (validPreSelected.length > 0) {
+                            setSelectedServices(validPreSelected);
+                            const shouldSkipAi = location.state.skipAi || !aiSetting;
+                            setStep(shouldSkipAi ? BookingStep.SELECT_DATE : BookingStep.AI_STYLIST);
+                        }
+                    } else if (location.state.preSelectedJewelry) {
+                        const preSelectedJ = location.state.preSelectedJewelry;
+                        if (preSelectedJ.length > 0) {
+                            setSelectedJewelry(preSelectedJ);
+                            setStep(BookingStep.SELECT_SERVICE); // Start at service selection to match jewelry with a service
+                        }
                     }
                     window.history.replaceState({}, document.title);
                 }

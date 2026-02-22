@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Heart, RefreshCw, ChevronLeft } from 'lucide-react';
+import { Sparkles, X, Heart, RefreshCw, ChevronLeft, LogOut } from 'lucide-react';
 import { api } from '../services/mockApi';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
@@ -14,6 +14,7 @@ const StyleMatcher: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isFinished, setIsFinished] = useState(false);
     const directionRef = React.useRef<'left' | 'right'>('right');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const loadCards = async () => {
@@ -64,6 +65,10 @@ const StyleMatcher: React.FC = () => {
         setLikedItems([]);
     };
 
+    const endMatcherEarly = () => {
+        setIsFinished(true);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -99,12 +104,12 @@ const StyleMatcher: React.FC = () => {
                                 ))}
                             </div>
 
-                            <Link
-                                to="/booking"
+                            <button
+                                onClick={() => navigate('/booking', { state: { preSelectedJewelry: likedItems } })}
                                 className="block w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-medium hover:bg-white transition-all shadow-lg"
                             >
                                 קבע תור עכשיו
-                            </Link>
+                            </button>
                         </>
                     ) : (
                         <>
@@ -135,6 +140,13 @@ const StyleMatcher: React.FC = () => {
                     החלק ימינה אם אהבת, שמאלה אם פחות. נגלה יחד את הסטייל המדויק שלך!
                 </p>
             </div>
+
+            <button
+                onClick={endMatcherEarly}
+                className="absolute top-24 right-6 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors flex items-center gap-2 text-sm z-50 border border-white/10"
+            >
+                סיום מוקדם <LogOut className="w-4 h-4" />
+            </button>
 
             <div className="relative w-full max-w-sm aspect-[4/5] perspective-1000">
                 <AnimatePresence>
