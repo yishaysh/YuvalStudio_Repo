@@ -19,9 +19,11 @@ const StyleMatcher: React.FC = () => {
     useEffect(() => {
         const loadCards = async () => {
             try {
-                // Fetch some gallery items to use as styles
-                const { items } = await api.getGallery(1, 15);
-                setCards(items.slice(0, 10)); // Just 10 items for a fast experience
+                // Fetch services instead of gallery items to get pricing and metadata
+                const fetchedServices = await api.getServices();
+                // Randomize array to make it fun, or take first 10
+                const shuffled = fetchedServices.sort(() => 0.5 - Math.random());
+                setCards(shuffled.slice(0, 10));
             } catch (err) {
                 console.error("Error loading style cards", err);
             } finally {
@@ -105,7 +107,7 @@ const StyleMatcher: React.FC = () => {
                             </div>
 
                             <button
-                                onClick={() => navigate('/booking', { state: { preSelectedJewelry: likedItems } })}
+                                onClick={() => navigate('/booking', { state: { preSelectedServices: likedItems } })}
                                 className="block w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-medium hover:bg-white transition-all shadow-lg"
                             >
                                 קבע תור עכשיו
@@ -168,10 +170,16 @@ const StyleMatcher: React.FC = () => {
                                     y: offset * 15,
                                     opacity: 1 - offset * 0.2
                                 }}
-                                exit={{ x: directionRef.current === 'right' ? 300 : -300, opacity: 0, rotate: directionRef.current === 'right' ? 20 : -20 }}
+                                exit={{
+                                    x: directionRef.current === 'right' ? window.innerWidth : -window.innerWidth,
+                                    opacity: 0,
+                                    rotate: directionRef.current === 'right' ? 20 : -20,
+                                    transition: { duration: 0.3 }
+                                }}
                                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                                 drag={isTop ? "x" : false}
                                 dragConstraints={{ left: 0, right: 0 }}
+                                dragElastic={0.7}
                                 onDragEnd={isTop ? handleDragEnd : undefined}
                                 whileTap={isTop ? { scale: 1.05 } : {}}
                             >
@@ -181,18 +189,21 @@ const StyleMatcher: React.FC = () => {
                                     className="w-full h-full object-cover pointer-events-none"
                                 />
 
-                                <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/90 via-transparent to-transparent pointer-events-none" />
+                                <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-brand-dark via-brand-dark/50 to-transparent pointer-events-none" />
 
-                                <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none">
-                                    {card.tags && card.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {card.tags.slice(0, 2).map((tag: string, tIdx: number) => (
-                                                <span key={tIdx} className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs text-white border border-white/20">
-                                                    #{tag}
-                                                </span>
-                                            ))}
+                                <div className="absolute bottom-6 left-6 right-6 flex flex-col items-start pointer-events-none">
+                                    <h3 className="text-2xl font-serif text-white mb-1 drop-shadow-md">{card.name}</h3>
+                                    <p className="text-brand-primary font-medium text-lg drop-shadow-md">₪{card.price}</p>
+
+                                    {/* Additional Metadata */}
+                                    <div className="flex gap-4 mt-3 text-xs text-slate-300">
+                                        <div className="flex items-center gap-1 bg-brand-dark/50 backdrop-blur-sm px-2 py-1 rounded-md border border-white/10">
+                                            כאב: {card.pain_level || 1}/10
                                         </div>
-                                    )}
+                                        <div className="flex items-center gap-1 bg-brand-dark/50 backdrop-blur-sm px-2 py-1 rounded-md border border-white/10">
+                                            {card.duration_minutes} דק'
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Overlay indicators */}
