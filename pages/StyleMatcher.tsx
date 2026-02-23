@@ -3,7 +3,6 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { Sparkles, X, Heart, RefreshCw, LogOut } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { useNavigate } from 'react-router-dom';
-import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
 
@@ -26,13 +25,14 @@ const SwipeCard = ({ card, active, onSwipe, zIndex, exitDirection }: any) => {
 
     return (
         <m.div
-            className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl bg-brand-dark cursor-grab active:cursor-grabbing border border-white/10 origin-bottom"
+            className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl bg-brand-dark border border-white/10 origin-bottom"
             style={{
                 zIndex,
                 x: active ? x : 0,
                 rotate: active ? rotate : 0,
                 scale: active ? 1 : 0.95,
                 y: active ? 0 : 20,
+                touchAction: 'none'
             }}
             initial={{ scale: 0.95, y: 30, opacity: 0 }}
             animate={{ scale: active ? 1 : 0.95, y: active ? 0 : 20, opacity: 1 }}
@@ -45,18 +45,16 @@ const SwipeCard = ({ card, active, onSwipe, zIndex, exitDirection }: any) => {
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             drag={active ? "x" : false}
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.8}
+            dragElastic={1}
             onDragEnd={handleDragEnd}
-            whileTap={active ? { cursor: 'grabbing' } : {}}
-            dir="rtl"
         >
-            <SmartImage src={card.image_url} alt="" className="w-full h-full object-cover pointer-events-none" />
+            <img src={card.image_url} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />
             <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-brand-dark via-brand-dark/70 to-transparent pointer-events-none" />
 
-            <div className="absolute bottom-6 left-6 right-6 flex flex-col items-start pointer-events-none">
-                <h3 className="text-2xl font-serif text-white mb-1 drop-shadow-md">{card.name}</h3>
-                <p className="text-brand-primary font-medium text-lg drop-shadow-md">₪{card.price}</p>
-                <div className="flex gap-3 mt-3 text-xs text-slate-300">
+            <div className="absolute bottom-6 left-6 right-6 flex flex-col items-start pointer-events-none" dir="rtl">
+                <h3 className="text-2xl font-serif text-white mb-1 drop-shadow-md text-right w-full">{card.name}</h3>
+                <p className="text-brand-primary font-medium text-lg drop-shadow-md text-right w-full">₪{card.price}</p>
+                <div className="flex gap-3 mt-3 text-xs text-slate-300 w-full flex-row">
                     <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
                         כאב: {card.pain_level || 1}/10
                     </div>
@@ -69,10 +67,10 @@ const SwipeCard = ({ card, active, onSwipe, zIndex, exitDirection }: any) => {
             {/* Like/Nope Overlays */}
             {active && (
                 <>
-                    <m.div style={{ opacity: likeOpacity }} className="absolute top-8 left-8 w-16 h-16 border-4 border-green-500 text-green-500 rounded-full flex items-center justify-center rotate-[-15deg] bg-brand-dark/40 backdrop-blur-sm shadow-xl z-10">
+                    <m.div style={{ opacity: likeOpacity }} className="absolute top-8 left-8 w-16 h-16 border-4 border-green-500 text-green-500 rounded-full flex items-center justify-center rotate-[-15deg] bg-brand-dark/40 backdrop-blur-sm shadow-xl z-10 pointer-events-none">
                         <Heart className="w-8 h-8 fill-current" />
                     </m.div>
-                    <m.div style={{ opacity: nopeOpacity }} className="absolute top-8 right-8 w-16 h-16 border-4 border-red-500 text-red-500 rounded-full flex items-center justify-center rotate-[15deg] bg-brand-dark/40 backdrop-blur-sm shadow-xl z-10">
+                    <m.div style={{ opacity: nopeOpacity }} className="absolute top-8 right-8 w-16 h-16 border-4 border-red-500 text-red-500 rounded-full flex items-center justify-center rotate-[15deg] bg-brand-dark/40 backdrop-blur-sm shadow-xl z-10 pointer-events-none">
                         <X className="w-8 h-8" />
                     </m.div>
                 </>
@@ -95,7 +93,21 @@ const StyleMatcher: React.FC = () => {
             try {
                 const fetchedServices = await api.getServices();
                 const shuffled = fetchedServices.sort(() => 0.5 - Math.random());
-                setCards(shuffled.slice(0, 10));
+                const selectedCards = shuffled.slice(0, 10);
+
+                // Preload ALL images to guarantee no flickering when swiping or loading!
+                await Promise.all(
+                    selectedCards.map(card => {
+                        return new Promise((resolve) => {
+                            const img = new Image();
+                            img.src = card.image_url;
+                            img.onload = resolve;
+                            img.onerror = resolve; // Resolve anyway to not block
+                        });
+                    })
+                );
+
+                setCards(selectedCards);
             } catch (err) {
                 console.error("Error loading style cards", err);
             } finally {
@@ -165,7 +177,7 @@ const StyleMatcher: React.FC = () => {
                             <div className="grid grid-cols-3 gap-2 mb-8">
                                 {likedItems.slice(0, 3).map((item, idx) => (
                                     <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-white/10 relative">
-                                        <SmartImage src={item.image_url} alt="Style Match" className="w-full h-full object-cover" />
+                                        <img src={item.image_url} alt="Style Match" className="w-full h-full object-cover" />
                                     </div>
                                 ))}
                             </div>
@@ -196,8 +208,8 @@ const StyleMatcher: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center bg-brand-dark font-sans overflow-hidden fixed inset-0 touch-none pt-24 pb-12" dir="rtl">
-            <div className="w-full max-w-sm mb-4 text-center px-6">
+        <div className="min-h-screen flex flex-col items-center bg-brand-dark font-sans overflow-hidden fixed inset-0 touch-none pt-24 pb-12" style={{ touchAction: 'none' }}>
+            <div className="w-full max-w-sm mb-4 text-center px-6" dir="rtl">
                 <h1 className="text-3xl font-serif text-white flex items-center justify-center gap-3">
                     <Sparkles className="text-brand-primary w-6 h-6" />
                     Style Matcher
@@ -210,11 +222,12 @@ const StyleMatcher: React.FC = () => {
             <button
                 onClick={endMatcherEarly}
                 className="absolute top-24 left-6 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full transition-colors flex items-center gap-2 text-sm z-50 border border-white/10"
+                dir="rtl"
             >
-                <LogOut className="w-4 h-4 ml-1" /> סיום
+                סיום <LogOut className="w-4 h-4 mr-1" />
             </button>
 
-            <div className="relative w-[90%] max-w-sm aspect-[3/4] sm:aspect-[4/5] perspective-1000 mt-4">
+            <div className="relative w-[90%] max-w-sm aspect-[3/4] sm:aspect-[4/5] perspective-1000 mt-4" dir="ltr">
                 <AnimatePresence>
                     {cards.map((card, index) => {
                         if (index < currentIndex || index > currentIndex + 2) return null;
@@ -235,11 +248,8 @@ const StyleMatcher: React.FC = () => {
                 </AnimatePresence>
             </div>
 
-            {/* In RTL layout (dir="rtl") elements are rendered Right-to-Left by default. 
-                We want X (nope) on the Left visually, and Heart (like) on the Right visually.
-                With row-reverse in flex, the first item goes to the left edge of the container. 
-             */}
-            <div className="flex flex-row-reverse gap-8 mt-10 w-full max-w-sm justify-center px-6">
+            {/* Wrap buttons in LTR to maintain visual sync when dragging L/R */}
+            <div className="flex flex-row-reverse gap-8 mt-10 w-full max-w-sm justify-center px-6" dir="ltr">
                 <button
                     onClick={() => handleSwipe('left')}
                     className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-red-400 hover:bg-red-400/20 hover:text-red-300 transition-all shadow-lg shadow-black/50 border border-white/10 hover:scale-110 active:scale-95"
