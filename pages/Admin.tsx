@@ -697,6 +697,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
     const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         // Hydrate from settings or fallback to constant
@@ -712,6 +713,26 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
             onUpdate({ ...settings, inventory_items: initialCatalog }, true);
         }
     }, [settings]);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const url = await api.uploadImage(file, 'service-images');
+            if (url) {
+                setFormData(prev => ({ ...prev, image_url: url }));
+            } else {
+                alert('שגיאה בהעלאת התמונה');
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('שגיאה בהעלאת התמונה');
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const handleSaveItem = () => {
         let newItems;
@@ -846,7 +867,33 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                             </select>
                         </div>
                     </div>
-                    <Input label="תמונה (URL)" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder="https://..." />
+                    <div>
+                        <label className="text-sm font-medium text-slate-400 block mb-2">תמונה</label>
+                        <div className="flex items-center gap-4">
+                            {formData.image_url && (
+                                <img src={formData.image_url} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
+                            )}
+                            <div className="flex-1">
+                                <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-white/10 rounded-xl hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-all cursor-pointer bg-brand-dark/30 group">
+                                    {isUploading ? (
+                                        <Loader2 className="w-5 h-5 text-brand-primary animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Upload className="w-5 h-5 text-slate-400 group-hover:text-brand-primary transition-colors" />
+                                            <span className="text-sm text-slate-400 group-hover:text-white transition-colors">בחר תמונה לשמירה או עריכה</span>
+                                        </>
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleImageUpload}
+                                        disabled={isUploading}
+                                    />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="flex items-center gap-3 pt-2">
                         <label className="relative inline-flex items-center cursor-pointer">
