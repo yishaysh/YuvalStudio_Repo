@@ -56,6 +56,17 @@ CREATE TABLE IF NOT EXISTS public.gallery (
 -- 2. Add Columns safely (Idempotent)
 DO $$
 BEGIN
+    -- SERVICES
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'services' AND column_name = 'duration_minutes') THEN
+        ALTER TABLE public.services ADD COLUMN duration_minutes integer NOT NULL DEFAULT 30;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'services' AND column_name = 'category') THEN
+        ALTER TABLE public.services ADD COLUMN category text CHECK (category IN ('Ear', 'Face', 'Body', 'Jewelry')) DEFAULT 'Ear';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'services' AND column_name = 'pain_level') THEN
+        ALTER TABLE public.services ADD COLUMN pain_level integer DEFAULT 1 CHECK (pain_level >= 0 AND pain_level <= 10);
+    END IF;
+
     -- PROFILES
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'avatar_url') THEN
         ALTER TABLE public.profiles ADD COLUMN avatar_url text;
