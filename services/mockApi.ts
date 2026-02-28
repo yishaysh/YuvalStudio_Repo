@@ -32,7 +32,9 @@ export const api = {
       gallery_tags: {},
       coupons: [],
       enable_ai: true,
-      enable_gallery: true
+      enable_gallery: true,
+      enable_style_matcher: true,
+      whatsapp_templates: undefined
     };
 
     if (!supabase) {
@@ -46,7 +48,7 @@ export const api = {
         const { data, error } = await supabase
           .from('settings')
           .select('*')
-          .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery']);
+          .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery', 'enable_style_matcher', 'whatsapp_templates']);
 
         if (error || !data) {
           cachedSettings = defaultSettings;
@@ -75,6 +77,10 @@ export const api = {
             newSettings.enable_ai = row.value;
           } else if (row.key === 'enable_gallery') {
             newSettings.enable_gallery = row.value;
+          } else if (row.key === 'enable_style_matcher') {
+            newSettings.enable_style_matcher = row.value;
+          } else if (row.key === 'whatsapp_templates') {
+            newSettings.whatsapp_templates = row.value;
           }
         });
 
@@ -101,7 +107,9 @@ export const api = {
       { key: 'gallery_tags', value: settings.gallery_tags },
       { key: 'coupons', value: settings.coupons },
       { key: 'enable_ai', value: settings.enable_ai },
-      { key: 'enable_gallery', value: settings.enable_gallery }
+      { key: 'enable_gallery', value: settings.enable_gallery },
+      { key: 'enable_style_matcher', value: settings.enable_style_matcher },
+      { key: 'whatsapp_templates', value: settings.whatsapp_templates }
     ];
 
     const { error } = await supabase
