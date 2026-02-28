@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Feather, Shield } from 'lucide-react';
 import { Button, SectionHeading, Card } from '../components/ui';
 import { SmartImage } from '../components/SmartImage';
+import { api } from '../services/mockApi';
 
 const m = motion as any;
 
@@ -38,6 +39,14 @@ const StudioLogo = ({ className }: { className?: string }) => (
 );
 
 const Home: React.FC = () => {
+  const [showStyleMatcher, setShowStyleMatcher] = useState(false);
+
+  useEffect(() => {
+    api.getSettings().then(settings => {
+      setShowStyleMatcher(settings.enable_style_matcher === true);
+    });
+  }, []);
+
   return (
     <div className="min-h-screen bg-brand-dark text-white overflow-x-hidden font-sans">
       {/* Hero Section */}
@@ -87,11 +96,13 @@ const Home: React.FC = () => {
                   גלה את השירותים
                 </Button>
               </Link>
-              <Link to="/style-matcher">
-                <Button variant="outline" className="min-w-[180px] text-lg py-4 border-brand-primary/50 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary/10 flex items-center justify-center gap-2">
-                  <Sparkles className="w-5 h-5" /> סטייל מאצ'ר
-                </Button>
-              </Link>
+              {showStyleMatcher && (
+                <Link to="/style-matcher">
+                  <Button variant="outline" className="min-w-[180px] text-lg py-4 border-brand-primary/50 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary/10 flex items-center justify-center gap-2">
+                    <Sparkles className="w-5 h-5" /> סטייל מאצ'ר
+                  </Button>
+                </Link>
+              )}
             </div>
           </m.div>
         </div>
