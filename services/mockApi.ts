@@ -108,8 +108,8 @@ export const api = {
       { key: 'coupons', value: settings.coupons },
       { key: 'enable_ai', value: settings.enable_ai },
       { key: 'enable_gallery', value: settings.enable_gallery },
-      { key: 'enable_style_matcher', value: settings.enable_style_matcher },
-      { key: 'whatsapp_templates', value: settings.whatsapp_templates }
+      { key: 'enable_style_matcher', value: settings.enable_style_matcher ?? false },
+      { key: 'whatsapp_templates', value: settings.whatsapp_templates || {} }
     ];
 
     const { error } = await supabase
