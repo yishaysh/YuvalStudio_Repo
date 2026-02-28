@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket,
@@ -1228,6 +1228,24 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
     const [formData, setFormData] = useState<Partial<Service>>({ category: 'Ear', pain_level: 1 });
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploading(true);
+        try {
+            const uploadedUrl = await api.uploadImage(file, 'service-images');
+            if (uploadedUrl) {
+                setFormData({ ...formData, image_url: uploadedUrl });
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('שגיאה בהעלאת התמונה');
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const openModal = (service?: Service) => {
         if (service) {
@@ -1298,7 +1316,33 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
                                 <option value="Jewelry">תכשיט</option>
                             </select>
                         </div>
-                        <Input label="תמונה (URL)" value={formData.image_url || ''} onChange={e => setFormData({ ...formData, image_url: e.target.value })} />
+                        <div>
+                            <label className="text-sm font-medium text-slate-400 block mb-2">תמונה</label>
+                            <div className="flex items-center gap-4">
+                                {formData.image_url && (
+                                    <img src={formData.image_url} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
+                                )}
+                                <div className="flex-1">
+                                    <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-all cursor-pointer bg-brand-dark/30 group">
+                                        {isUploading ? (
+                                            <span className="text-brand-primary">מעלה...</span>
+                                        ) : (
+                                            <>
+                                                <Upload className="w-5 h-5 text-slate-400 group-hover:text-brand-primary transition-colors" />
+                                                <span className="text-sm text-slate-400 group-hover:text-white transition-colors">בחר תמונה לשמירה</span>
+                                            </>
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleImageUpload}
+                                            disabled={isUploading}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-400 block mb-2">רמת כאב ({formData.pain_level})</label>
