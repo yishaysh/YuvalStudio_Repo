@@ -834,22 +834,6 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                                 <div className="flex items-center justify-between mt-1">
                                     <div className="flex items-center gap-2">
                                         <span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
-                                        <div className="flex gap-1 ml-2 border-l border-white/10 pl-2">
-                                            <button
-                                                onClick={() => openModal(item)}
-                                                className="p-1 text-slate-400 hover:text-white transition-colors"
-                                                title="ערוך תכשיט"
-                                            >
-                                                <Edit2 className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(item.id)}
-                                                className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                                                title="מחק תכשיט"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
                                     </div>
 
                                     <label className="relative inline-flex items-center cursor-pointer" title="In Stock Toggle">
