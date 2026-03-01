@@ -110,9 +110,10 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   icon?: React.ReactNode;
+  className?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon, className = '' }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -131,7 +132,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl relative z-10 max-h-[90vh] flex flex-col overflow-hidden"
+            className={`w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl relative z-10 max-h-[90vh] flex flex-col overflow-hidden ${className}`}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">

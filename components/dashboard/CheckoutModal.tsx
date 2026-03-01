@@ -122,7 +122,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`סיכום תור - ${appointment.client_name}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={`סיכום תור - ${appointment.client_name}`} className="!max-w-4xl">
             <div className="flex flex-col lg:flex-row gap-6 h-[70vh]">
 
                 {/* Left Panel: Inventory Selection */}
