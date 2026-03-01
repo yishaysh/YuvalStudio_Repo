@@ -118,7 +118,7 @@ export interface StudioSettings {
   enable_gallery?: boolean;
   enable_style_matcher?: boolean;
   whatsapp_templates?: Record<string, string>;
-
+  inventory_items?: any[];
 }
 
 export enum BookingStep {
