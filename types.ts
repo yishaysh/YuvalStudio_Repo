@@ -7,6 +7,8 @@ export interface Service {
   category: 'Ear' | 'Face' | 'Body' | 'Jewelry';
   image_url: string;
   pain_level: number; // 1-10
+  cost_price?: number;
+  stock_quantity?: number;
 }
 
 export interface Profile {
@@ -39,7 +41,7 @@ export interface Appointment {
   service_price?: number;
   start_time: string;
   end_time?: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   notes?: string;
   signature?: string;
   created_at?: string;
@@ -50,6 +52,9 @@ export interface Appointment {
   price?: number;            // הוספנו כדי לתמוך בשליחה הישירה מה-Booking
   visual_plan?: string;      // השדה החדש שבו נשמר ה-JSON של ה-AI
   ai_recommendation_text?: string;
+  total_cost?: number;
+  total_profit?: number;
+  cart_items?: { service_id: string; name: string; quantity: number; cost_price: number; final_price: number }[];
 }
 
 // שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך

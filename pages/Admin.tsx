@@ -15,6 +15,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { calendarService } from '../services/calendarService';
+import CheckoutModal from '../components/dashboard/CheckoutModal';
 
 const m = motion as any;
 
@@ -223,7 +224,8 @@ const AppointmentsList = ({
     onBulkSync,
     onViewVisualPlan,
     onViewProfile,
-    settings
+    settings,
+    onCompleteCheckout
 }: any) => {
     const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
     const [statusFilter, setStatusFilter] = useState('all');
@@ -571,6 +573,12 @@ const AppointmentsList = ({
                                                             <span>סה"כ:</span>
                                                             <span>₪{finalPrice}</span>
                                                         </div>
+                                                        {apt.total_profit !== undefined && (
+                                                            <div className="flex justify-between font-medium text-emerald-400">
+                                                                <span>רווח:</span>
+                                                                <span>₪{apt.total_profit}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     {/* Arrow */}
                                                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-brand-surface border-l border-t border-white/10 rotate-45"></div>
@@ -580,11 +588,13 @@ const AppointmentsList = ({
                                         <td className="py-4 px-6 align-top">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${apt.status === 'confirmed'
                                                 ? 'bg-emerald-500/10 text-emerald-400'
-                                                : apt.status === 'cancelled'
-                                                    ? 'bg-red-500/10 text-red-400'
-                                                    : 'bg-amber-500/10 text-amber-400'
+                                                : apt.status === 'completed'
+                                                    ? 'bg-blue-500/10 text-blue-400'
+                                                    : apt.status === 'cancelled'
+                                                        ? 'bg-red-500/10 text-red-400'
+                                                        : 'bg-amber-500/10 text-amber-400'
                                                 }`}>
-                                                {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
+                                                {apt.status === 'confirmed' ? 'מאושר' : apt.status === 'completed' ? 'הושלם' : apt.status === 'cancelled' ? 'בוטל' : 'ממתין'}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 align-top">
@@ -652,6 +662,11 @@ const AppointmentsList = ({
                                                         <Check className="w-4 h-4" />
                                                     </button>
                                                 )}
+                                                {(apt.status === 'confirmed' || apt.status === 'completed') && onCompleteCheckout && (
+                                                    <button onClick={() => onCompleteCheckout(apt)} className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors" title="קופה / תשלום מול לקוח">
+                                                        <DollarSign className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 {apt.status !== 'cancelled' && (
                                                     <button onClick={() => onCancelRequest(apt)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
                                                         <X className="w-4 h-4" />
@@ -696,7 +711,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
     const [items, setItems] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
-    const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+    const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true });
     const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
@@ -751,7 +766,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
         onUpdate({ ...settings, inventory_items: newItems }, true);
         setIsModalOpen(false);
         setEditingItem(null);
-        setFormData({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+        setFormData({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true });
     };
 
     const handleDelete = (id: string) => {
@@ -774,7 +789,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
             setFormData(item);
         } else {
             setEditingItem(null);
-            setFormData({ name: '', category: 'Ear', price: 0, image_url: '', in_stock: true });
+            setFormData({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true });
         }
         setIsModalOpen(true);
     };
@@ -812,7 +827,11 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                             <div className="flex-1 min-w-0">
                                 <h4 className="text-sm font-medium text-white truncate">{item.name}</h4>
                                 <p className="text-xs text-slate-500 mb-2">{item.category}</p>
-                                <div className="flex items-center justify-between mt-2">
+                                <div className="text-[10px] text-slate-400 flex gap-3 mb-1">
+                                    <span>עלות: ₪{item.cost_price || 0}</span>
+                                    <span>מלאי: {item.stock_quantity || 0}</span>
+                                </div>
+                                <div className="flex items-center justify-between mt-1">
                                     <div className="flex items-center gap-2">
                                         <span className="text-brand-primary text-xs font-bold">₪{item.price}</span>
                                         <div className="flex gap-1 ml-2 border-l border-white/10 pl-2">
@@ -852,20 +871,22 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'עריכת פריט' : 'פריט חדש'}>
                 <div className="space-y-4">
                     <Input label="שם הפריט" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <Input label="מחיר (₪)" type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
-                        <div>
-                            <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
-                            <select
-                                className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
-                                value={formData.category}
-                                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                            >
-                                <option value="Ear">Ear</option>
-                                <option value="Face">Face</option>
-                                <option value="Body">Body</option>
-                            </select>
-                        </div>
+                        <Input label="עלות (₪)" type="number" value={formData.cost_price || 0} onChange={e => setFormData({ ...formData, cost_price: Number(e.target.value) })} />
+                        <Input label="מלאי זמין" type="number" value={formData.stock_quantity || 0} onChange={e => setFormData({ ...formData, stock_quantity: Number(e.target.value) })} />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
+                        <select
+                            className="w-full bg-brand-dark/50 border border-brand-border text-white px-4 py-3 rounded-xl outline-none"
+                            value={formData.category}
+                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                        >
+                            <option value="Ear">Ear</option>
+                            <option value="Face">Face</option>
+                            <option value="Body">Body</option>
+                        </select>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-400 block mb-2">תמונה</label>
@@ -1070,10 +1091,10 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
     );
 };
 
-const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan }: any) => {
+const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout }: any) => {
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 <Card className="p-6 flex items-center gap-4 bg-gradient-to-br from-brand-surface to-brand-surface/50 border-brand-primary/20">
                     <div className="w-12 h-12 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary">
                         <DollarSign className="w-6 h-6" />
@@ -1082,6 +1103,16 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                         <div className="text-sm text-slate-400">הכנסות החודש</div>
                         <div className="text-2xl font-serif font-bold text-white">₪{stats.revenue.toLocaleString()}</div>
                         <div className="text-xs text-brand-primary/70 mt-1">יעד: ₪{settings.monthly_goals.revenue.toLocaleString()}</div>
+                    </div>
+                </Card>
+                <Card className="p-6 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400">
+                        <DollarSign className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <div className="text-sm text-slate-400">רווח חודשי</div>
+                        <div className="text-2xl font-serif font-bold text-emerald-400">₪{stats.profit?.toLocaleString() || 0}</div>
+                        <div className="text-xs text-slate-500 mt-1">אחרי ניכוי מלאי ועלויות</div>
                     </div>
                 </Card>
                 <Card className="p-6 flex items-center gap-4">
@@ -1119,13 +1150,14 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                     allServices={services}
                     onSyncToCalendar={onSyncToCalendar}
                     onViewVisualPlan={onViewVisualPlan}
+                    onCompleteCheckout={onCompleteCheckout}
                 />
             </div>
         </div>
     );
 };
 
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, onViewVisualPlan }: any) => {
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const appointmentsRef = useRef<HTMLDivElement>(null);
@@ -1217,6 +1249,7 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         allServices={services}
                         onSyncToCalendar={onSyncToCalendar}
                         onViewVisualPlan={onViewVisualPlan}
+                        onCompleteCheckout={onCompleteCheckout}
                     />
                 </div>
             </div>
@@ -1940,6 +1973,7 @@ const Admin: React.FC = () => {
     // New State for Visual Plan Viewer
     const [visualPlanData, setVisualPlanData] = useState<any | null>(null);
     const [selectedUserProfile, setSelectedUserProfile] = useState<any | null>(null);
+    const [checkoutApt, setCheckoutApt] = useState<any | null>(null);
 
     const showNotification = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -2090,6 +2124,49 @@ const Admin: React.FC = () => {
         }
     };
 
+    const handleCompleteCheckout = async (checkoutData: any) => {
+        if (!checkoutApt || !settings) return;
+        try {
+            // Update appointment
+            await api.updateAppointment(checkoutApt.id, {
+                status: 'completed',
+                cart_items: checkoutData.cart_items,
+                total_cost: checkoutData.total_cost,
+                total_profit: checkoutData.total_profit,
+                final_price: checkoutData.final_price
+            });
+
+            // Update inventory quantities
+            if (checkoutData.cart_items && checkoutData.cart_items.length > 0) {
+                // @ts-ignore
+                const updatedItems = [...(settings.inventory_items || [])];
+                let changed = false;
+
+                for (const item of checkoutData.cart_items) {
+                    const idx = updatedItems.findIndex(i => i.id === item.service_id);
+                    if (idx !== -1 && updatedItems[idx].stock_quantity !== undefined) {
+                        updatedItems[idx] = {
+                            ...updatedItems[idx],
+                            stock_quantity: Math.max(0, updatedItems[idx].stock_quantity - item.quantity)
+                        };
+                        changed = true;
+                    }
+                }
+
+                if (changed) {
+                    await handleUpdateSettings({ ...settings, inventory_items: updatedItems } as any, true);
+                }
+            }
+
+            showNotification('התור הושלם ונשמר בהצלחה', 'success');
+            setCheckoutApt(null);
+            fetchData(true);
+        } catch (error) {
+            console.error(error);
+            showNotification('שגיאה בשמירת התור', 'error');
+        }
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
@@ -2164,8 +2241,8 @@ const Admin: React.FC = () => {
 
                 <AnimatePresence mode="wait">
                     <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} />}
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} />}
                         {activeTab === 'appointments' && (
                             <AppointmentsList
                                 appointments={appointments}
@@ -2181,6 +2258,7 @@ const Admin: React.FC = () => {
                                 onViewVisualPlan={handleViewVisualPlan}
                                 onViewProfile={(apt: Appointment) => setSelectedUserProfile(apt)}
                                 settings={settings}
+                                onCompleteCheckout={setCheckoutApt}
                             />
                         )}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
@@ -2273,6 +2351,18 @@ const Admin: React.FC = () => {
                 user={selectedUserProfile}
                 appointments={appointments}
             />
+
+            {checkoutApt && settings && (
+                <CheckoutModal
+                    isOpen={!!checkoutApt}
+                    onClose={() => setCheckoutApt(null)}
+                    appointment={checkoutApt}
+                    // @ts-ignore
+                    inventoryItems={settings.inventory_items || []}
+                    baseServicesPrice={checkoutApt.service_price || 0}
+                    onSave={handleCompleteCheckout}
+                />
+            )}
 
             <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
                 {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}

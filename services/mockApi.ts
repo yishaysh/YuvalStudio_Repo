@@ -505,24 +505,27 @@ export const api = {
 
     const { data } = await supabase
       .from('appointments')
-      .select(`status, services(price), final_price`)
+      .select(`status, services(price), final_price, total_profit`)
       .gte('start_time', startOfMonth)
       .lte('start_time', endOfMonth)
       .neq('status', 'cancelled');
 
     let revenue = 0;
+    let profit = 0;
     let pending = 0;
 
     data?.forEach((app: any) => {
       if (app.status !== 'cancelled') {
         // Prefer final_price if exists, else service price
         revenue += (app.final_price !== undefined && app.final_price !== null) ? app.final_price : (app.services?.price || 0);
+        profit += (app.total_profit || 0);
       }
       if (app.status === 'pending') pending++;
     });
 
     return {
       revenue,
+      profit,
       appointments: data?.length || 0,
       pending
     };

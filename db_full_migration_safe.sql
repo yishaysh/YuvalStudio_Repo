@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS public.services (
   category text CHECK (category IN ('Ear', 'Face', 'Body', 'Jewelry')),
   image_url text,
   pain_level integer DEFAULT 1 CHECK (pain_level >= 0 AND pain_level <= 10),
+  cost_price decimal(10,2) DEFAULT 0,
+  stock_quantity integer DEFAULT 0,
   is_active boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -37,6 +39,9 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   status text DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed')),
   notes text,
   signature text,
+  total_cost decimal(10,2) DEFAULT 0,
+  total_profit decimal(10,2) DEFAULT 0,
+  cart_items jsonb,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -65,6 +70,12 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'services' AND column_name = 'pain_level') THEN
         ALTER TABLE public.services ADD COLUMN pain_level integer DEFAULT 1 CHECK (pain_level >= 0 AND pain_level <= 10);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'services' AND column_name = 'cost_price') THEN
+        ALTER TABLE public.services ADD COLUMN cost_price decimal(10,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'services' AND column_name = 'stock_quantity') THEN
+        ALTER TABLE public.services ADD COLUMN stock_quantity integer DEFAULT 0;
     END IF;
 
     -- PROFILES
@@ -105,6 +116,15 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'ai_recommendation_text') THEN
         ALTER TABLE public.appointments ADD COLUMN ai_recommendation_text text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'total_cost') THEN
+        ALTER TABLE public.appointments ADD COLUMN total_cost decimal(10,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'total_profit') THEN
+        ALTER TABLE public.appointments ADD COLUMN total_profit decimal(10,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'cart_items') THEN
+        ALTER TABLE public.appointments ADD COLUMN cart_items jsonb;
     END IF;
 END $$;
 
