@@ -123,10 +123,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`סיכום תור - ${appointment.client_name}`} className="!max-w-4xl">
-            <div className="flex flex-col lg:flex-row gap-6 h-[70vh]">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-[80vh] lg:h-[70vh] lg:flex-row-reverse">
 
                 {/* Left Panel: Inventory Selection */}
-                <div className="flex-1 flex flex-col bg-brand-dark/30 rounded-2xl border border-white/5 overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 bg-brand-dark/30 rounded-2xl border border-white/5 overflow-hidden">
                     <div className="p-4 border-b border-white/5 bg-brand-surface/50">
                         <h3 className="font-medium text-white mb-3">בחירת תכשיטים שהוכנסו</h3>
                         <div className="relative">
@@ -177,7 +177,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
 
                 {/* Right Panel: Cart & Summary */}
-                <div className="w-full lg:w-[380px] flex flex-col h-full bg-brand-surface rounded-2xl border border-white/5">
+                <div className="w-full lg:w-[380px] flex-1 lg:flex-none flex flex-col min-h-0 lg:h-full bg-brand-surface rounded-2xl border border-white/5 overflow-hidden">
                     <div className="p-4 border-b border-white/5 bg-brand-dark/50 flex justify-between items-center">
                         <h3 className="font-medium text-white">סיכום חיובים</h3>
                         <span className="text-xs px-2 py-1 rounded-full bg-slate-800 text-slate-300">
