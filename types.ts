@@ -117,6 +117,7 @@ export interface StudioSettings {
   enable_ai?: boolean;
   enable_gallery?: boolean;
   enable_style_matcher?: boolean;
+  show_pain_level?: boolean;
   whatsapp_templates?: Record<string, string>;
   inventory_items?: any[];
 }

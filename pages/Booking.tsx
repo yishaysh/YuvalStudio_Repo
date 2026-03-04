@@ -56,7 +56,7 @@ const compressImage = async (file: File): Promise<string> => {
 
 // --- Sub-Components ---
 
-const ServiceCard = React.memo(({ service, isSelected, onClick, priority = false }: { service: Service, isSelected: boolean, onClick: () => void, priority?: boolean }) => {
+const ServiceCard = React.memo(({ service, isSelected, onClick, priority = false, showPainLevel = true }: { service: Service, isSelected: boolean, onClick: () => void, priority?: boolean, showPainLevel?: boolean }) => {
     const meta = getMeta(service.category);
 
     return (
@@ -85,14 +85,16 @@ const ServiceCard = React.memo(({ service, isSelected, onClick, priority = false
                             <div className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {service.duration_minutes} דק'</div>
                             <div className="flex items-center gap-1.5"><Droplets className="w-3 h-3" /> {meta.healing}</div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                            <span className="text-[10px] text-slate-500 uppercase tracking-widest">כאב ({service.pain_level || 1})</span>
-                            <div className="flex gap-0.5">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                                    <div key={i} className={`w-0.5 sm:w-1 h-2 sm:h-3 rounded-full ${i <= (service.pain_level || 1) ? 'bg-brand-primary' : 'bg-white/10'}`} />
-                                ))}
+                        {showPainLevel && (
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest">כאב ({service.pain_level || 1})</span>
+                                <div className="flex gap-0.5">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                                        <div key={i} className={`w-0.5 sm:w-1 h-2 sm:h-3 rounded-full ${i <= (service.pain_level || 1) ? 'bg-brand-primary' : 'bg-white/10'}`} />
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -892,6 +894,7 @@ const Booking: React.FC = () => {
                                                 priority={idx < 4}
                                                 isSelected={selectedServices.some(s => s.id === service.id)}
                                                 onClick={() => toggleService(service)}
+                                                showPainLevel={studioSettings?.show_pain_level !== false}
                                             />
                                         ))}
                                     </div>
