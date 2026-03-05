@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Sparkles, Upload, Wand2, BrainCircuit, AlertCircle, Info, Plus } from 'lucide-react';
+import {
+    Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Check, Camera, Image as ImageIcon, CheckCircle, Info, Ticket, FileText, ChevronRight, Wand2, Sparkles, CheckCircle2, AlertCircle
+} from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
@@ -616,7 +618,7 @@ const Booking: React.FC = () => {
             setAiResult({ ...result, recommendations: filteredRecs });
         } catch (err: any) {
             console.error("Analysis Failed:", err);
-            setAiError(err.message || "אירעה שגיאה בניתוח התמונה.");
+            setAiError("אופס! הסטייליסט הוירטואלי שלנו קצת עמוס כרגע... נסו שוב עוד כמה דקות או המשיכו לקביעת תור רגילה.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -1083,9 +1085,12 @@ const Booking: React.FC = () => {
                                                     ) : (
                                                         <div className="space-y-4">
                                                             {aiError && (
-                                                                <m.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
-                                                                    <p className="font-bold mb-1">שגיאה בניתוח</p>
-                                                                    {aiError}
+                                                                <m.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-5 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
+                                                                    <div className="w-12 h-12 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                                        <AlertCircle className="w-6 h-6" />
+                                                                    </div>
+                                                                    <p className="font-bold text-red-400 mb-1">העיצוב מתעכב קלות</p>
+                                                                    <p className="text-slate-300 text-sm leading-relaxed">{aiError}</p>
                                                                 </m.div>
                                                             )}
 
