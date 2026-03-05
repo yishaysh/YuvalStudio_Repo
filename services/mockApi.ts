@@ -434,6 +434,7 @@ export const api = {
         start_time: item.start_time,
         status: item.status,
         notes: item.notes,
+        signature: item.signature,
         created_at: item.created_at,
         final_price: item.final_price, // Ensure we return this from DB
         total_profit: item.total_profit,
