@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Check, Camera, Image as ImageIcon, CheckCircle, Info, Ticket, FileText, ChevronRight, Wand2, Sparkles, CheckCircle2, AlertCircle
+    Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Image as ImageIcon, CheckCircle, Info, ChevronRight, Wand2, Sparkles, CheckCircle2, AlertCircle, Upload, BrainCircuit, Plus
 } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
