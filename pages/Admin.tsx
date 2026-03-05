@@ -708,7 +708,7 @@ const AppointmentsList = ({
                                                     {/* AI Visual Plan Button */}
                                                     {hasVisualPlan && (
                                                         <button
-                                                            onClick={() => onViewVisualPlan(apt)}
+                                                            onClick={(e) => { e.stopPropagation(); onViewVisualPlan(apt); }}
                                                             className="p-2 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 rounded-r-lg border-l border-white/5 transition-colors"
                                                             title="צפה בתוכנית AI ותמונה"
                                                         >
@@ -717,7 +717,7 @@ const AppointmentsList = ({
                                                     )}
 
                                                     <button
-                                                        onClick={() => sendWhatsapp(apt, 'status_update', settings)}
+                                                        onClick={(e) => { e.stopPropagation(); sendWhatsapp(apt, 'status_update', settings); }}
                                                         className={`p-2 transition-colors ${!hasVisualPlan ? 'rounded-r-lg' : ''} border-l border-white/5 ${apt.status === 'confirmed'
                                                             ? 'text-emerald-400 hover:bg-emerald-500/20'
                                                             : (apt.status === 'cancelled' ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:bg-white/10')
@@ -729,7 +729,7 @@ const AppointmentsList = ({
 
                                                     {apt.status === 'confirmed' && (
                                                         <button
-                                                            onClick={() => sendWhatsapp(apt, 'reminder', settings)}
+                                                            onClick={(e) => { e.stopPropagation(); sendWhatsapp(apt, 'reminder', settings); }}
                                                             className="p-2 text-slate-400 hover:bg-white/10 border-l border-white/5 transition-colors"
                                                             title="שלח תזכורת"
                                                         >
@@ -738,7 +738,7 @@ const AppointmentsList = ({
                                                     )}
 
                                                     <button
-                                                        onClick={() => apt.signature && onDownloadPdf(apt)}
+                                                        onClick={(e) => { e.stopPropagation(); apt.signature && onDownloadPdf(apt); }}
                                                         disabled={!apt.signature}
                                                         className={`p-2 transition-colors rounded-l-lg border-l border-white/5 ${apt.signature
                                                             ? 'text-slate-400 hover:bg-white/10 hover:text-white'
@@ -753,7 +753,7 @@ const AppointmentsList = ({
                                                 {/* Google Calendar Sync Button */}
                                                 {apt.status !== 'cancelled' && (
                                                     <button
-                                                        onClick={() => onSyncToCalendar(apt)}
+                                                        onClick={(e) => { e.stopPropagation(); onSyncToCalendar(apt); }}
                                                         className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors mr-1"
                                                         title="סנכרן ליומן גוגל"
                                                     >
@@ -2480,7 +2480,7 @@ const Admin: React.FC = () => {
                 />
             )}
 
-            <div className="fixed top-[200vh] left-0 pointer-events-none opacity-0 z-[-50]">
+            <div className="fixed top-0 left-[-9999px] pointer-events-none z-[-50]">
                 {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}
             </div>
         </div>
