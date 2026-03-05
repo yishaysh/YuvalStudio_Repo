@@ -375,7 +375,10 @@ export const api = {
       price: appt.final_price, // Ensure price is saved
       final_price: appt.final_price,
       ai_recommendation_text: appt.ai_recommendation_text,
-      visual_plan: appt.visual_plan
+      visual_plan: appt.visual_plan,
+      anatomy_image_url: appt.anatomy_image_url,
+      anatomy_status: appt.anatomy_status,
+      anatomy_review_comment: appt.anatomy_review_comment
     };
 
     const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
@@ -436,7 +439,10 @@ export const api = {
         total_profit: item.total_profit,
         total_cost: item.total_cost,
         visual_plan: item.visual_plan,
-        ai_recommendation_text: item.ai_recommendation_text
+        ai_recommendation_text: item.ai_recommendation_text,
+        anatomy_image_url: item.anatomy_image_url,
+        anatomy_status: item.anatomy_status,
+        anatomy_review_comment: item.anatomy_review_comment
       }));
     } catch (err) {
       console.error(err);
@@ -476,7 +482,10 @@ export const api = {
         total_profit: item.total_profit,
         total_cost: item.total_cost,
         visual_plan: item.visual_plan,
-        ai_recommendation_text: item.ai_recommendation_text
+        ai_recommendation_text: item.ai_recommendation_text,
+        anatomy_image_url: item.anatomy_image_url,
+        anatomy_status: item.anatomy_status,
+        anatomy_review_comment: item.anatomy_review_comment
       }));
     } catch (err) {
       console.error(err);

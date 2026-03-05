@@ -603,8 +603,8 @@ const AppointmentsList = ({
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setReviewApt(apt); }}
                                                             className={`p-1 flex items-center gap-1 text-xs rounded-md transition-colors ${apt.anatomy_status === 'approved' ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20' :
-                                                                    apt.anatomy_status === 'rejected' ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' :
-                                                                        'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                                                                apt.anatomy_status === 'rejected' ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' :
+                                                                    'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
                                                                 }`}
                                                             title="בדיקת אנטומיה"
                                                         >
@@ -763,17 +763,17 @@ const AppointmentsList = ({
 
 
                                                 {apt.status === 'pending' && (
-                                                    <button onClick={() => onStatusUpdate(apt.id, 'confirmed')} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors" title="אשר תור">
+                                                    <button onClick={(e) => { e.stopPropagation(); onStatusUpdate(apt.id, 'confirmed'); }} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors" title="אשר תור">
                                                         <Check className="w-4 h-4" />
                                                     </button>
                                                 )}
                                                 {(apt.status === 'confirmed' || apt.status === 'completed') && onCompleteCheckout && (
-                                                    <button onClick={() => onCompleteCheckout(apt)} className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors" title="קופה / תשלום מול לקוח">
+                                                    <button onClick={(e) => { e.stopPropagation(); onCompleteCheckout(apt); }} className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors" title="קופה / תשלום מול לקוח">
                                                         <DollarSign className="w-4 h-4" />
                                                     </button>
                                                 )}
                                                 {apt.status !== 'cancelled' && (
-                                                    <button onClick={() => onCancelRequest(apt)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
+                                                    <button onClick={(e) => { e.stopPropagation(); onCancelRequest(apt); }} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="בטל תור">
                                                         <X className="w-4 h-4" />
                                                     </button>
                                                 )}
