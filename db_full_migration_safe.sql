@@ -126,6 +126,15 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'cart_items') THEN
         ALTER TABLE public.appointments ADD COLUMN cart_items jsonb;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'anatomy_image_url') THEN
+        ALTER TABLE public.appointments ADD COLUMN anatomy_image_url text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'anatomy_status') THEN
+        ALTER TABLE public.appointments ADD COLUMN anatomy_status text DEFAULT 'not_provided' CHECK (anatomy_status IN ('pending', 'approved', 'rejected', 'not_provided'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'anatomy_review_comment') THEN
+        ALTER TABLE public.appointments ADD COLUMN anatomy_review_comment text;
+    END IF;
 END $$;
 
 

@@ -55,6 +55,9 @@ export interface Appointment {
   total_cost?: number;
   total_profit?: number;
   cart_items?: { service_id: string; name: string; quantity: number; cost_price: number; final_price: number }[];
+  anatomy_image_url?: string;
+  anatomy_status?: 'pending' | 'approved' | 'rejected' | 'not_provided';
+  anatomy_review_comment?: string;
 }
 
 // שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך

@@ -210,6 +210,89 @@ const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
     );
 };
 
+const AnatomyReviewModal = ({ apt, isOpen, onClose, onRefresh }: any) => {
+    const [comment, setComment] = useState(apt?.anatomy_review_comment || '');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (apt) setComment(apt.anatomy_review_comment || '');
+    }, [apt]);
+
+    const handleSave = async (status: 'approved' | 'rejected') => {
+        if (!apt) return;
+        setIsSaving(true);
+        try {
+            await api.updateAppointment(apt.id, {
+                anatomy_status: status,
+                anatomy_review_comment: comment
+            });
+            if (onRefresh) onRefresh(apt.id, apt.status);
+            onClose();
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בשמירת הבדיקה');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen || !apt) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`בדיקת אנטומיה - ${apt.client_name}`}>
+            <div className="space-y-4">
+                <div className="w-full h-64 bg-black rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
+                    <img src={apt.anatomy_image_url} alt="Anatomy" className="max-w-full max-h-full object-contain" />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm text-slate-400">הערות לבדיקה</label>
+                    <textarea
+                        className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-brand-primary outline-none min-h-[100px]"
+                        placeholder="לדוגמה: המבנה קטן מהרגיל, כדאי לשקול מיקום חלופי..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                    />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-white/10">
+                    <Button
+                        onClick={() => handleSave('approved')}
+                        disabled={isSaving}
+                        className="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 gap-2"
+                    >
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                        מאשר התאמה
+                    </Button>
+                    <Button
+                        onClick={() => handleSave('rejected')}
+                        disabled={isSaving}
+                        className="flex-1 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 gap-2"
+                    >
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
+                        המבנה לא מתאים
+                    </Button>
+                </div>
+
+                <div className="text-center mt-2">
+                    <button
+                        onClick={() => {
+                            const number = apt.client_phone.startsWith('0') ? `972${apt.client_phone.substring(1)}` : apt.client_phone;
+                            const cleanPhone = number.replace(/\D/g, '');
+                            const msg = `היי ${apt.client_name}, בדקתי את תמונת האוזן ששלחת עבור התור שקבעת: \n\n${comment}\n\nנא לעדכן אותי כאן איך תרצי/ה להמשיך!`;
+                            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+                        }}
+                        className="flex items-center justify-center gap-1.5 text-xs text-brand-primary hover:text-white transition-colors underline decoration-dotted underline-offset-4 w-full"
+                    >
+                        <Send className="w-3 h-3" />
+                        שלח הודעת וואטסאפ ללקוח עם ההערות
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 const AppointmentsList = ({
     appointments,
     onStatusUpdate,
@@ -232,6 +315,7 @@ const AppointmentsList = ({
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
     const [viewImage, setViewImage] = useState<string | null>(null);
+    const [reviewApt, setReviewApt] = useState<any>(null);
 
     useEffect(() => {
         if (filterId && rowRefs.current[filterId]) {
@@ -361,6 +445,12 @@ const AppointmentsList = ({
 
     return (
         <>
+            <AnatomyReviewModal
+                apt={reviewApt}
+                isOpen={!!reviewApt}
+                onClose={() => setReviewApt(null)}
+                onRefresh={onStatusUpdate}
+            />
             <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
                 {/* Filter Bar */}
                 {showFilters && (
@@ -503,11 +593,26 @@ const AppointmentsList = ({
                                                     </div>
                                                     <div className="text-xs text-slate-500">{apt.client_phone}</div>
                                                 </div>
-                                                {imageUrl && (
-                                                    <button onClick={() => setViewImage(imageUrl)} className="text-slate-400 hover:text-brand-primary transition-colors p-1" title="צפה בתמונת לקוח">
-                                                        <ImageIcon className="w-4 h-4" />
-                                                    </button>
-                                                )}
+                                                <div className="flex gap-1 items-center">
+                                                    {imageUrl && (
+                                                        <button onClick={() => setViewImage(imageUrl)} className="text-slate-400 hover:text-brand-primary transition-colors p-1" title="צפה בתמונת לקוח/השראה">
+                                                            <ImageIcon className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {apt.anatomy_image_url && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setReviewApt(apt); }}
+                                                            className={`p-1 flex items-center gap-1 text-xs rounded-md transition-colors ${apt.anatomy_status === 'approved' ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20' :
+                                                                    apt.anatomy_status === 'rejected' ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' :
+                                                                        'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                                                                }`}
+                                                            title="בדיקת אנטומיה"
+                                                        >
+                                                            <Activity className="w-3.5 h-3.5" />
+                                                            {apt.anatomy_status === 'approved' ? 'אושר' : apt.anatomy_status === 'rejected' ? 'הערות' : 'בדיקה'}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-slate-400 align-top">

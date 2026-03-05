@@ -380,9 +380,13 @@ const Booking: React.FC = () => {
     const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
     const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
 
+    // Anatomy State
+    const [anatomyImage, setAnatomyImage] = useState<string | null>(null);
+
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const datePickerRef = useRef<HTMLInputElement>(null);
+    const anatomyInputRef = useRef<HTMLInputElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
     const { user, profile } = useAuth();
@@ -580,6 +584,19 @@ const Booking: React.FC = () => {
         }
     }, []);
 
+    const handleAnatomyImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const compressedDataUrl = await compressImage(file);
+            setAnatomyImage(compressedDataUrl);
+        } catch (err) {
+            console.error(err);
+            alert("שגיאה בטעינת התמונה. נסה קובץ אחר.");
+        }
+    }, []);
+
     const handleAnalyze = useCallback(async () => {
         if (!aiImage) return;
         setIsAnalyzing(true);
@@ -716,6 +733,19 @@ const Booking: React.FC = () => {
             updatedNotes += `\nת.ז: ${formData.nationalId}`;
         }
 
+        // 6. Upload Anatomy Image if present
+        let finalAnatomyImageUrl = null;
+        if (anatomyImage) {
+            try {
+                const uploadedAnatomyUrl = await api.uploadBase64Image(anatomyImage, 'gallery-images');
+                if (uploadedAnatomyUrl) {
+                    finalAnatomyImageUrl = uploadedAnatomyUrl;
+                }
+            } catch (e) {
+                console.error("Anatomy image upload failed", e);
+            }
+        }
+
         try {
             await api.createAppointment({
                 client_id: user?.id,
@@ -731,7 +761,8 @@ const Booking: React.FC = () => {
                 coupon_code: appliedCoupon?.code,
                 final_price: finalPriceToSave,
                 visual_plan: visualPlanString,
-                ai_recommendation_text: visualPlanString
+                ai_recommendation_text: visualPlanString,
+                anatomy_image_url: finalAnatomyImageUrl || undefined
             });
 
             setStep(BookingStep.CONFIRMATION);
@@ -1157,6 +1188,44 @@ const Booking: React.FC = () => {
 
                             {step === BookingStep.CONSENT && (
                                 <m.div key="consent" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                    <Card className="bg-white/5 border-none p-6">
+                                        <div className="flex items-center gap-2 text-brand-primary mb-2">
+                                            <Camera className="w-5 h-5" />
+                                            <h3 className="font-medium">בדיקת התאמה אנטומית (לא חובה)</h3>
+                                        </div>
+                                        <p className="text-sm text-slate-400 mb-4">
+                                            תוכלו להעלות או לצלם תמונה של האוזן כדי שיובל תבדוק מראש אם המבנה האנטומי מתאים לפירסינג שבחרתם.
+                                        </p>
+
+                                        {!anatomyImage ? (
+                                            <div className="flex flex-wrap gap-4">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    capture="user"
+                                                    className="hidden"
+                                                    ref={anatomyInputRef}
+                                                    onChange={handleAnatomyImageUpload}
+                                                />
+                                                <Button onClick={() => anatomyInputRef.current?.click()} variant="outline" className="gap-2">
+                                                    <Camera className="w-4 h-4" /> צלם / בחר תמונה
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-brand-primary border-dashed relative">
+                                                    <img src={anatomyImage} alt="Ear anatomy" className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="text-emerald-400 text-sm font-medium flex items-center gap-1"><Check className="w-4 h-4" /> התמונה צורפה לתור</span>
+                                                    <button onClick={() => setAnatomyImage(null)} className="text-red-400 hover:text-red-300 text-sm text-right transition-colors underline decoration-dotted underline-offset-4">
+                                                        הסר תמונה
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Card>
+
                                     <Card className="bg-white/5 border-none p-6">
                                         <div className="flex items-center gap-2 text-brand-primary mb-4">
                                             <FileText className="w-5 h-5" />
