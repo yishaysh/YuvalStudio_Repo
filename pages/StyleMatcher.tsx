@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Sparkles, X, Heart, RefreshCw, LogOut } from 'lucide-react';
+import { Sparkles, X, Heart, RefreshCw, LogOut, AlertCircle } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { useNavigate } from 'react-router-dom';
 
@@ -85,6 +85,7 @@ const StyleMatcher: React.FC = () => {
     const [likedItems, setLikedItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFinished, setIsFinished] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
     const navigate = useNavigate();
 
@@ -110,6 +111,7 @@ const StyleMatcher: React.FC = () => {
                 setCards(selectedCards);
             } catch (err) {
                 console.error("Error loading style cards", err);
+                setError('אופס! נראה שיש כרגע עומס על המערכת או בעיית תקשורת קלה. נסו שוב בעוד מספר רגעים.');
             } finally {
                 setLoading(false);
             }
@@ -146,6 +148,39 @@ const StyleMatcher: React.FC = () => {
     const endMatcherEarly = () => {
         setIsFinished(true);
     };
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center px-6 bg-brand-dark" dir="rtl">
+                <m.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-md bg-white/5 border border-red-500/20 rounded-3xl p-8 backdrop-blur-xl text-center shadow-2xl"
+                >
+                    <div className="w-20 h-20 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                        <div className="absolute inset-0 border-2 border-red-500/20 rounded-full animate-ping opacity-20"></div>
+                        <AlertCircle className="w-10 h-10" />
+                    </div>
+                    <h2 className="text-2xl font-serif text-white mb-3">משהו השתבש...</h2>
+                    <p className="text-slate-400 mb-8 leading-relaxed text-sm">
+                        {error}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-bold text-lg hover:bg-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                        <RefreshCw className="w-5 h-5" /> נסו לרענן
+                    </button>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="mt-4 flex items-center justify-center w-full py-4 rounded-xl border border-white/10 text-slate-300 font-medium hover:bg-white/5 transition-all"
+                    >
+                        חזרה לדף הבית
+                    </button>
+                </m.div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
