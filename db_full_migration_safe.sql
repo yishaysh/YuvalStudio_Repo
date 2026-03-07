@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   total_cost decimal(10,2) DEFAULT 0,
   total_profit decimal(10,2) DEFAULT 0,
   cart_items jsonb,
+  is_under_16 boolean DEFAULT false,
+  parent_name text,
+  parent_id text,
+  parent_phone text,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -134,6 +138,18 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'anatomy_review_comment') THEN
         ALTER TABLE public.appointments ADD COLUMN anatomy_review_comment text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'is_under_16') THEN
+        ALTER TABLE public.appointments ADD COLUMN is_under_16 boolean DEFAULT false;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'parent_name') THEN
+        ALTER TABLE public.appointments ADD COLUMN parent_name text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'parent_id') THEN
+        ALTER TABLE public.appointments ADD COLUMN parent_id text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'appointments' AND column_name = 'parent_phone') THEN
+        ALTER TABLE public.appointments ADD COLUMN parent_phone text;
     END IF;
 END $$;
 
