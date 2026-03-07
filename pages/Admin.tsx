@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket,
@@ -635,6 +635,7 @@ const AppointmentsList = ({
                                 <option value="all">הכל</option>
                                 <option value="pending">ממתין</option>
                                 <option value="confirmed">מאושר</option>
+                                <option value="completed">הושלם</option>
                                 <option value="cancelled">בוטל</option>
                             </select>
                         </div>

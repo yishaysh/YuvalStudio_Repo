@@ -51,9 +51,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         return {
             totalJewelryRevenue: revenue,
             totalCost: cost,
-            totalProfit: revenue - cost
+            totalProfit: (revenue - cost) + baseServicesPrice
         };
-    }, [cartItems]);
+    }, [cartItems, baseServicesPrice]);
 
     const finalCartPrice = baseServicesPrice + totalJewelryRevenue;
 
@@ -253,7 +253,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             </div>
                             {totalProfit > 0 && (
                                 <div className="flex justify-between text-emerald-400 pt-1 text-xs font-bold items-center">
-                                    <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> רווח נקי מתכשיטים:</span>
+                                    <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> סה״כ רווח נקי:</span>
                                     <span>₪{totalProfit}</span>
                                 </div>
                             )}
