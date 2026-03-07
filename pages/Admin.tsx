@@ -6,7 +6,7 @@ import {
     ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
     Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload
 } from 'lucide-react';
-import { api } from '../services/mockApi';
+import { api, TimeSlot } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon } from '../types';
 import { Button, Card, Input, Modal, ConfirmationModal, SectionHeading } from '../components/ui';
 // @ts-ignore
@@ -2403,7 +2403,7 @@ const Admin: React.FC = () => {
         await handleUpdateSettings(updatedSettings, false); // Changed from true to false to refresh data
         showNotification("התיוגים נשמרו בהצלחה", 'success');
     };
-    const handleStatusUpdate = async (id: string, status: string) => { await api.updateAppointmentStatus(id, status); fetchData(); }
+    const handleStatusUpdate = async (id: string, status: 'pending' | 'confirmed' | 'cancelled' | 'completed') => { await api.updateAppointmentStatus(id, status); fetchData(); }
     const handleAddService = async (service: any) => { await api.addService(service); fetchData(); }
     const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); fetchData(); }
     const handleDeleteService = async (id: string) => { if (window.confirm('האם אתה בטוח?')) { await api.deleteService(id); fetchData(); } }
