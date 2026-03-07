@@ -2084,11 +2084,22 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
                 </div>
             </div>
 
+            {data.is_under_16 && (
+                <div className="mb-8 bg-brand-primary/10 p-6 rounded-xl border border-brand-primary/30">
+                    <h3 className="font-bold text-lg mb-4 border-b border-brand-primary/30 pb-2 text-brand-dark">פרטי הורה מאשר (לקוח מתחת לגיל 16)</h3>
+                    <div className="grid grid-cols-2 gap-6 text-sm">
+                        <p className="border-b border-brand-primary/20 pb-1"><strong>שם ההורה:</strong> {data.parent_name || '_________________'}</p>
+                        <p className="border-b border-brand-primary/20 pb-1"><strong>ת.ז הורה:</strong> {data.parent_id || '_________________'}</p>
+                        <p className="border-b border-brand-primary/20 pb-1 col-span-2"><strong>טלפון הורה:</strong> {data.parent_phone || '_________________'}</p>
+                    </div>
+                </div>
+            )}
+
             <div className="mb-8 text-sm leading-relaxed">
                 <h3 className="font-bold text-lg mb-4 underline">הצהרת הלקוח/ה:</h3>
 
                 <div className="space-y-3 text-justify">
-                    <p>- אני מצהיר/ה כי אני מעל גיל 16, או מלווה ע"י הורה/אפוטרופוס חוקי שחתם על אישור זה.</p>
+                    <p>- {data.is_under_16 ? 'אני מצהיר/ה כי אני ההורה/אפוטרופוס החוקי של הקטין שפרטיו מופיעים מעלה, ומאשר/ת את ביצוע הפעולה.' : 'אני מצהיר/ה כי אני מעל גיל 16, או מלווה ע"י הורה/אפוטרופוס חוקי שחתם על אישור זה.'}</p>
                     <p>- אני מצהיר/ה כי איני תחת השפעת אלכוהול או סמים.</p>
                     <p>- אני מצהיר/ה כי איני סובל/ת ממחלות המועברות בדם (כגון צהבת, HIV וכו').</p>
                     <p>- אני מצהיר/ה כי איני סובל/ת מבעיות קרישת דם, סוכרת לא מאוזנת, מחלות לב, אפילפסיה או אלרגיות למתכות.</p>
@@ -2109,7 +2120,7 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
                         ) : (
                             <div className="h-16 mb-2"></div>
                         )}
-                        <p className="border-t border-black pt-2 font-bold">חתימת הלקוח/ה</p>
+                        <p className="border-t border-black pt-2 font-bold">{data.is_under_16 ? 'חתימת ההורה המאשר/ת' : 'חתימת הלקוח/ה'}</p>
                     </div>
                     <div className="text-center w-1/3">
                         <div className="h-16 mb-2 flex items-end justify-center font-script text-2xl">Yuval</div>

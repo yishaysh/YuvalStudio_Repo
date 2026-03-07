@@ -378,7 +378,11 @@ export const api = {
       visual_plan: appt.visual_plan,
       anatomy_image_url: appt.anatomy_image_url,
       anatomy_status: appt.anatomy_status,
-      anatomy_review_comment: appt.anatomy_review_comment
+      anatomy_review_comment: appt.anatomy_review_comment,
+      is_under_16: appt.is_under_16,
+      parent_name: appt.parent_name,
+      parent_id: appt.parent_id,
+      parent_phone: appt.parent_phone
     };
 
     const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
@@ -404,7 +408,11 @@ export const api = {
       signature: data.signature,
       created_at: data.created_at,
       coupon_code: appt.coupon_code,
-      final_price: appt.final_price
+      final_price: appt.final_price,
+      is_under_16: data.is_under_16,
+      parent_name: data.parent_name,
+      parent_id: data.parent_id,
+      parent_phone: data.parent_phone
     };
   },
 

@@ -58,6 +58,12 @@ export interface Appointment {
   anatomy_image_url?: string;
   anatomy_status?: 'pending' | 'approved' | 'rejected' | 'not_provided';
   anatomy_review_comment?: string;
+
+  // --- פרטי הורה למתחת לגיל 16 ---
+  is_under_16?: boolean;
+  parent_name?: string;
+  parent_id?: string;
+  parent_phone?: string;
 }
 
 // שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך

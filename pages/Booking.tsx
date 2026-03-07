@@ -361,6 +361,10 @@ const Booking: React.FC = () => {
     const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
     const [signatureData, setSignatureData] = useState<string | null>(null);
 
+    // Parental Consent State
+    const [isUnder16, setIsUnder16] = useState(false);
+    const [parentData, setParentData] = useState({ name: '', id: '', phone: '' });
+
     // Gallery State
     const [galleryImages, setGalleryImages] = useState<any[]>([]);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
@@ -764,7 +768,13 @@ const Booking: React.FC = () => {
                 final_price: finalPriceToSave,
                 visual_plan: visualPlanString,
                 ai_recommendation_text: visualPlanString,
-                anatomy_image_url: finalAnatomyImageUrl || undefined
+                anatomy_image_url: finalAnatomyImageUrl || undefined,
+
+                // Parental Consent Payload
+                is_under_16: isUnder16,
+                parent_name: isUnder16 ? parentData.name : undefined,
+                parent_id: isUnder16 ? parentData.id : undefined,
+                parent_phone: isUnder16 ? parentData.phone : undefined
             });
 
             setStep(BookingStep.CONFIRMATION);
@@ -1239,7 +1249,7 @@ const Booking: React.FC = () => {
                                         <div className="text-sm text-slate-300 space-y-3 h-64 overflow-y-auto pr-2 custom-scrollbar mb-6 bg-brand-dark/20 p-4 rounded-xl leading-relaxed border border-white/5">
                                             <p className="font-medium mb-2 text-white">אני מצהיר בזאת כי:</p>
                                             <div className="space-y-2 text-slate-300">
-                                                <p>- אני מעל גיל 16 (או מלווה באישור הורה/אפוטרופוס).</p>
+                                                <p>- {isUnder16 ? 'אני ההורה/אפוטרופוס החוקי של הקטין.' : 'אני מעל גיל 16 (או מלווה באישור הורה/אפוטרופוס).'}</p>
                                                 <p>- איני סובל ממחלות דם, סוכרת לא מאוזנת או מחלות זיהומיות.</p>
                                                 <p>- איני נוטל תרופות המדללות את הדם.</p>
                                                 <p>- איני בהריון או מניקה (לפירסינג בפטמה/טבור).</p>
@@ -1248,15 +1258,75 @@ const Booking: React.FC = () => {
                                                 <p>- קראתי והבנתי את הוראות הטיפול שניתנו לי.</p>
                                             </div>
                                             <p className="font-medium text-brand-primary border-t border-white/5 pt-4 mt-4">
-                                                אני מאשר לסטודיו לבצע את הנקיב ומסיר כל אחריות במקרה של אי-מילוי אחר הוראות הטיפול.
+                                                {isUnder16 ? 'אני מאשר לסטודיו לבצע את הנקיב עבור בני/בתי ומסיר כל אחריות במקרה של אי-מילוי אחר הוראות הטיפול.' : 'אני מאשר לסטודיו לבצע את הנקיב ומסיר כל אחריות במקרה של אי-מילוי אחר הוראות הטיפול.'}
                                             </p>
                                         </div>
+
+                                        <div className="mb-8 p-5 rounded-2xl border border-brand-primary/20 bg-brand-primary/5">
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors shrink-0 ${isUnder16 ? 'bg-brand-primary border-brand-primary' : 'border-slate-500 group-hover:border-brand-primary/50'}`}>
+                                                    {isUnder16 && <Check className="w-4 h-4 text-brand-dark" />}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    className="hidden"
+                                                    checked={isUnder16}
+                                                    onChange={(e) => {
+                                                        setIsUnder16(e.target.checked);
+                                                        // Reset parent data when unchecking
+                                                        if (!e.target.checked) setParentData({ name: '', id: '', phone: '' });
+                                                    }}
+                                                />
+                                                <span className="text-white font-medium select-none text-lg">אני מתחת לגיל 16 (נדרש אישור הורה)</span>
+                                            </label>
+
+                                            {/* Parent Details Reveal */}
+                                            <AnimatePresence>
+                                                {isUnder16 && (
+                                                    <m.div
+                                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-brand-primary/10">
+                                                            <Input
+                                                                label="שם ההורה המאשר"
+                                                                value={parentData.name}
+                                                                onChange={e => setParentData({ ...parentData, name: e.target.value })}
+                                                            />
+                                                            <Input
+                                                                label="ת.ז של ההורה"
+                                                                type="tel"
+                                                                inputMode="numeric"
+                                                                maxLength={9}
+                                                                value={parentData.id}
+                                                                onChange={e => setParentData({ ...parentData, id: e.target.value })}
+                                                            />
+                                                            <Input
+                                                                label="טלפון של ההורה"
+                                                                type="tel"
+                                                                inputMode="numeric"
+                                                                dir="ltr"
+                                                                className="text-right"
+                                                                value={parentData.phone}
+                                                                onChange={e => setParentData({ ...parentData, phone: e.target.value })}
+                                                            />
+                                                        </div>
+                                                        <p className="text-xs text-brand-primary/80 mt-3">* החתימה מטה מהווה את אישור ההורה האמור.</p>
+                                                    </m.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                                             <div className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setHasAgreedToTerms(!hasAgreedToTerms)}>
                                                 <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${hasAgreedToTerms ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
                                                     {hasAgreedToTerms && <Check className="w-3.5 h-3.5 stroke-[4]" />}
                                                 </div>
-                                                <span className="text-sm text-slate-200 select-none">אני מאשר כי קראתי את כל הסעיפים ומסכים לתוכן.</span>
+                                                <span className="text-sm text-slate-200 select-none">
+                                                    {isUnder16 ? 'אני החתום למטה מאשר כי קראתי ההצהרה ומאשר את ביצוע הפעולה לבני/בתי.' : 'אני מאשר כי קראתי את כל הסעיפים ומסכים לתוכן.'}
+                                                </span>
                                             </div>
                                             <SignaturePad onSave={(data) => setSignatureData(data)} onClear={() => setSignatureData(null)} />
                                         </div>
@@ -1341,7 +1411,7 @@ const Booking: React.FC = () => {
                                     (step === BookingStep.SELECT_SERVICE && selectedServices.length === 0 && selectedJewelry.length === 0) ||
                                     (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
                                     (step === BookingStep.DETAILS && (!formData.name || !formData.phone || !formData.nationalId)) ||
-                                    (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData)) ||
+                                    (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData || (isUnder16 && (!parentData.name || !parentData.id || !parentData.phone)))) ||
                                     isSubmitting || isAnalyzing
                                 }
                                 isLoading={isSubmitting}
