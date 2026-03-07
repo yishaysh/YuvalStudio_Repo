@@ -2085,12 +2085,12 @@ const ConsentPdfTemplate = ({ data, settings }: { data: Appointment, settings: S
             </div>
 
             {data.is_under_16 && (
-                <div className="mb-8 bg-brand-primary/10 p-6 rounded-xl border border-brand-primary/30">
-                    <h3 className="font-bold text-lg mb-4 border-b border-brand-primary/30 pb-2 text-brand-dark">פרטי הורה מאשר (לקוח מתחת לגיל 16)</h3>
+                <div className="mb-8 bg-gray-100 p-6 rounded-xl border border-gray-300">
+                    <h3 className="font-bold text-lg mb-4 border-b border-gray-300 pb-2 text-black">פרטי הורה מאשר (לקוח מתחת לגיל 16)</h3>
                     <div className="grid grid-cols-2 gap-6 text-sm">
-                        <p className="border-b border-brand-primary/20 pb-1"><strong>שם ההורה:</strong> {data.parent_name || '_________________'}</p>
-                        <p className="border-b border-brand-primary/20 pb-1"><strong>ת.ז הורה:</strong> {data.parent_id || '_________________'}</p>
-                        <p className="border-b border-brand-primary/20 pb-1 col-span-2"><strong>טלפון הורה:</strong> {data.parent_phone || '_________________'}</p>
+                        <p className="border-b border-gray-300 pb-1"><strong>שם ההורה:</strong> {data.parent_name || '_________________'}</p>
+                        <p className="border-b border-gray-300 pb-1"><strong>ת.ז הורה:</strong> {data.parent_id || '_________________'}</p>
+                        <p className="border-b border-gray-300 pb-1 col-span-2"><strong>טלפון הורה:</strong> {data.parent_phone || '_________________'}</p>
                     </div>
                 </div>
             )}

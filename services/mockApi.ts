@@ -452,7 +452,11 @@ export const api = {
         ai_recommendation_text: item.ai_recommendation_text,
         anatomy_image_url: item.anatomy_image_url,
         anatomy_status: item.anatomy_status,
-        anatomy_review_comment: item.anatomy_review_comment
+        anatomy_review_comment: item.anatomy_review_comment,
+        is_under_16: item.is_under_16,
+        parent_name: item.parent_name,
+        parent_id: item.parent_id,
+        parent_phone: item.parent_phone
       }));
     } catch (err) {
       console.error(err);
@@ -495,7 +499,11 @@ export const api = {
         ai_recommendation_text: item.ai_recommendation_text,
         anatomy_image_url: item.anatomy_image_url,
         anatomy_status: item.anatomy_status,
-        anatomy_review_comment: item.anatomy_review_comment
+        anatomy_review_comment: item.anatomy_review_comment,
+        is_under_16: item.is_under_16,
+        parent_name: item.parent_name,
+        parent_id: item.parent_id,
+        parent_phone: item.parent_phone
       }));
     } catch (err) {
       console.error(err);
