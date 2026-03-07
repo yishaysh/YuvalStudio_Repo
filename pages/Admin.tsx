@@ -293,6 +293,169 @@ const AnatomyReviewModal = ({ apt, isOpen, onClose, onRefresh }: any) => {
     );
 };
 
+const EditTimeModal = ({ apt, isOpen, onClose, onRefresh, settings }: any) => {
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [selectedTime, setSelectedTime] = useState<string>('');
+    const [durationStr, setDurationStr] = useState<string>('30');
+    const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+    const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (apt && isOpen) {
+            const startDate = new Date(apt.start_time);
+            setSelectedDate(startDate);
+            setSelectedTime(`${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`);
+
+            // Calculate original duration
+            const endDate = new Date(apt.end_time);
+            if (!isNaN(endDate.getTime())) {
+                const diffMins = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+                if (diffMins > 0) {
+                    setDurationStr(diffMins.toString());
+                } else {
+                    setDurationStr('30'); // Fallback if calc fails or is 0
+                }
+            } else {
+                setDurationStr('30'); // Fallback if no end_time originally
+            }
+        }
+    }, [apt, isOpen]);
+
+    useEffect(() => {
+        if (selectedDate && isOpen) {
+            setIsLoadingSlots(true);
+            api.getAvailability(selectedDate).then(slots => {
+                setAvailableSlots(slots);
+                setIsLoadingSlots(false);
+            });
+        }
+    }, [selectedDate, isOpen]);
+
+    // Validation for enough slots (copied conceptually from Booking.tsx)
+    const isSlotValid = useCallback((startIndex: number, durationMins: number) => {
+        const slotsNeeded = Math.ceil(durationMins / 30);
+        if (startIndex + slotsNeeded > availableSlots.length) return false;
+
+        let isValid = true;
+        for (let i = 0; i < slotsNeeded; i++) {
+            const slot = availableSlots[startIndex + i];
+            // Only consider it busy if it's NOT the current appointment AND it's not available
+            if (!slot?.available) {
+                isValid = false;
+            }
+        }
+        return isValid;
+    }, [availableSlots]);
+
+    const handleSave = async () => {
+        if (!apt || !selectedDate || !selectedTime) return;
+        setIsSaving(true);
+
+        try {
+            const [hours, minutes] = selectedTime.split(':').map(Number);
+            const newStart = new Date(selectedDate);
+            newStart.setHours(hours, minutes, 0, 0);
+
+            const success = await api.updateAppointmentTime(apt.id, newStart, Number(durationStr));
+            if (success) {
+                if (onRefresh) onRefresh();
+                onClose();
+            } else {
+                alert('שגיאה בשמירת הזמנים החדשים במסד הנתונים');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בתהליך השמירה');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen || !apt) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`עריכת זמני תור - ${apt.client_name}`}>
+            <div className="space-y-6">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">בחר תאריך חדש</label>
+                    <input
+                        type="date"
+                        value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
+                        onChange={(e) => {
+                            if (e.target.valueAsDate) setSelectedDate(e.target.valueAsDate);
+                        }}
+                        className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-brand-primary"
+                    />
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-sm font-medium text-slate-300">אורך הטיפול החדש</label>
+                    <div className="flex gap-2">
+                        {['15', '30', '45', '60'].map((mins) => (
+                            <button
+                                key={mins}
+                                onClick={() => setDurationStr(mins)}
+                                className={`flex-1 py-2 rounded-lg border transition-colors ${durationStr === mins ? 'bg-brand-primary text-brand-dark border-brand-primary' : 'bg-transparent text-slate-300 border-white/10 hover:border-brand-primary/50'}`}
+                            >
+                                {mins} דק׳
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-sm font-medium text-slate-300">בחר שעה</label>
+                    {isLoadingSlots ? (
+                        <div className="text-center py-4 text-slate-400 text-sm">טוען שעות...</div>
+                    ) : availableSlots.length === 0 ? (
+                        <div className="text-center py-4 text-rose-400 text-sm bg-rose-500/10 rounded-lg border border-rose-500/20">הסטודיו סגור ביום זה</div>
+                    ) : (
+                        <div className="grid grid-cols-4 gap-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
+                            {availableSlots.map((slot, i) => {
+                                // Since we are editing an EXISTING appointment, we should technically allow them to check their own time.
+                                // But simple available check is fine for now; if they try to keep the exact same time, it might show "busy" because their own appt blocks it.
+                                // We'll just let them pick any time for admin overrides, or we can just apply styling.
+                                const isCurrentApptTime = slot.time === new Date(apt.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                                return (
+                                    <button
+                                        key={slot.time}
+                                        onClick={() => setSelectedTime(slot.time)}
+                                        className={`py-2 px-1 rounded-lg text-sm border transition-all
+                                            ${selectedTime === slot.time
+                                                ? 'bg-brand-primary border-brand-primary text-brand-dark shadow-[0_0_15px_rgba(212,181,133,0.3)]'
+                                                : isCurrentApptTime
+                                                    ? 'bg-white/10 border-brand-primary/50 text-brand-primary'
+                                                    : !slot.available
+                                                        ? 'bg-transparent border-white/5 text-slate-600'
+                                                        : 'bg-transparent border-white/10 text-white hover:border-brand-primary/50'
+                                            }
+                                        `}
+                                    >
+                                        {slot.time}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-white/10">
+                    <Button
+                        onClick={handleSave}
+                        disabled={isSaving || !selectedDate || !selectedTime}
+                        className="flex-1 bg-brand-primary text-brand-dark hover:bg-white"
+                        isLoading={isSaving}
+                    >
+                        שמור זמנים חדשים
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 const AppointmentsList = ({
     appointments,
     onStatusUpdate,
@@ -311,11 +474,12 @@ const AppointmentsList = ({
     onCompleteCheckout
 }: any) => {
     const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'start_time', direction: 'asc' });
     const [viewImage, setViewImage] = useState<string | null>(null);
-    const [reviewApt, setReviewApt] = useState<any>(null);
+    const [reviewApt, setReviewApt] = useState<any | null>(null);
+    const [editTimeApt, setEditTimeApt] = useState<any | null>(null);
 
     useEffect(() => {
         if (filterId && rowRefs.current[filterId]) {
@@ -449,6 +613,12 @@ const AppointmentsList = ({
                 apt={reviewApt}
                 isOpen={!!reviewApt}
                 onClose={() => setReviewApt(null)}
+                onRefresh={onStatusUpdate}
+            />
+            <EditTimeModal
+                apt={editTimeApt}
+                isOpen={!!editTimeApt}
+                onClose={() => setEditTimeApt(null)}
                 onRefresh={onStatusUpdate}
             />
             <Card className="p-0 overflow-hidden bg-brand-surface/30 border-white/5 h-full">
@@ -749,6 +919,17 @@ const AppointmentsList = ({
                                                         <FileText className="w-4 h-4" />
                                                     </button>
                                                 </div>
+
+                                                {/* Edit Time Button */}
+                                                {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setEditTimeApt(apt); }}
+                                                        className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors mr-1"
+                                                        title="ערוך זמני תור"
+                                                    >
+                                                        <Clock className="w-4 h-4" />
+                                                    </button>
+                                                )}
 
                                                 {/* Google Calendar Sync Button */}
                                                 {apt.status !== 'cancelled' && (

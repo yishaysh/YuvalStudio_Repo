@@ -432,6 +432,7 @@ export const api = {
         service_name: item.services?.name,
         service_price: item.services?.price,
         start_time: item.start_time,
+        end_time: item.end_time,
         status: item.status,
         notes: item.notes,
         signature: item.signature,
@@ -494,10 +495,33 @@ export const api = {
     }
   },
 
-  updateAppointmentStatus: async (id: string, status: string): Promise<boolean> => {
-    if (!supabase) return true;
-    const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
-    return !error;
+  updateAppointmentStatus: async (id: string, status: Appointment['status'], notes?: string): Promise<boolean> => {
+    if (!supabase) return false;
+    const updates: any = { status };
+    if (notes) updates.notes = notes;
+
+    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+    if (error) { console.error(error); return false; }
+    return true;
+  },
+
+  updateAppointmentTime: async (id: string, start_time: Date, durationMinutes: number): Promise<boolean> => {
+    if (!supabase) return false;
+
+    // Calculate new end time based on the selected duration
+    const endTime = new Date(start_time.getTime() + durationMinutes * 60000);
+
+    const updates = {
+      start_time: start_time.toISOString(),
+      end_time: endTime.toISOString()
+    };
+
+    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+    if (error) {
+      console.error("Error updating appointment time:", error);
+      return false;
+    }
+    return true;
   },
 
   updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
