@@ -576,7 +576,8 @@ export const api = {
     let pending = 0;
 
     data?.forEach((app: any) => {
-      if (app.status !== 'cancelled') {
+      // Only tally revenue and profit for completed appointments
+      if (app.status === 'completed') {
         // Prefer final_price if exists, else service price
         revenue += (app.final_price !== undefined && app.final_price !== null) ? app.final_price : (app.services?.price || 0);
         profit += (app.total_profit || 0);
