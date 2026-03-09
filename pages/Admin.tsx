@@ -2903,6 +2903,7 @@ const Admin: React.FC = () => {
                     appointment={checkoutApt}
                     // @ts-ignore
                     inventoryItems={settings.inventory_items || []}
+                    services={services}
                     baseServicesPrice={checkoutApt.service_price || 0}
                     onSave={handleCompleteCheckout}
                 />

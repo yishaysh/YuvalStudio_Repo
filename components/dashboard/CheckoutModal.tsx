@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Search, Plus, Minus, DollarSign, Sparkles } from 'lucide-react';
 import { Modal, Button } from '../ui';
-import { Appointment, JewelryItem } from '../../types';
+import { Appointment, JewelryItem, Service } from '../../types';
 
 interface CartItem {
     service_id: string;
@@ -19,6 +19,7 @@ interface CheckoutModalProps {
     onClose: () => void;
     appointment: Appointment;
     inventoryItems: JewelryItem[];
+    services?: Service[];
     baseServicesPrice?: number;
     onSave: (data: {
         cart_items: CartItem[];
@@ -33,11 +34,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     onClose,
     appointment,
     inventoryItems,
+    services = [],
     baseServicesPrice = 0,
     onSave
 }) => {
     const [cartItems, setCartItems] = useState<CartItem[]>(appointment.cart_items || []);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState<'all' | 'jewelry' | 'services'>('all');
     const [isSaving, setIsSaving] = useState(false);
 
     // Computed totals
@@ -57,16 +60,28 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     const finalCartPrice = baseServicesPrice + totalJewelryRevenue;
 
+    const combinedItems = useMemo(() => {
+        // Map services to match the structure for the grid, add a flag to distinguish
+        const mappedServices = services.map(s => ({ ...s, is_service: true }));
+        const mappedInventory = inventoryItems.map(i => ({ ...i, is_service: false }));
+        return [...mappedInventory, ...mappedServices];
+    }, [inventoryItems, services]);
+
     const filteredInventory = useMemo(() => {
-        if (!searchQuery) return inventoryItems;
+        let filtered = combinedItems;
+        if (activeFilter === 'jewelry') filtered = filtered.filter(i => !i.is_service);
+        if (activeFilter === 'services') filtered = filtered.filter(i => i.is_service);
+
+        if (!searchQuery) return filtered;
+        
         const lowerQ = searchQuery.toLowerCase();
-        return inventoryItems.filter(item =>
+        return filtered.filter(item =>
             item.name.toLowerCase().includes(lowerQ) ||
             item.category.toLowerCase().includes(lowerQ)
         );
-    }, [inventoryItems, searchQuery]);
+    }, [combinedItems, searchQuery, activeFilter]);
 
-    const handleAddItem = (item: JewelryItem) => {
+    const handleAddItem = (item: any) => {
         setCartItems(prev => {
             const existing = prev.find(p => p.service_id === item.id);
             if (existing) {
@@ -125,10 +140,32 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <Modal isOpen={isOpen} onClose={onClose} title={`סיכום תור - ${appointment.client_name}`} className="!max-w-4xl">
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-[80vh] lg:h-[70vh] lg:flex-row-reverse">
 
-                {/* Left Panel: Inventory Selection */}
+                {/* Left Panel: Items Selection */}
                 <div className="flex-1 flex flex-col min-h-0 bg-brand-dark/30 rounded-2xl border border-white/5 overflow-hidden">
-                    <div className="p-4 border-b border-white/5 bg-brand-surface/50">
-                        <h3 className="font-medium text-white mb-3">בחירת תכשיטים שהוכנסו</h3>
+                    <div className="p-4 border-b border-white/5 bg-brand-surface/50 space-y-3">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-medium text-white">תוספות לתור</h3>
+                            <div className="flex bg-brand-dark/50 rounded-lg p-1 border border-white/5">
+                                <button 
+                                    onClick={() => setActiveFilter('all')} 
+                                    className={`px-3 py-1 text-xs rounded-md transition-colors ${activeFilter === 'all' ? 'bg-brand-primary text-brand-dark font-bold' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    הכל
+                                </button>
+                                <button 
+                                    onClick={() => setActiveFilter('jewelry')} 
+                                    className={`px-3 py-1 text-xs rounded-md transition-colors ${activeFilter === 'jewelry' ? 'bg-brand-primary text-brand-dark font-bold' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    תכשיטים
+                                </button>
+                                <button 
+                                    onClick={() => setActiveFilter('services')} 
+                                    className={`px-3 py-1 text-xs rounded-md transition-colors ${activeFilter === 'services' ? 'bg-brand-primary text-brand-dark font-bold' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    טיפולים
+                                </button>
+                            </div>
+                        </div>
                         <div className="relative">
                             <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                             <input
@@ -156,9 +193,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                                 {inCart.quantity}
                                             </div>
                                         )}
-                                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-black mb-2 relative">
-                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                                            {(!item.in_stock || (item.stock_quantity && item.stock_quantity <= 0)) && (
+                                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-black mb-2 relative shrink-0 flex items-center justify-center">
+                                            {item.image_url ? (
+                                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Sparkles className="w-6 h-6 text-brand-primary/50" />
+                                            )}
+                                            {(!item.is_service && (!(item as any).in_stock || (item.stock_quantity && item.stock_quantity <= 0))) && (
                                                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                                                     <span className="text-[10px] text-red-400 font-bold bg-black/50 px-1 py-0.5 rounded">חסר במלאי</span>
                                                 </div>
@@ -166,7 +207,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                         </div>
                                         <div className="text-xs font-medium text-white mb-1 line-clamp-1 w-full" title={item.name}>{item.name}</div>
                                         <div className="text-[10px] text-brand-primary font-bold">₪{item.price}</div>
-                                        {(item.stock_quantity !== undefined && item.stock_quantity > 0) && (
+                                        {item.is_service && <div className="text-[9px] text-purple-400 mt-0.5 font-medium">שירות/טיפול</div>}
+                                        {(!item.is_service && item.stock_quantity !== undefined && item.stock_quantity > 0) && (
                                             <div className="text-[9px] text-slate-500 mt-0.5">מלאי: {item.stock_quantity}</div>
                                         )}
                                     </div>
@@ -244,7 +286,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                 <span>₪{baseServicesPrice}</span>
                             </div>
                             <div className="flex justify-between text-slate-400">
-                                <span>סך הכל תכשיטים:</span>
+                                <span>עלות תוספות (תכשיטים ושירותים):</span>
                                 <span>₪{totalJewelryRevenue}</span>
                             </div>
                             <div className="flex justify-between text-brand-primary/80 pt-2 border-t border-white/5">
