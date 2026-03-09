@@ -4,10 +4,10 @@ import {
     LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket,
     Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
     ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-    Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload
+    Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload, PieChart, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { api, TimeSlot } from '../services/mockApi';
-import { Appointment, Service, StudioSettings, Coupon } from '../types';
+import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
 import { Button, Card, Input, Modal, ConfirmationModal, SectionHeading } from '../components/ui';
 // @ts-ignore
 import { jsPDF } from 'jspdf';
@@ -1362,6 +1362,239 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
     );
 };
 
+// --- Reports & Expenses Tab ---
+const ReportsTab = ({ appointments, stats }: { appointments: Appointment[], stats: any }) => {
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    
+    // New Expense Form State
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newExpense, setNewExpense] = useState<Partial<Expense>>({
+        category: 'business',
+        amount: 0,
+        description: '',
+        expense_date: new Date().toISOString().split('T')[0]
+    });
+
+    const fetchExpenses = async () => {
+        setIsLoading(true);
+        const data = await api.getExpenses(selectedMonth, selectedYear);
+        setExpenses(data);
+        setIsLoading(false);
+    };
+
+    useEffect(() => {
+        fetchExpenses();
+    }, [selectedMonth, selectedYear]);
+
+    const handleAddExpense = async () => {
+        if (!newExpense.amount || !newExpense.description || !newExpense.category || !newExpense.expense_date) {
+            alert("יש למלא את כל השדות");
+            return;
+        }
+
+        const added = await api.addExpense(newExpense as any);
+        if (added) {
+            setIsAddModalOpen(false);
+            setNewExpense({ category: 'business', amount: 0, description: '', expense_date: new Date().toISOString().split('T')[0] });
+            fetchExpenses();
+        }
+    };
+
+    const handleDeleteExpense = async (id: string) => {
+        if (window.confirm("האם למחוק הוצאה זו?")) {
+            await api.deleteExpense(id);
+            fetchExpenses();
+        }
+    };
+
+    // Calculate Financials for the selected month
+    const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+    
+    // Total Revenue & gross profit from appointments this month
+    const monthApts = appointments.filter(apt => {
+        const d = new Date(apt.start_time);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear && apt.status === 'completed';
+    });
+    
+    const totalRevenue = monthApts.reduce((sum, apt) => sum + (apt.final_price ?? (apt as any).services?.price ?? 0), 0);
+    const grossProfit = monthApts.reduce((sum, apt) => sum + (apt.total_profit || 0), 0);
+    
+    const netProfit = grossProfit - totalExpenses;
+
+    return (
+        <div className="space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex items-center gap-4">
+                    <h3 className="text-2xl font-serif text-white flex items-center gap-2">
+                        <PieChart className="w-6 h-6 text-brand-primary" />
+                        דוחות והוצאות
+                    </h3>
+                    <div className="flex gap-2">
+                        <select 
+                            className="bg-brand-dark border border-white/10 rounded-lg px-3 py-2 text-white outline-none"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                        >
+                            {Array.from({length: 12}).map((_, i) => (
+                                <option key={i} value={i}>{new Date(2000, i, 1).toLocaleString('he-IL', { month: 'long' })}</option>
+                            ))}
+                        </select>
+                        <select 
+                            className="bg-brand-dark border border-white/10 rounded-lg px-3 py-2 text-white outline-none"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        >
+                            {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                
+                <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" /> הוסף הוצאה חדשה
+                </Button>
+            </div>
+
+            {/* Financial Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card className="p-6 border-white/5">
+                    <div className="text-sm text-slate-400 mb-2">סה״כ הכנסות (ברוטו)</div>
+                    <div className="text-3xl font-serif font-bold text-white">₪{totalRevenue.toLocaleString()}</div>
+                    <div className="text-xs text-slate-500 mt-2">רלוונטי לתורים שהושלמו החודש</div>
+                </Card>
+                <Card className="p-6 border-brand-primary/20 bg-brand-primary/5">
+                    <div className="text-sm text-brand-primary mb-2">רווח גולמי (תורים)</div>
+                    <div className="text-3xl font-serif font-bold text-brand-primary">₪{grossProfit.toLocaleString()}</div>
+                    <div className="text-xs text-brand-primary/60 mt-2">הכנסות פחות עלויות מלאי מידיות</div>
+                </Card>
+                <Card className="p-6 border-red-500/20 bg-red-500/5">
+                    <div className="text-sm text-red-400 mb-2 flex items-center gap-2">
+                        <TrendingDown className="w-4 h-4" /> סה״כ הוצאות
+                    </div>
+                    <div className="text-3xl font-serif font-bold text-red-400">₪{totalExpenses.toLocaleString()}</div>
+                    <div className="text-xs text-red-400/60 mt-2">הוצאות עסק, קורסים ומלאי עקיף</div>
+                </Card>
+                <Card className={`p-6 border ${netProfit >= 0 ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
+                    <div className={`text-sm mb-2 flex items-center gap-2 ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {netProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />} 
+                        רווח נקי
+                    </div>
+                    <div className={`text-3xl font-serif font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        ₪{netProfit.toLocaleString()}
+                    </div>
+                    <div className={`text-xs mt-2 ${netProfit >= 0 ? 'text-emerald-400/60' : 'text-red-400/60'}`}>רווח גולמי פחות הוצאות חודשיות</div>
+                </Card>
+            </div>
+
+            {/* Expenses Table */}
+            <Card className="overflow-hidden border border-white/10">
+                <div className="p-4 border-b border-white/5 bg-white/5 font-medium text-white">
+                    פירוט הוצאות לחודש הנבחר
+                </div>
+                {isLoading ? (
+                    <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-primary" /></div>
+                ) : expenses.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500">לא הוזנו הוצאות בחודש זה</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right">
+                            <thead className="text-xs text-slate-400 bg-black/20">
+                                <tr>
+                                    <th className="px-4 py-3 font-medium">תאריך</th>
+                                    <th className="px-4 py-3 font-medium">תיאור</th>
+                                    <th className="px-4 py-3 font-medium">קטגוריה</th>
+                                    <th className="px-4 py-3 font-medium">סכום</th>
+                                    <th className="px-4 py-3 font-medium text-left">פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5 text-sm max-h-[400px] overflow-y-auto">
+                                {expenses.map(exp => (
+                                    <tr key={exp.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="px-4 py-3 text-slate-300">{new Date(exp.expense_date).toLocaleDateString('he-IL')}</td>
+                                        <td className="px-4 py-3 text-white">{exp.description}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`px-2 py-1 rounded text-xs ${
+                                                exp.category === 'business' ? 'bg-blue-500/20 text-blue-400' :
+                                                exp.category === 'course' ? 'bg-purple-500/20 text-purple-400' :
+                                                exp.category === 'products' ? 'bg-amber-500/20 text-amber-400' :
+                                                'bg-slate-500/20 text-slate-400'
+                                            }`}>
+                                                {exp.category === 'business' ? 'עסק קבועות' :
+                                                 exp.category === 'course' ? 'קורסים' :
+                                                 exp.category === 'products' ? 'מוצרים ומלאי' : 'אחר'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 font-bold text-red-400 font-sans">₪{exp.amount}</td>
+                                        <td className="px-4 py-3 text-left">
+                                            <button onClick={() => handleDeleteExpense(exp.id)} className="text-slate-500 hover:text-red-400 transition-colors p-1">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </Card>
+
+            {/* Add Expense Modal */}
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="הוספת הוצאה חדשה">
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm text-slate-400 mb-1 block">תאריך הוצאה</label>
+                            <Input 
+                                label=""
+                                type="date" 
+                                value={newExpense.expense_date as string} 
+                                onChange={e => setNewExpense({...newExpense, expense_date: e.target.value})} 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm text-slate-400 mb-1 block">סכום (₪)</label>
+                            <Input 
+                                label=""
+                                type="number" 
+                                placeholder="0" 
+                                value={newExpense.amount || ''} 
+                                onChange={e => setNewExpense({...newExpense, amount: Number(e.target.value)})} 
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm text-slate-400 mb-1 block">קטגוריה</label>
+                        <select 
+                            className="bg-brand-dark/50 border border-white/10 rounded-lg px-4 py-3 text-white w-full outline-none focus:border-brand-primary/50 transition-colors"
+                            value={newExpense.category}
+                            onChange={e => setNewExpense({...newExpense, category: e.target.value as any})}
+                        >
+                            <option value="business">הוצאות עסק (שכירות, חשמל, שיווק...)</option>
+                            <option value="course">קורסים והשתלמויות</option>
+                            <option value="products">מוצרים נלווים ומלאי</option>
+                            <option value="other">אחר</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm text-slate-400 mb-1 block">תיאור (עבור מה?)</label>
+                        <Input 
+                            label=""
+                            placeholder="לדוג׳: הזמנת ציוד מאמזון, קמפיין פייסבוק" 
+                            value={newExpense.description || ''} 
+                            onChange={e => setNewExpense({...newExpense, description: e.target.value})} 
+                        />
+                    </div>
+                    <Button onClick={handleAddExpense} className="w-full mt-4">שמור הוצאה</Button>
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout }: any) => {
     return (
         <div className="space-y-6">
@@ -2533,6 +2766,7 @@ const Admin: React.FC = () => {
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
                                 { id: 'inventory', icon: Box, label: 'מלאי' }, // New Tab
                                 { id: 'coupons', icon: Ticket, label: 'קופונים' },
+                                { id: 'reports', icon: PieChart, label: 'הוצאות ודוחות' }, // New Tab
                                 { id: 'settings', icon: Settings, label: 'הגדרות' }
                             ].map(tab => (
                                 <button
@@ -2574,6 +2808,7 @@ const Admin: React.FC = () => {
                         {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} onUpdateTags={handleUpdateGalleryTags} />}
                         {activeTab === 'inventory' && <InventoryTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'coupons' && <CouponsTab settings={settings} onUpdate={handleUpdateSettings} />}
+                        {activeTab === 'reports' && <ReportsTab appointments={appointments} stats={stats} />}
                         {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
                     </m.div>
                 </AnimatePresence>

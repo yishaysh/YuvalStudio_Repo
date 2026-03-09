@@ -1,6 +1,6 @@
 
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
-import { Appointment, Service, StudioSettings, Coupon } from '../types';
+import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
 import { supabase } from './supabaseClient';
 
 export interface TimeSlot {
@@ -591,6 +591,41 @@ export const api = {
       appointments: data?.length || 0,
       pending
     };
+  },
+
+  // --- Expenses ---
+  getExpenses: async (month?: number, year?: number): Promise<Expense[]> => {
+    if (!supabase) return [];
+    try {
+      let query = supabase.from('expenses').select('*').order('expense_date', { ascending: false });
+      
+      if (month !== undefined && year !== undefined) {
+         // month is 0-indexed (0=Jan, 11=Dec)
+         const startDate = new Date(year, month, 1).toISOString();
+         const endDate = new Date(year, month + 1, 0).toISOString();
+         query = query.gte('expense_date', startDate).lte('expense_date', endDate);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  },
+
+  addExpense: async (expense: Omit<Expense, 'id' | 'created_at'>): Promise<Expense | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('expenses').insert([expense]).select().single();
+    if (error) { console.error(error); return null; }
+    return data;
+  },
+
+  deleteExpense: async (id: string): Promise<boolean> => {
+    if (!supabase) return false;
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    return !error;
   },
 
   // --- Gallery ---

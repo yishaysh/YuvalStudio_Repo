@@ -66,6 +66,15 @@ export interface Appointment {
   parent_phone?: string;
 }
 
+export interface Expense {
+  id: string;
+  category: 'business' | 'course' | 'products' | 'other';
+  description: string;
+  amount: number;
+  expense_date: string;
+  created_at?: string;
+}
+
 // שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך
 export interface JewelryItem extends Service {
   in_stock?: boolean;

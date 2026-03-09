@@ -61,6 +61,15 @@ CREATE TABLE IF NOT EXISTS public.gallery (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS public.expenses (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  category text CHECK (category IN ('business', 'course', 'products', 'other')),
+  description text NOT NULL,
+  amount decimal(10,2) NOT NULL,
+  expense_date timestamp with time zone NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 
 -- 2. Add Columns safely (Idempotent)
 DO $$
@@ -174,6 +183,7 @@ ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 -- 5. Drop existing policies to avoid conflicts
 DROP POLICY IF EXISTS "Public appointments view" ON public.appointments;
@@ -206,6 +216,10 @@ CREATE POLICY "Public gallery manage" ON public.gallery FOR ALL USING (true);
 -- SETTINGS
 CREATE POLICY "Public settings view" ON public.settings FOR SELECT USING (true);
 CREATE POLICY "Public settings manage" ON public.settings FOR ALL USING (true);
+
+-- EXPENSES
+CREATE POLICY "Public expenses view" ON public.expenses FOR SELECT USING (true);
+CREATE POLICY "Public expenses manage" ON public.expenses FOR ALL USING (true);
 
 -- PROFILES (Users)
 -- Allow users to insert their own profile
