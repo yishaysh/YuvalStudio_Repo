@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פיצ'ר חדש - הסטודיו של יובל</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-dark: #0f172a;
+            --brand-surface: #1e293b;
+            --brand-primary: #d4b585; /* Soft Gold */
+            --brand-secondary: #94a3b8; /* Slate 400 */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--brand-dark);
+            color: #ffffff;
+            font-family: 'Heebo', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 210mm; /* A4 width */
+            background: var(--brand-dark);
+            padding: 20mm;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* Decorative Elements */
+        .glow-top {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(212,181,133,0.15) 0%, rgba(15,23,42,0) 70%);
+            top: -200px;
+            right: -200px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: var(--brand-primary);
+            margin: 1.5rem auto 0;
+            border-radius: 2px;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            color: var(--brand-primary);
+            letter-spacing: 1px;
+            font-style: italic;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge {
+            background: rgba(212,181,133,0.1);
+            color: var(--brand-primary);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+            border: 1px solid rgba(212,181,133,0.3);
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin: 0;
+            font-weight: 300;
+            line-height: 1.2;
+        }
+
+        h1 strong {
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--brand-secondary);
+            margin-top: 1rem;
+        }
+
+        /* Explanations Section */
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .text-content {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+        
+        /* Features / Why */
+        .grid-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--brand-surface);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .card h3 {
+            margin: 0 0 0.5rem 0;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--brand-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* How to Use */
+        .steps {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            counter-reset: step-counter;
+        }
+
+        .steps li {
+            position: relative;
+            padding-right: 3rem;
+            margin-bottom: 1.5rem;
+            min-height: 2.5rem;
+        }
+
+        .steps li::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: rgba(212,181,133,0.1);
+            color: var(--brand-primary);
+            border: 1px solid var(--brand-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .steps h4 {
+            margin: 0 0 0.2rem 0;
+            color: #fff;
+            font-size: 1.1rem;
+        }
+
+        .steps p {
+            margin: 0;
+            color: var(--brand-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Screenshot Area */
+        .screenshot-container {
+            margin: 2rem 0;
+            text-align: center;
+            background: var(--brand-surface);
+            border: 1px dashed var(--brand-primary);
+            border-radius: 12px;
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* REMOVE THE FOLLOWING <img> AND REPLACE THE SRC WITH YOUR ACTUAL SCREENSHOT FILE */
+        .screenshot-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            display: block;
+        }
+
+        .screenshot-placeholder {
+            padding: 4rem 1rem;
+            color: var(--brand-secondary);
+            font-weight: 300;
+        }
+
+        /* Call To Action */
+        .cta-container {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .app-link {
+            display: inline-block;
+            background: var(--brand-primary);
+            color: var(--brand-dark);
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            transition: opacity 0.2s;
+        }
+
+        .app-link:hover {
+            opacity: 0.9;
+        }
+
+        /* Print Settings */
+        @media print {
+            body { 
+                background: var(--brand-dark) !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .container { 
+                width: 100%; 
+                padding: 15mm; 
+                page-break-inside: avoid;
+            }
+            .cta-container {
+                page-break-before: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Decor -->
+        <div class="glow-top"></div>
+
+        <div class="content">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">Yuval Studio</div>
+                <div class="badge">עדכון מערכת הניהול</div>
+                <h1>הגיע הזמן לנהל את הסטודיו <br><strong>כמו עסק גדול.</strong></h1>
+                <p class="subtitle">הוספנו למערכת הניהול שלך כרטיסייה חדשה ומתקדמת לניהול הוצאות והפקת דוחות רווח נקי בזמן אמת.</p>
+            </div>
+
+            <!-- What is it -->
+            <h2 class="section-title">✨ מה הפיצ'ר החדש נותן לך?</h2>
+            <div class="grid-features">
+                <div class="card">
+                    <h3>ניהול הוצאות שוטפות</h3>
+                    <p>מקום מרוכז אחד לתעד כל הוצאה – שכירות, שיווק, קורסים ומלאי. לא צריך יותר אקסלים או פתקים, הכל נשמר בארכיון הסטודיו.</p>
+                </div>
+                <div class="card">
+                    <h3>דוח רווח והפסד אוטומטי</h3>
+                    <p>לוח בקרה חכם שלוקח את ההכנסות ברוטו מהתורים המושלמים באותו חודש, מחסיר את ההוצאות החודשיות שהזנת – ומציג לך את הרווח הנקי האמיתי.</p>
+                </div>
+            </div>
+
+            <!-- Screenshot Placeholder -->
+            <h2 class="section-title">📷 צילום מסך מהמערכת</h2>
+            <div class="screenshot-container">
+                <!-- ישי: החלף את התמונה כאן עם צילום מסך אמיתי. שים את התמונה באותה תיקייה של ה HTML ושנה את השם שלה ב-src -->
+                <img src="./screenshot.png" alt="לשים כאן צילום מסך של אזור הדוחות וההוצאות באדמין" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="screenshot-placeholder" style="display: none;">
+                    [ כדי לראות כאן צילום מסך, שמור תמונה בשם screenshot.png באותה תיקייה של קובץ זה ]<br>
+                    (או ערוך את קוד ה-HTML והכנס את השם של התמונה שלך)
+                </div>
+            </div>
+
+            <!-- How To Use -->
+            <h2 class="section-title">💡 איך משתמשים בזה?</h2>
+            <ul class="steps">
+                <li>
+                    <h4>נכנסים לאזור הניהול (אדמין)</h4>
+                    <p>בתפריט הכרטיסיות למעלה (ליד "יומן" או "שירותים"), לחצי על הכרטיסייה החדשה - <strong>"הוצאות ודוחות"</strong> (עם אייקון של פאי נתונים 🥧).</p>
+                </li>
+                <li>
+                    <h4>בוחרים חודש הסתכלות</h4>
+                    <p>בראש המסך מצד ימין, תוכלי לבחור את החודש והשנה שאת רוצה לנתח. המערכת תסכם באופן אוטומטי את ההכנסות מהתורים של אותו חודש (כאלה שסומנו כ"הושלם").</p>
+                </li>
+                <li>
+                    <h4>מוסיפים הוצאות</h4>
+                    <p>לחצי על הכפתור "הוסף הוצאה חדשה", בחרי קטגוריה (קורסים, עסק, מוצרים), הקלידי תיאור קצר, תאריך וסכום, ולחצי על שמור.</p>
+                </li>
+                <li>
+                    <h4>מנתחים את התוצאות</h4>
+                    <p>מיד בראש העמוד, באזור הכרטיסיות, הנתונים יתעדכנו – תוכלי לראות את ההכנסות (ברוטו), הרווח הגולמי (הכנסות פחות עלויות מחטים יוקרתיות/מלאי), כמה הוצאות שילמת החודש, והכי חשוב - <strong>כמה רווח נקי נשאר בסוף</strong>.</p>
+                </li>
+            </ul>
+
+            <!-- CTA CTA -->
+            <div class="cta-container">
+                <p class="text-content" style="margin-bottom: 1.5rem;">מוכנה לקחת שליטה על המספרים?</p>
+                <!-- NOTE: Replace the href with the actual URL if needed -->
+                <a href="/" class="app-link" target="_blank">כניסה למערכת הניהול</a>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
