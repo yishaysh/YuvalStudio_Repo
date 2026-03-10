@@ -520,6 +520,30 @@ const AppointmentsList = ({
             bValue = new Date(bValue || 0).getTime();
         }
 
+        // Custom multi-level sort for default view
+        if (key === 'start_time' && direction === 'asc') {
+            const now = Date.now();
+            const aIsPending = a.status === 'pending';
+            const bIsPending = b.status === 'pending';
+            const aIsFuture = aValue >= now && (a.status !== 'completed' && a.status !== 'cancelled');
+            const bIsFuture = bValue >= now && (b.status !== 'completed' && b.status !== 'cancelled');
+
+            // 1. Pending always on top
+            if (aIsPending && !bIsPending) return -1;
+            if (!aIsPending && bIsPending) return 1;
+
+            // 2. Future uncompleted appointments next
+            if (aIsFuture && !bIsFuture) return -1;
+            if (!aIsFuture && bIsFuture) return 1;
+
+            // 3. If both are future or both are past/completed, sort chronologically
+            // For future, closer date first. For past, more recent first.
+            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+            return 0;
+        }
+
+        // Standard sort for other columns
         if (aValue < bValue) return direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return direction === 'asc' ? 1 : -1;
         return 0;
