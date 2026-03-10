@@ -4,7 +4,7 @@ import { api } from '../services/mockApi';
 import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Service } from '../types';
 import { SmartImage } from '../components/SmartImage';
 
@@ -22,15 +22,23 @@ const JewelryPage: React.FC = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [direction, setDirection] = useState(0);
-  const [activeTab, setActiveTab] = useState<'gallery' | 'inventory'>('gallery');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'gallery' | 'inventory'>(
+    (location.state as any)?.activeTab || 'gallery'
+  );
   const [jewelryCatalog, setJewelryCatalog] = useState<any[]>([]);
+
+  useEffect(() => {
+    if ((location.state as any)?.activeTab) {
+      setActiveTab((location.state as any).activeTab);
+    }
+  }, [location.state]);
 
   // Refs for event listener access
   const selectedIndexRef = useRef(selectedIndex);
   const isSelectionModeRef = useRef(isSelectionMode);
   const galleryItemsRef = useRef(galleryItems);
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
