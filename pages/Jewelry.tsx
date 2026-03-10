@@ -257,13 +257,27 @@ const JewelryPage: React.FC = () => {
         {activeTab === 'gallery' ? (
           galleryItems.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              <motion.div 
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.05
+                    }
+                  }
+                }}
+                className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"
+              >
                 {galleryItems.map((item, i) => (
                   <m.div
                     key={item.id || i}
-                    initial={{ opacity: 0, y: 15 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "100px" }}
+                    variants={{
+                      hidden: { opacity: 0, y: 10 },
+                      visible: { opacity: 1, y: 0 }
+                    }}
                     transition={{ duration: 0.4 }}
                     className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
                     onClick={() => { setDirection(1); setSelectedIndex(i); }}
@@ -313,7 +327,7 @@ const JewelryPage: React.FC = () => {
                     />
                   </m.div>
                 ))}
-              </div>
+              </motion.div>
 
               {/* Load More Button */}
               {hasMore && (
