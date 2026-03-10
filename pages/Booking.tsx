@@ -895,9 +895,18 @@ const Booking: React.FC = () => {
                                     {/* Booking Disclaimer */}
                                     <div className="bg-brand-primary/10 border border-brand-primary/30 p-4 rounded-xl flex items-start gap-4">
                                         <Info className="w-6 h-6 text-brand-primary shrink-0 mt-0.5" />
-                                        <div className="text-sm text-slate-200 leading-relaxed">
+                                        <div className="text-sm text-slate-200 leading-relaxed w-full">
                                             <span className="font-bold text-brand-primary block mb-1">חשוב לדעת:</span>
-                                            מחיר השירות <b>לא כולל</b> את העגילים מהמלאי (אותם ניתן לבחור ולרכוש בקליניקה). המחיר מגלם בתוכו עגיל טיטניום רפואי (סטנדרטי) שמגיע יחד עם הניקוב.
+                                            <p className="mb-3">
+                                                מחיר השירות <b>לא כולל</b> את העגילים מהמלאי (אותם ניתן לבחור ולרכוש בקליניקה). המחיר מגלם בתוכו עגיל טיטניום רפואי (סטנדרטי) שמגיע יחד עם הניקוב.
+                                            </p>
+                                            <button 
+                                                onClick={() => window.open('/jewelry', '_blank')}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded-lg text-xs font-medium hover:bg-brand-primary hover:text-brand-dark transition-all"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                קחי אותי לגלריה
+                                            </button>
                                         </div>
                                     </div>
 
