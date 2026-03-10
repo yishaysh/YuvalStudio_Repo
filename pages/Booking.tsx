@@ -892,6 +892,15 @@ const Booking: React.FC = () => {
                         <AnimatePresence mode="wait" initial={false}>
                             {step === BookingStep.SELECT_SERVICE && (
                                 <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                                    {/* Booking Disclaimer */}
+                                    <div className="bg-brand-primary/10 border border-brand-primary/30 p-4 rounded-xl flex items-start gap-4">
+                                        <Info className="w-6 h-6 text-brand-primary shrink-0 mt-0.5" />
+                                        <div className="text-sm text-slate-200 leading-relaxed">
+                                            <span className="font-bold text-brand-primary block mb-1">חשוב לדעת:</span>
+                                            מחיר השירות <b>לא כולל</b> את העגילים מהמלאי (אותם ניתן לבחור בקליניקה או בהזמנה). המחיר מגלם בתוכו עגיל טיטניום רפואי (סטנדרטי) שמגיע יחד עם הניקוב.
+                                        </div>
+                                    </div>
+
                                     {galleryImages.length > 0 && studioSettings?.enable_gallery !== false && (
                                         <m.button
                                             layoutId="story-gallery-opener"

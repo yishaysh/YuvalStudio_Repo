@@ -22,6 +22,8 @@ const JewelryPage: React.FC = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [direction, setDirection] = useState(0);
+  const [activeTab, setActiveTab] = useState<'gallery' | 'inventory'>('gallery');
+  const [jewelryCatalog, setJewelryCatalog] = useState<any[]>([]);
 
   // Refs for event listener access
   const selectedIndexRef = useRef(selectedIndex);
@@ -61,8 +63,26 @@ const JewelryPage: React.FC = () => {
     }
   };
 
+  const loadSettingsAndCatalog = async () => {
+    try {
+      const settings = await api.getSettings();
+      // @ts-ignore
+      if (settings.inventory_items && Array.isArray(settings.inventory_items)) {
+        // @ts-ignore
+        setJewelryCatalog(settings.inventory_items);
+      } else {
+        // Fallback to constants if needed, but constants is not imported here. We can import it if needed.
+        // Actually, let's just use what's returned.
+        setJewelryCatalog([]);
+      }
+    } catch (e) {
+      console.error("Failed to load settings for inventory", e);
+    }
+  };
+
   useEffect(() => {
     loadGallery(1);
+    loadSettingsAndCatalog();
   }, []);
 
   const handleLoadMore = () => {
@@ -196,90 +216,151 @@ const JewelryPage: React.FC = () => {
   return (
     <div className="pt-24 pb-20">
       <section className="text-center mb-12 px-6">
-        <h1 className="text-5xl font-serif text-white mb-6">הגלריה</h1>
-        <p className="text-slate-400 text-lg">השראה, דיוק ואסתטיקה</p>
+        <h1 className="text-5xl font-serif text-white mb-6">התכשיטים שלנו</h1>
+        <p className="text-slate-400 text-lg">בואי לקבל השראה ולבחור את הלוק הבא שלך</p>
       </section>
 
+      <div className="container mx-auto px-6 mb-8 flex justify-center">
+        <div className="flex bg-brand-surface/50 p-1 rounded-full border border-white/10">
+          <button
+            onClick={() => setActiveTab('gallery')}
+            className={`px-8 py-2.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'gallery'
+                ? 'bg-brand-primary text-brand-dark shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            גלריית השראה
+          </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`px-8 py-2.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'inventory'
+                ? 'bg-brand-primary text-brand-dark shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            מלאי העגילים
+          </button>
+        </div>
+      </div>
+
       <div className="container mx-auto px-6">
-        {galleryItems.length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {galleryItems.map((item, i) => (
-                <m.div
-                  key={item.id || i}
-                  initial={{ opacity: 0, y: 15 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "100px" }}
-                  transition={{ duration: 0.4 }}
-                  className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
-                  onClick={() => { setDirection(1); setSelectedIndex(i); }}
-                  whileHover={{ y: -5 }}
-                >
-                  {/* Wishlist Button Overlay */}
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      // toggle visual state immediately for responsiveness
-                      const icon = e.currentTarget.querySelector('.wishlist-icon');
-                      if (icon) {
-                        icon.classList.toggle('text-red-500');
-                        icon.classList.toggle('fill-current');
-                      }
-
-                      if (user?.id) {
-                        try {
-                          await api.toggleWishlist(user.id, item.id);
-                        } catch (err) { console.error(err); }
-                      } else {
-                        // Optional: Prompt login
-                        console.log("User not logged in");
-                      }
-                    }}
-                    className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn"
+        {activeTab === 'gallery' ? (
+          galleryItems.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                {galleryItems.map((item, i) => (
+                  <m.div
+                    key={item.id || i}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "100px" }}
+                    transition={{ duration: 0.4 }}
+                    className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
+                    onClick={() => { setDirection(1); setSelectedIndex(i); }}
+                    whileHover={{ y: -5 }}
                   >
-                    <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
-                  </button>
+                    {/* Wishlist Button Overlay */}
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        // toggle visual state immediately for responsiveness
+                        const icon = e.currentTarget.querySelector('.wishlist-icon');
+                        if (icon) {
+                          icon.classList.toggle('text-red-500');
+                          icon.classList.toggle('fill-current');
+                        }
 
-                  {/* Overlay - Centered "Get The Look" */}
-                  {item.taggedServices?.length > 0 && (
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center pointer-events-none">
-                      <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
-                        <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
-                          <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
-                        </p>
+                        if (user?.id) {
+                          try {
+                            await api.toggleWishlist(user.id, item.id);
+                          } catch (err) { console.error(err); }
+                        } else {
+                          // Optional: Prompt login
+                          console.log("User not logged in");
+                        }
+                      }}
+                      className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn"
+                    >
+                      <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
+                    </button>
+
+                    {/* Overlay - Centered "Get The Look" */}
+                    {item.taggedServices?.length > 0 && (
+                      <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center pointer-events-none">
+                        <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
+                          <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
+                            <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
+                          </p>
+                        </div>
                       </div>
+                    )}
+
+                    <SmartImage
+                      src={item.image_url}
+                      alt={`Jewelry ${i}`}
+                      className="w-full h-full object-cover"
+                      priority={i < 4}
+                    />
+                  </m.div>
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="mt-12 text-center">
+                  <Button
+                    onClick={handleLoadMore}
+                    disabled={loading}
+                    className="px-8 py-3 text-lg bg-white/5 hover:bg-white/10 border-white/10"
+                  >
+                    {loading ? 'טוען...' : 'הצג עוד'}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            !loading && (
+              <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/10">
+                <p className="text-slate-400 text-lg">הגלריה ריקה כרגע. תמונות יעלו בקרוב!</p>
+              </div>
+            )
+          )
+        ) : (
+          /* Inventory View */
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {jewelryCatalog.length > 0 ? (
+              jewelryCatalog.map((item, idx) => (
+                <div key={idx} className="bg-brand-surface/50 border border-white/5 rounded-xl overflow-hidden flex flex-col group hover:border-brand-primary/30 transition-colors">
+                  <div className="aspect-square w-full relative overflow-hidden bg-brand-dark/50">
+                    <SmartImage
+                      src={item.image_url}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="p-4 flex-1 flex flex-col">
+                    <div className="mb-2">
+                      <p className="text-[10px] text-brand-primary/80 uppercase tracking-widest leading-none mb-1">{item.category}</p>
+                      <h3 className="text-white font-medium text-sm md:text-base leading-tight">{item.name}</h3>
                     </div>
-                  )}
-
-                  <SmartImage
-                    src={item.image_url}
-                    alt={`Jewelry ${i}`}
-                    className="w-full h-full object-cover"
-                    priority={i < 4}
-                  />
-                </m.div>
-              ))}
-            </div>
-
-            {/* Load More Button */}
-            {hasMore && (
-              <div className="mt-12 text-center">
-                <Button
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                  className="px-8 py-3 text-lg bg-white/5 hover:bg-white/10 border-white/10"
-                >
-                  {loading ? 'טוען...' : 'הצג עוד'}
-                </Button>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed flex-1">{item.description}</p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-brand-primary font-serif font-bold">₪{item.price}</span>
+                      {item.in_stock === false && (
+                         <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded">חסר במלאי</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-20 bg-white/5 rounded-2xl border border-white/10">
+                <p className="text-slate-400 text-lg">אין מוצרים במלאי כרגע.</p>
               </div>
             )}
-          </>
-        ) : (
-          !loading && (
-            <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/10">
-              <p className="text-slate-400 text-lg">הגלריה ריקה כרגע. תמונות יעלו בקרוב!</p>
-            </div>
-          )
+          </div>
         )}
       </div>
 
