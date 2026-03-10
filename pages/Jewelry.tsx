@@ -69,10 +69,10 @@ const JewelryPage: React.FC = () => {
       // @ts-ignore
       if (settings.inventory_items && Array.isArray(settings.inventory_items)) {
         // @ts-ignore
-        setJewelryCatalog(settings.inventory_items);
+        const items = settings.inventory_items.filter(item => item.price > 0);
+        setJewelryCatalog(items);
       } else {
-        // Fallback to constants if needed, but constants is not imported here. We can import it if needed.
-        // Actually, let's just use what's returned.
+        // Fallback to constants if needed
         setJewelryCatalog([]);
       }
     } catch (e) {

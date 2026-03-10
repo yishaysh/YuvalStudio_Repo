@@ -1647,15 +1647,34 @@ const TomorrowsPrepCard = ({ appointments }: { appointments: Appointment[] }) =>
 
     const totalPiercings = piercingApts.length;
     
-    // Calculations based on user specifications
-    // 1. Sizing: 2-3 sizes per piercing
-    const baseJewelry = totalPiercings * 2.5; 
-    // 2. Buffer: 30% extra for changes
-    const totalJewelryToSterilize = Math.ceil(baseJewelry * 1.3);
-    
-    // 3. Needles & Clamps: 1 per piercing + 2 backup
+    // Smart Prep Logic based on Yuval's rules
+    const prepList = {
+        stud8mm: 0,
+        stud10mm: 0,
+        hoop10mm: 0,
+        banana10mm: 0,
+        horseshoe10mm: 0,
+    };
+
+    piercingApts.forEach((apt: any) => {
+        const name = apt.service_name || '';
+        if (name.includes('נזם') || name.includes('אליקס קדמי') || name.includes('פורוורד')) {
+            prepList.stud8mm += 1;
+        } else if (name.includes('דיית')) {
+            prepList.hoop10mm += 1;
+        } else if (name.includes('רוק')) {
+            prepList.banana10mm += 1;
+        } else if (name.includes('ספטום')) {
+            prepList.horseshoe10mm += 1;
+        } else {
+            // Default to 10mm stud for אליקס, טרגוס, פלאט, קונץ, תנוך
+            prepList.stud10mm += 1;
+        }
+    });
+
+    // Needles & Clamps: 1 per piercing + 2 backup
     const needlesToSterilize = totalPiercings > 0 ? totalPiercings + 2 : 0;
-    const toolsToSterilize = totalPiercings > 0 ? totalPiercings + 2 : 0;
+    const toolsToSterilize = totalPiercings > 0 ? totalPiercings + 2 : 0; // מלקחיים
 
     // Group piercings by name for display
     const piercingTypes = piercingApts.reduce((acc: Record<string, number>, apt: any) => {
@@ -1691,21 +1710,54 @@ const TomorrowsPrepCard = ({ appointments }: { appointments: Appointment[] }) =>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <h4 className="text-sm font-medium text-brand-primary flex items-center gap-2">
-                                <Box className="w-4 h-4" /> ציוד לעיקור
+                                <Box className="w-4 h-4" /> ציוד לעיקור וארגון
                             </h4>
                             
                             <div className="space-y-3">
-                                <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
-                                    <div>
-                                        <div className="font-medium text-white">תכשיטי בסיס (Labrets/Barbells)</div>
-                                        <div className="text-xs text-slate-400">כולל 2-3 מידות לחור + 30% רזרבה לשינויים הנגזרים באותו הרגע</div>
+                                {prepList.stud8mm > 0 && (
+                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                        <div>
+                                            <div className="font-medium text-white">מוט 8mm (נזם / אליקס קדמי)</div>
+                                        </div>
+                                        <div className="text-xl font-bold text-brand-primary">{prepList.stud8mm}</div>
                                     </div>
-                                    <div className="text-xl font-bold text-brand-primary">{totalJewelryToSterilize}</div>
-                                </div>
+                                )}
+                                {prepList.stud10mm > 0 && (
+                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                        <div>
+                                            <div className="font-medium text-white">מוט 10mm (תנוך / אליקס / פלאט / קונץ / טרגוס)</div>
+                                        </div>
+                                        <div className="text-xl font-bold text-brand-primary">{prepList.stud10mm}</div>
+                                    </div>
+                                )}
+                                {prepList.hoop10mm > 0 && (
+                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                        <div>
+                                            <div className="font-medium text-white">חישוק 10mm (דיית)</div>
+                                        </div>
+                                        <div className="text-xl font-bold text-brand-primary">{prepList.hoop10mm}</div>
+                                    </div>
+                                )}
+                                {prepList.banana10mm > 0 && (
+                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                        <div>
+                                            <div className="font-medium text-white">בננה 10mm (רוק)</div>
+                                        </div>
+                                        <div className="text-xl font-bold text-brand-primary">{prepList.banana10mm}</div>
+                                    </div>
+                                )}
+                                {prepList.horseshoe10mm > 0 && (
+                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                        <div>
+                                            <div className="font-medium text-white">פרסה 10mm (ספטום)</div>
+                                        </div>
+                                        <div className="text-xl font-bold text-brand-primary">{prepList.horseshoe10mm}</div>
+                                    </div>
+                                )}
                                 
                                 <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
                                     <div>
-                                        <div className="font-medium text-white">מחטים (14G, 16G, 18G)</div>
+                                        <div className="font-medium text-white">מחטים</div>
                                         <div className="text-xs text-slate-400">מחט לכל ניקוב + 2 מחטי רזרבה</div>
                                     </div>
                                     <div className="text-xl font-bold text-emerald-400">{needlesToSterilize}</div>
@@ -1713,10 +1765,14 @@ const TomorrowsPrepCard = ({ appointments }: { appointments: Appointment[] }) =>
                                 
                                 <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
                                     <div>
-                                        <div className="font-medium text-white">מלקחיים וכלים עוזרים</div>
-                                        <div className="text-xs text-slate-400">סט לכל ניקוב + 2 סטים רזרבה לנפילות</div>
+                                        <div className="font-medium text-white">מלקחיים</div>
+                                        <div className="text-xs text-slate-400">מלקחיים לכל ניקוב + 2 רזרבה</div>
                                     </div>
                                     <div className="text-xl font-bold text-blue-400">{toolsToSterilize}</div>
+                                </div>
+                                
+                                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-200 mt-2">
+                                    <strong>שימי לב:</strong> כלים ומוליכים שתמיד בהם שימוש חייבים לעבור עיקור בסוף כל יום.
                                 </div>
                             </div>
                         </div>
