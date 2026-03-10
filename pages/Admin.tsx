@@ -1595,6 +1595,128 @@ const ReportsTab = ({ appointments, stats }: { appointments: Appointment[], stat
     );
 };
 
+const TomorrowsPrepCard = ({ appointments }: { appointments: Appointment[] }) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const tomorrowApts = appointments.filter((apt: any) => {
+        const d = new Date(apt.start_time);
+        return d.getDate() === tomorrow.getDate() && 
+               d.getMonth() === tomorrow.getMonth() && 
+               d.getFullYear() === tomorrow.getFullYear() && 
+               apt.status !== 'cancelled' && apt.status !== 'completed';
+    });
+
+    // Filter out checkups/consultations to get actual piercing count
+    const piercingApts = tomorrowApts.filter((apt: any) => {
+        const name = apt.service_name || '';
+        return !name.includes('ביקורת') && !name.includes('ייעוץ') && !name.includes('החלפת');
+    });
+
+    const totalPiercings = piercingApts.length;
+    
+    // Calculations based on user specifications
+    // 1. Sizing: 2-3 sizes per piercing
+    const baseJewelry = totalPiercings * 2.5; 
+    // 2. Buffer: 30% extra for changes
+    const totalJewelryToSterilize = Math.ceil(baseJewelry * 1.3);
+    
+    // 3. Needles & Clamps: 1 per piercing + 2 backup
+    const needlesToSterilize = totalPiercings > 0 ? totalPiercings + 2 : 0;
+    const toolsToSterilize = totalPiercings > 0 ? totalPiercings + 2 : 0;
+
+    // Group piercings by name for display
+    const piercingTypes = piercingApts.reduce((acc: Record<string, number>, apt: any) => {
+        const name = apt.service_name || 'פירסינג כללי';
+        acc[name] = (acc[name] || 0) + 1;
+        return acc;
+    }, {});
+
+    return (
+        <Card className="p-6 bg-gradient-to-br from-brand-surface/80 to-brand-dark border-brand-primary/20 relative overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+            
+            <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <div className="w-10 h-10 bg-brand-primary/10 rounded-xl flex items-center justify-center text-brand-primary">
+                        <Wand2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-serif text-white">הכנות למחר (אוטוקלאב)</h3>
+                        <p className="text-sm text-slate-400">
+                            {tomorrow.toLocaleDateString('he-IL')} • {tomorrowApts.length} תורים מתוכננים ({totalPiercings} ניקובים)
+                        </p>
+                    </div>
+                </div>
+
+                {totalPiercings === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-6 text-slate-500 bg-black/20 rounded-xl border border-white/5">
+                        <CheckCircle2 className="w-8 h-8 mb-2 opacity-50" />
+                        <p>אין ניקובים מתוכננים למחר. אין צורך בהכנות מיוחדות לאוטוקלאב.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-medium text-brand-primary flex items-center gap-2">
+                                <Box className="w-4 h-4" /> ציוד לעיקור
+                            </h4>
+                            
+                            <div className="space-y-3">
+                                <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                    <div>
+                                        <div className="font-medium text-white">תכשיטי בסיס (Labrets/Barbells)</div>
+                                        <div className="text-xs text-slate-400">כולל 2-3 מידות לחור + 30% רזרבה לשינויים הנגזרים באותו הרגע</div>
+                                    </div>
+                                    <div className="text-xl font-bold text-brand-primary">{totalJewelryToSterilize}</div>
+                                </div>
+                                
+                                <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                    <div>
+                                        <div className="font-medium text-white">מחטים (14G, 16G, 18G)</div>
+                                        <div className="text-xs text-slate-400">מחט לכל ניקוב + 2 מחטי רזרבה</div>
+                                    </div>
+                                    <div className="text-xl font-bold text-emerald-400">{needlesToSterilize}</div>
+                                </div>
+                                
+                                <div className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                                    <div>
+                                        <div className="font-medium text-white">מלקחיים וכלים עוזרים</div>
+                                        <div className="text-xs text-slate-400">סט לכל ניקוב + 2 סטים רזרבה לנפילות</div>
+                                    </div>
+                                    <div className="text-xl font-bold text-blue-400">{toolsToSterilize}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-medium text-brand-primary flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4" /> סוגי הניקובים המתוכננים
+                            </h4>
+                            <div className="bg-black/20 rounded-xl p-4 border border-white/5 h-[calc(100%-2rem)]">
+                                <ul className="space-y-2">
+                                    {Object.entries(piercingTypes).map(([name, count]) => (
+                                        <li key={name} className="flex justify-between items-center text-sm">
+                                            <span className="text-white flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary"></span>
+                                                {name}
+                                            </span>
+                                            <span className="text-slate-400 font-medium bg-white/5 px-2 py-0.5 rounded">x{count}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div className="mt-4 pt-4 border-t border-white/10 text-xs text-slate-500">
+                                    * יש לוודא שקיות פאוץ' תקינות לפי פג תוקף. תכשיט מעוקר שלא נפתח נשמר סטרילי לשימוש עתידי.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+};
+
 const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout }: any) => {
     return (
         <div className="space-y-6">
@@ -1640,6 +1762,9 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                     </div>
                 </Card>
             </div>
+
+            {/* Tomorrow's Preparations Widget */}
+            <TomorrowsPrepCard appointments={appointments} />
 
             <div>
                 <h3 className="text-xl font-serif text-white mb-4">תורים אחרונים</h3>
