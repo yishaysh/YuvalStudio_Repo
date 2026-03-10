@@ -901,7 +901,7 @@ const Booking: React.FC = () => {
                                                 מחיר השירות <b>לא כולל</b> את העגילים מהמלאי (אותם ניתן לבחור ולרכוש בקליניקה). המחיר מגלם בתוכו עגיל טיטניום רפואי (סטנדרטי) שמגיע יחד עם הניקוב.
                                             </p>
                                             <button 
-                                                onClick={() => window.open('/jewelry', '_blank')}
+                                                onClick={() => navigate('/jewelry')}
                                                 className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded-lg text-xs font-medium hover:bg-brand-primary hover:text-brand-dark transition-all"
                                             >
                                                 <Sparkles className="w-3 h-3" />
