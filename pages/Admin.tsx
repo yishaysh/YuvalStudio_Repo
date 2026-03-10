@@ -2038,13 +2038,13 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
         const newHours = { ...localSettings.working_hours };
         newHours[dayKey] = { ...newHours[dayKey], isOpen: !newHours[dayKey].isOpen };
         if (!newHours[dayKey].ranges || newHours[dayKey].ranges.length === 0) {
-            newHours[dayKey].ranges = [{ start: 9, end: 17 }];
+            newHours[dayKey].ranges = [{ start: "09:00", end: "17:00" }];
         }
         setLocalSettings({ ...localSettings, working_hours: newHours });
         onUpdate({ ...localSettings, working_hours: newHours }, true);
     };
 
-    const updateRange = (dayKey: string, rIdx: number, field: 'start' | 'end', val: number) => {
+    const updateRange = (dayKey: string, rIdx: number, field: 'start' | 'end', val: number | string) => {
         const newHours = { ...localSettings.working_hours };
         newHours[dayKey].ranges[rIdx][field] = val;
         setLocalSettings({ ...localSettings, working_hours: newHours });
@@ -2053,7 +2053,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
 
     const addRange = (dayKey: string) => {
         const newHours = { ...localSettings.working_hours };
-        newHours[dayKey].ranges.push({ start: 9, end: 17 });
+        newHours[dayKey].ranges.push({ start: "09:00", end: "17:00" });
         setLocalSettings({ ...localSettings, working_hours: newHours });
         onUpdate({ ...localSettings, working_hours: newHours }, true);
     };
@@ -2163,6 +2163,153 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                 </div>
             </Card>
 
+            <Card>
+                <div className="flex justify-between items-center mb-6">
+                    <SectionHeading title="שעות פעילות" />
+                </div>
+
+                <div className="space-y-4">
+                    {days.map((dayName, index) => {
+                        const dayKey = index.toString();
+                        const dayConfig = localSettings.working_hours[dayKey] || { isOpen: false, ranges: [] };
+
+                        return (
+                            <div key={dayKey} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
+                                <div className="grid grid-cols-[1fr_auto] md:grid-cols-[100px_60px_1fr] gap-x-4 gap-y-4 items-center md:items-start">
+                                    <div className="font-medium text-white md:pt-2">{dayName}</div>
+
+                                    <div className="md:pt-1">
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={dayConfig.isOpen} onChange={() => toggleDay(dayKey)} />
+                                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+                                        </label>
+                                    </div>
+
+                                    <div className="col-span-2 md:col-span-1 w-full space-y-3">
+                                        {dayConfig.isOpen ? (
+                                            <>
+                                                {dayConfig.ranges.map((range, rIdx) => (
+                                                    <div key={rIdx} className="flex items-center gap-3 w-full">
+                                                        <div className="flex-1 flex items-center justify-center gap-2 bg-brand-dark/50 p-2 rounded-lg border border-white/10">
+                                                            <select
+                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
+                                                                value={typeof range.start === 'number' ? `${range.start.toString().padStart(2, '0')}:00` : range.start}
+                                                                onChange={e => updateRange(dayKey, rIdx, 'start', e.target.value)}
+                                                            >
+                                                                {Array.from({ length: 48 }).map((_, i) => {
+                                                                    const h = Math.floor(i / 2).toString().padStart(2, '0');
+                                                                    const m = i % 2 === 0 ? '00' : '30';
+                                                                    const val = `${h}:${m}`;
+                                                                    return <option key={i} value={val} className="bg-brand-dark text-white">{val}</option>;
+                                                                })}
+                                                            </select>
+                                                            <span className="text-slate-500">-</span>
+                                                            <select
+                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
+                                                                value={typeof range.end === 'number' ? `${range.end.toString().padStart(2, '0')}:00` : range.end}
+                                                                onChange={e => updateRange(dayKey, rIdx, 'end', e.target.value)}
+                                                            >
+                                                                {Array.from({ length: 48 }).map((_, i) => {
+                                                                    const h = Math.floor(i / 2).toString().padStart(2, '0');
+                                                                    const m = i % 2 === 0 ? '00' : '30';
+                                                                    const val = `${h}:${m}`;
+                                                                    return <option key={i} value={val} className="bg-brand-dark text-white">{val}</option>;
+                                                                })}
+                                                            </select>
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => removeRange(dayKey, rIdx)}
+                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+                                                            title="מחק טווח"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+
+                                                <button
+                                                    onClick={() => addRange(dayKey)}
+                                                    className="flex items-center gap-2 text-xs text-brand-primary hover:text-white mt-2 px-3 py-1.5 rounded-lg bg-brand-primary/5 hover:bg-brand-primary/10 border border-brand-primary/10 w-full md:w-fit justify-center transition-colors"
+                                                >
+                                                    <Plus className="w-3 h-3" /> הוסף טווח שעות
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="text-slate-500 text-sm italic md:pt-2">סגור</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </Card>
+
+            <Card>
+                <SectionHeading title="תבניות הודעות וואטסאפ" />
+                <div className="space-y-4">
+                    <div className="text-xs text-slate-500 mb-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <strong>משתנים זמינים:</strong> {'{client_name}'}, {'{date}'}, {'{time}'}, {'{address}'}, {'{service}'}, {'{reason}'}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-emerald-400 mb-2">אישור תור</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.booking_confirmation || DEFAULT_WHATSAPP_TEMPLATES.booking_confirmation}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_confirmation: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה תישלח כשהתור מאושר..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-amber-400 mb-2">תזכורת (ידנית)</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.appointment_reminder || DEFAULT_WHATSAPP_TEMPLATES.appointment_reminder}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, appointment_reminder: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה לתזכורת..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-red-400 mb-2">ביטול תור</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.booking_cancellation || DEFAULT_WHATSAPP_TEMPLATES.booking_cancellation}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_cancellation: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה בעת ביטול..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">תור בבדיקה (Pending)</label>
+                            <textarea
+                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
+                                value={localSettings.whatsapp_templates?.booking_pending || DEFAULT_WHATSAPP_TEMPLATES.booking_pending}
+                                onChange={e => {
+                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_pending: e.target.value };
+                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
+                                }}
+                                onBlur={handleSilentSave}
+                                placeholder="הודעה ראשונית בעת קביעת תור..."
+                            />
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
             <Card className="border-brand-primary/20 bg-brand-primary/5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -2268,147 +2415,6 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                         />
                         <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
                     </label>
-                </div>
-            </Card>
-
-            <Card>
-                <SectionHeading title="תבניות הודעות וואטסאפ" />
-                <div className="space-y-4">
-                    <div className="text-xs text-slate-500 mb-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <strong>משתנים זמינים:</strong> {'{client_name}'}, {'{date}'}, {'{time}'}, {'{address}'}, {'{service}'}, {'{reason}'}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-emerald-400 mb-2">אישור תור</label>
-                            <textarea
-                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.booking_confirmation || DEFAULT_WHATSAPP_TEMPLATES.booking_confirmation}
-                                onChange={e => {
-                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_confirmation: e.target.value };
-                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
-                                }}
-                                onBlur={handleSilentSave}
-                                placeholder="הודעה תישלח כשהתור מאושר..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-amber-400 mb-2">תזכורת (ידנית)</label>
-                            <textarea
-                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.appointment_reminder || DEFAULT_WHATSAPP_TEMPLATES.appointment_reminder}
-                                onChange={e => {
-                                    const newTemplates = { ...localSettings.whatsapp_templates, appointment_reminder: e.target.value };
-                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
-                                }}
-                                onBlur={handleSilentSave}
-                                placeholder="הודעה לתזכורת..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-red-400 mb-2">ביטול תור</label>
-                            <textarea
-                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.booking_cancellation || DEFAULT_WHATSAPP_TEMPLATES.booking_cancellation}
-                                onChange={e => {
-                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_cancellation: e.target.value };
-                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
-                                }}
-                                onBlur={handleSilentSave}
-                                placeholder="הודעה בעת ביטול..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">תור בבדיקה (Pending)</label>
-                            <textarea
-                                className="w-full bg-brand-dark/50 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[120px]"
-                                value={localSettings.whatsapp_templates?.booking_pending || DEFAULT_WHATSAPP_TEMPLATES.booking_pending}
-                                onChange={e => {
-                                    const newTemplates = { ...localSettings.whatsapp_templates, booking_pending: e.target.value };
-                                    setLocalSettings({ ...localSettings, whatsapp_templates: newTemplates });
-                                }}
-                                onBlur={handleSilentSave}
-                                placeholder="הודעה ראשונית בעת קביעת תור..."
-                            />
-                        </div>
-                    </div>
-                </div>
-            </Card>
-
-            <Card>
-                <div className="flex justify-between items-center mb-6">
-                    <SectionHeading title="שעות פעילות" />
-                </div>
-
-                <div className="space-y-4">
-                    {days.map((dayName, index) => {
-                        const dayKey = index.toString();
-                        const dayConfig = localSettings.working_hours[dayKey] || { isOpen: false, ranges: [] };
-
-                        return (
-                            <div key={dayKey} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
-                                <div className="grid grid-cols-[1fr_auto] md:grid-cols-[100px_60px_1fr] gap-x-4 gap-y-4 items-center md:items-start">
-                                    <div className="font-medium text-white md:pt-2">{dayName}</div>
-
-                                    <div className="md:pt-1">
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={dayConfig.isOpen} onChange={() => toggleDay(dayKey)} />
-                                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
-                                        </label>
-                                    </div>
-
-                                    <div className="col-span-2 md:col-span-1 w-full space-y-3">
-                                        {dayConfig.isOpen ? (
-                                            <>
-                                                {dayConfig.ranges.map((range, rIdx) => (
-                                                    <div key={rIdx} className="flex items-center gap-3 w-full">
-                                                        <div className="flex-1 flex items-center justify-center gap-2 bg-brand-dark/50 p-2 rounded-lg border border-white/10">
-                                                            <select
-                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
-                                                                value={range.start}
-                                                                onChange={e => updateRange(dayKey, rIdx, 'start', Number(e.target.value))}
-                                                            >
-                                                                {Array.from({ length: 24 }).map((_, i) => (
-                                                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                                                ))}
-                                                            </select>
-                                                            <span className="text-slate-500">-</span>
-                                                            <select
-                                                                className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
-                                                                value={range.end}
-                                                                onChange={e => updateRange(dayKey, rIdx, 'end', Number(e.target.value))}
-                                                            >
-                                                                {Array.from({ length: 24 }).map((_, i) => (
-                                                                    <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-
-                                                        <button
-                                                            onClick={() => removeRange(dayKey, rIdx)}
-                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
-                                                            title="מחק טווח"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-
-                                                <button
-                                                    onClick={() => addRange(dayKey)}
-                                                    className="flex items-center gap-2 text-xs text-brand-primary hover:text-white mt-2 px-3 py-1.5 rounded-lg bg-brand-primary/5 hover:bg-brand-primary/10 border border-brand-primary/10 w-full md:w-fit justify-center transition-colors"
-                                                >
-                                                    <Plus className="w-3 h-3" /> הוסף טווח שעות
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <div className="text-slate-500 text-sm italic md:pt-2">סגור</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
                 </div>
             </Card>
         </div >

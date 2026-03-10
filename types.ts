@@ -87,8 +87,8 @@ export interface DayAvailability {
 }
 
 export interface TimeRange {
-  start: number;
-  end: number;
+  start: number | string;
+  end: number | string;
 }
 
 export interface DaySchedule {

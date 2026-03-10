@@ -268,9 +268,20 @@ export const api = {
     let allSlots: string[] = [];
 
     dayConfig.ranges.forEach(range => {
-      for (let hour = range.start; hour < range.end; hour++) {
-        allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
-        allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
+      // Normalize range.start and range.end to string "HH:mm" in case they are numbers
+      let startTimeStr = typeof range.start === 'number' ? `${range.start.toString().padStart(2, '0')}:00` : range.start;
+      let endTimeStr = typeof range.end === 'number' ? `${range.end.toString().padStart(2, '0')}:00` : range.end;
+
+      // Handle raw number strings (e.g. "9")
+      if (typeof startTimeStr === 'string' && !startTimeStr.includes(':')) startTimeStr = `${startTimeStr.padStart(2, '0')}:00`;
+      if (typeof endTimeStr === 'string' && !endTimeStr.includes(':')) endTimeStr = `${endTimeStr.padStart(2, '0')}:00`;
+
+      const current = new Date(`2000-01-01T${startTimeStr}:00`);
+      const end = new Date(`2000-01-01T${endTimeStr}:00`);
+
+      while (current < end) {
+        allSlots.push(current.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false }));
+        current.setMinutes(current.getMinutes() + 30);
       }
     });
 
