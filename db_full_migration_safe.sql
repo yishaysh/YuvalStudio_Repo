@@ -14,7 +14,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name text,
   phone text,
   role text DEFAULT 'client' CHECK (role IN ('client', 'admin')),
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  referral_code text UNIQUE,
+  referred_by text,
+  credit_balance decimal(10,2) DEFAULT 0,
+  auth_provider text DEFAULT 'email'
 );
 
 CREATE TABLE IF NOT EXISTS public.services (
@@ -100,6 +104,18 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'last_aftercare_checkin') THEN
         ALTER TABLE public.profiles ADD COLUMN last_aftercare_checkin timestamp with time zone;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'referral_code') THEN
+        ALTER TABLE public.profiles ADD COLUMN referral_code text UNIQUE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'referred_by') THEN
+        ALTER TABLE public.profiles ADD COLUMN referred_by text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'credit_balance') THEN
+        ALTER TABLE public.profiles ADD COLUMN credit_balance decimal(10,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'auth_provider') THEN
+        ALTER TABLE public.profiles ADD COLUMN auth_provider text DEFAULT 'email';
     END IF;
 
     -- APPOINTMENTS
@@ -218,7 +234,9 @@ CREATE POLICY "Public settings view" ON public.settings FOR SELECT USING (true);
 CREATE POLICY "Public settings manage" ON public.settings FOR ALL USING (true);
 
 -- EXPENSES
+DROP POLICY IF EXISTS "Public expenses view" ON public.expenses;
 CREATE POLICY "Public expenses view" ON public.expenses FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public expenses manage" ON public.expenses;
 CREATE POLICY "Public expenses manage" ON public.expenses FOR ALL USING (true);
 
 -- PROFILES (Users)
@@ -237,9 +255,35 @@ CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE
 -- 7. Triggers for Profile Creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  base_code text;
+  final_code text;
+  code_count int;
+  provider text;
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role)
-  VALUES (new.id, new.email, new.raw_user_meta_data->>'full_name', 'client');
+  -- Determine auth provider (Google vs Email)
+  provider := 'email';
+  IF new.raw_app_meta_data->>'provider' = 'google' THEN
+    provider := 'google';
+  END IF;
+
+  -- Generate a basic referral code (e.g., first part of email + short hash)
+  base_code := split_part(new.email, '@', 1);
+  base_code := regexp_replace(base_code, '[^a-zA-Z0-9]', '', 'g'); -- alphanumeric only
+  IF length(base_code) < 3 THEN
+    base_code := base_code || substr(md5(random()::text), 1, 4);
+  END IF;
+  
+  final_code := upper(base_code);
+  
+  -- Check uniqueness (simple loop)
+  SELECT count(*) INTO code_count FROM public.profiles WHERE referral_code = final_code;
+  IF code_count > 0 THEN
+    final_code := final_code || substr(md5(random()::text), 1, 3);
+  END IF;
+
+  INSERT INTO public.profiles (id, email, full_name, role, auth_provider, referral_code)
+  VALUES (new.id, new.email, new.raw_user_meta_data->>'full_name', 'client', provider, final_code);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
