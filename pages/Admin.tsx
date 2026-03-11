@@ -162,7 +162,8 @@ const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
     if (!isOpen || !user) return null;
 
     const userAppointments = appointments.filter((apt: any) =>
-        apt.client_id === user.client_id || apt.client_phone === user.client_phone
+        (user.client_id && apt.client_id === user.client_id) || 
+        (user.client_phone && apt.client_phone === user.client_phone)
     ).sort((a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
     const totalApts = userAppointments.length;
