@@ -8,9 +8,78 @@ import { AftercareAssistant } from '../components/dashboard/AftercareAssistant';
 import { WishlistSection } from '../components/dashboard/WishlistSection';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { Button } from '../components/ui';
-import { Loader2, LogOut, User, Calendar, Settings, Clock, Heart } from 'lucide-react';
+import { Loader2, LogOut, User, Calendar, Settings, Clock, Heart, Share2, Copy, Gift, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const ReferralDashboard = ({ profile }: { profile: any }) => {
+    const [copied, setCopied] = useState(false);
+    
+    if (!profile?.referral_code) return null;
+
+    const referralLink = `${window.location.origin}/?ref=${profile.referral_code}`;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(referralLink);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleShare = () => {
+        if (navigator.share) {
+            navigator.share({
+                title: 'YuvalStudio - סטטודיו לפירסינג',
+                text: 'היי! קבלי הפניה עם הנחה לפירסינג הבא שלך אצל יובל:',
+                url: referralLink,
+            }).catch(console.error);
+        } else {
+            handleCopy();
+        }
+    };
+
+    return (
+        <div className="bg-brand-surface border border-white/10 rounded-2xl overflow-hidden mt-6">
+            <div className="bg-gradient-to-br from-brand-primary/20 to-brand-primary/5 p-6 border-b border-brand-primary/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <Gift className="w-24 h-24 text-brand-primary" />
+                </div>
+                <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-serif text-white flex items-center gap-2 mb-1">
+                            <Gift className="w-5 h-5 text-brand-primary" /> חברה מביאה חברה
+                        </h3>
+                        <p className="text-sm text-slate-300">הזמיני חברות וקבלי קרדיט לקניית תכשיטים!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-xl">
+                    <div className="text-right">
+                        <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">הקרדיט שלך</div>
+                        <div className="text-2xl font-serif text-brand-primary font-bold">₪{profile.credit_balance || 0}</div>
+                    </div>
+                    <Button variant="outline" className="text-sm border-brand-primary/50 text-brand-primary hover:bg-brand-primary hover:text-brand-dark" onClick={() => window.location.href = '/booking'}>
+                        מימוש קרדיט
+                    </Button>
+                </div>
+
+                <div>
+                    <div className="text-sm text-slate-400 mb-2">ברגע שחברה תקבע תור דרך הלינק שלך, היא תקבל 10% הנחה ואת תקבלי 30 ₪ לקרדיט!</div>
+                    <div className="flex gap-2 relative">
+                        <div className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 truncate dir-ltr select-all">
+                            {referralLink}
+                        </div>
+                        <Button variant="primary" onClick={handleShare} className="gap-2 shrink-0">
+                            {copied ? <CheckCircle className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                            {copied ? 'הועתק!' : 'שתפי'}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const PersonalArea: React.FC = () => {
     const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -185,6 +254,9 @@ const PersonalArea: React.FC = () => {
                                 onLogout={signOut}
                             />
                         </div>
+
+                        {/* Referral Action Card */}
+                        <ReferralDashboard profile={profile} />
                     </motion.div>
                 </div>
             </div>

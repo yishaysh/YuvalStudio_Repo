@@ -21,6 +21,12 @@ export interface Profile {
   avatar_url?: string; // URL to profile image
   wishlist?: string[]; // Array of Service IDs
   last_aftercare_checkin?: string; // ISO Date string
+  
+  // --- Referral & Auth Tracking ---
+  referral_code?: string;
+  referred_by?: string;
+  credit_balance?: number;
+  auth_provider?: string;
 }
 
 export interface GalleryItem {
@@ -64,6 +70,9 @@ export interface Appointment {
   parent_name?: string;
   parent_id?: string;
   parent_phone?: string;
+
+  // --- הפניות (Referrals) ---
+  referred_by?: string;
 }
 
 export interface Expense {

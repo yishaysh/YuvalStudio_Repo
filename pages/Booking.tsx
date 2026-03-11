@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Image as ImageIcon, CheckCircle, Info, ChevronRight, Wand2, Sparkles, CheckCircle2, AlertCircle, Upload, BrainCircuit, Plus
+    Calendar, Clock, Check, Loader2, ArrowRight, ArrowLeft, Droplets, Send, FileText, Eraser, Trash2, ShoppingBag, ChevronDown, ChevronUp, Ticket, X, Camera, Image as ImageIcon, CheckCircle, Info, ChevronRight, Wand2, Sparkles, CheckCircle2, AlertCircle, Upload, BrainCircuit, Plus, User
 } from 'lucide-react';
 import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
@@ -221,7 +221,7 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
 };
 
 const TicketSummary: React.FC<any> = ({
-    selectedServices, selectedJewelry, selectedDate, selectedSlot, totalDuration, appliedCoupon, couponCode, couponError, isCheckingCoupon, discountAmount, finalPrice, step, readOnly, aiRecommendation, onToggleService, onToggleJewelry, onSetCouponCode, onApplyCoupon, onClearCoupon
+    selectedServices, selectedJewelry, selectedDate, selectedSlot, totalDuration, appliedCoupon, couponCode, couponError, isCheckingCoupon, discountAmount, finalPrice, step, readOnly, aiRecommendation, onToggleService, onToggleJewelry, onSetCouponCode, onApplyCoupon, onClearCoupon, referralCode
 }) => {
     const result: AIAnalysisResult | null = aiRecommendation;
 
@@ -323,6 +323,16 @@ const TicketSummary: React.FC<any> = ({
                     </div>
                 )}
                 {couponError && !readOnly && <p className="text-xs text-red-400">{couponError}</p>}
+                
+                {/* Show Referral Discount Info if active and no coupon applied */}
+                {referralCode && !appliedCoupon && (
+                    <div className="mt-3 p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-lg flex items-start gap-2">
+                        <Sparkles className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                        <div className="text-xs text-slate-300">
+                            <span className="font-bold text-brand-primary">הטבת חברה:</span> זיהינו שהגעת דרך המלצה של חברה! הופעלה 10% הנחה על ההזמנה שלך.
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div>
@@ -379,12 +389,13 @@ const Booking: React.FC = () => {
     // Renamed state variable to match user request
     const [selectedRecommendation, setSelectedRecommendation] = useState<number | null>(null);
 
-    // Coupon State
+    // Coupon & Referral State
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
     const [couponError, setCouponError] = useState<string | null>(null);
     const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
     const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
+    const [referralCode, setReferralCode] = useState<string | null>(null);
 
     // Anatomy State
     const [anatomyImage, setAnatomyImage] = useState<string | null>(null);
@@ -395,7 +406,7 @@ const Booking: React.FC = () => {
     const anatomyInputRef = useRef<HTMLInputElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, profile } = useAuth();
+    const { user, profile, signInWithGoogle } = useAuth();
 
     // --- Pre-fill Data ---
     useEffect(() => {
@@ -454,6 +465,12 @@ const Booking: React.FC = () => {
                         }
                     }
                     window.history.replaceState({}, document.title);
+                }
+
+                // Check for Referral Link in localStorage
+                const storedRef = localStorage.getItem('referred_by');
+                if (storedRef) {
+                    setReferralCode(storedRef);
                 }
 
                 // Pre-warm images
@@ -526,14 +543,22 @@ const Booking: React.FC = () => {
     }, [selectedServices, selectedJewelry]);
 
     const finalPrice = useMemo(() => {
-        if (!appliedCoupon) return basePrice;
-        let discount = appliedCoupon.discountType === 'percentage'
-            ? basePrice * (appliedCoupon.value / 100)
-            : appliedCoupon.value;
-        return Math.round(Math.max(0, basePrice - discount));
-    }, [basePrice, appliedCoupon]);
+        if (appliedCoupon) {
+            let discount = appliedCoupon.discountType === 'percentage'
+                ? basePrice * (appliedCoupon.value / 100)
+                : appliedCoupon.value;
+            return Math.round(Math.max(0, basePrice - discount));
+        }
+        
+        // If no coupon, check for referral discount (10% off the first appointment/service)
+        if (referralCode && basePrice > 0) {
+           return Math.round(Math.max(0, basePrice * 0.9)); // 10% discount
+        }
 
-    const discountAmount = basePrice - finalPrice;
+        return basePrice;
+    }, [basePrice, appliedCoupon, referralCode]);
+
+    const discountAmount = Math.round(basePrice - finalPrice);
 
     // --- Handlers ---
 
@@ -774,7 +799,10 @@ const Booking: React.FC = () => {
                 is_under_16: isUnder16,
                 parent_name: isUnder16 ? parentData.name : undefined,
                 parent_id: isUnder16 ? parentData.id : undefined,
-                parent_phone: isUnder16 ? parentData.phone : undefined
+                parent_phone: isUnder16 ? parentData.phone : undefined,
+
+                // Referral Payload
+                referred_by: referralCode || undefined
             });
 
             setStep(BookingStep.CONFIRMATION);
@@ -881,6 +909,7 @@ const Booking: React.FC = () => {
                                                     onSetCouponCode={setCouponCode}
                                                     onApplyCoupon={handleApplyCoupon}
                                                     onClearCoupon={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                                                    referralCode={referralCode}
                                                 />
                                             </div>
                                         </m.div>
@@ -1184,7 +1213,28 @@ const Booking: React.FC = () => {
                             )}
 
                             {step === BookingStep.DETAILS && (
-                                <m.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                <m.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                    {!user && (
+                                        <div className="bg-gradient-to-r from-brand-primary/20 to-transparent border border-brand-primary/30 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                                                <Sparkles className="w-24 h-24 text-brand-primary" />
+                                            </div>
+                                            <div className="flex items-start gap-3 relative z-10">
+                                                <div className="w-10 h-10 rounded-full bg-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
+                                                    <User className="w-5 h-5" />
+                                                </div>
+                                                <div className="text-right">
+                                                    <h3 className="font-bold text-white mb-1">משתמשת רשומה? התחברי ולחסוך זמן</h3>
+                                                    <p className="text-sm text-slate-300">התחברי עם גוגל ותוכלי לעקוב אחרי הפירסינג שלך, לשתף המלצות ולצבור קרדיט לקניית תכשיטים!</p>
+                                                </div>
+                                            </div>
+                                            <Button onClick={() => signInWithGoogle()} className="w-full md:w-auto whitespace-nowrap gap-2 relative z-10">
+                                                <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                                                המשך עם Google
+                                            </Button>
+                                        </div>
+                                    )}
+
                                     <Card className="border-none bg-white/5 space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <Input label="שם מלא" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />

@@ -215,6 +215,18 @@ const PageLoader = () => (
   </div>
 );
 
+const ReferralTracker = () => {
+  const { search } = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const ref = params.get('ref');
+    if (ref) {
+      localStorage.setItem('referred_by', ref);
+    }
+  }, [search]);
+  return null;
+};
+
 const App: React.FC = () => {
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
   const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
@@ -244,6 +256,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <Router>
         <ScrollToTop />
+        <ReferralTracker />
         <Navbar />
         <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
           <Suspense fallback={<PageLoader />}>

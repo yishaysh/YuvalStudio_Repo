@@ -372,6 +372,27 @@ export const api = {
       await api.updateSettings({ ...settings, coupons: updatedCoupons });
     }
 
+    // --- Process Referral Bonus ---
+    if (appt.referred_by && supabase) {
+      try {
+        const { data: referrer } = await supabase
+          .from('profiles')
+          .select('id, credit_balance')
+          .eq('referral_code', appt.referred_by)
+          .maybeSingle();
+
+        if (referrer) {
+          const newBalance = (Number(referrer.credit_balance) || 0) + 30; // Provide 30 NIS credit
+          await supabase
+            .from('profiles')
+            .update({ credit_balance: newBalance })
+            .eq('id', referrer.id);
+        }
+      } catch (err) {
+        console.error("Failed to process referral bonus:", err);
+      }
+    }
+
     const payload = {
       client_id: appt.client_id,
       service_id: appt.service_id,
