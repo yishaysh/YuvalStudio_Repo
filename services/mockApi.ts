@@ -527,6 +527,7 @@ export const api = {
         final_price: item.final_price,
         total_profit: item.total_profit,
         total_cost: item.total_cost,
+        cart_items: item.cart_items,
         visual_plan: item.visual_plan,
         ai_recommendation_text: item.ai_recommendation_text,
         anatomy_image_url: item.anatomy_image_url,
