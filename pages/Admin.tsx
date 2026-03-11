@@ -725,6 +725,26 @@ const AppointmentsList = ({
                             </select>
                         </div>
 
+                        <div className="flex flex-col gap-1 w-full sm:w-auto">
+                            <label className="text-xs text-slate-400">מיון לפי</label>
+                            <select
+                                value={sortConfig ? `${sortConfig.key}-${sortConfig.direction}` : 'start_time-asc'}
+                                onChange={(e) => {
+                                    const [key, direction] = e.target.value.split('-');
+                                    setSortConfig({ key, direction: direction as 'asc' | 'desc' });
+                                }}
+                                className="bg-brand-dark/50 border border-white/10 rounded-lg text-sm px-3 py-2 text-white outline-none focus:border-brand-primary/50 w-full"
+                            >
+                                <option value="start_time-asc">מועד התור (קרוב לרחוק)</option>
+                                <option value="start_time-desc">מועד התור (רחוק לקרוב)</option>
+                                <option value="created_at-desc">נוצר ב (הכי חדש תחילה)</option>
+                                <option value="created_at-asc">נוצר ב (הכי ישן תחילה)</option>
+                                <option value="client_name-asc">שם לקוח (א-ת)</option>
+                                <option value="client_name-desc">שם לקוח (ת-א)</option>
+                                <option value="status-asc">סטטוס (א-ת)</option>
+                            </select>
+                        </div>
+
                         <div className="flex flex-row gap-2 w-full sm:w-auto">
                             <div className="flex flex-col gap-1 flex-1">
                                 <label className="text-xs text-slate-400">מתאריך</label>
