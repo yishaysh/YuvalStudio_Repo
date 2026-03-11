@@ -597,10 +597,16 @@ const AppointmentsList = ({
             if (aIsFuture && !bIsFuture) return -1;
             if (!aIsFuture && bIsFuture) return 1;
 
-            // 3. If both are future or both are past/completed, sort chronologically
-            // For future, closer date first. For past, more recent first.
-            if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+            // 3. Both in same category (both pending, both future, or both past)
+            if (aIsFuture || aIsPending) {
+                // Future/Pending -> ascending (closer date first)
+                if (aValue < bValue) return -1;
+                if (aValue > bValue) return 1;
+            } else {
+                // Past/Completed/Cancelled -> descending (most recent first)
+                if (aValue > bValue) return -1;
+                if (aValue < bValue) return 1;
+            }
             return 0;
         }
 
