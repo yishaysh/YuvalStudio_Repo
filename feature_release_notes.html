@@ -3,288 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>עדכון גרסה - הסטודיו של יובל</title>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+    <title>YuvalStudio - עדכון גרסה</title>
     <style>
         :root {
-            --brand-dark: #0f172a;
-            --brand-surface: #1e293b;
-            --brand-primary: #d4b585; /* Soft Gold */
-            --brand-secondary: #94a3b8; /* Slate 400 */
+            --brand-primary: #D4B585; /* Gold/Champagne */
+            --brand-dark: #0A0A0A;
+            --brand-surface: #141414;
+            --text-main: #FFFFFF;
+            --text-muted: #94a3b8;
         }
-
+        
         body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--brand-dark);
+            color: var(--text-main);
+            line-height: 1.6;
             margin: 0;
             padding: 0;
-            background-color: var(--brand-dark);
-            color: #ffffff;
-            font-family: 'Heebo', sans-serif;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
         }
 
         .container {
+            max-width: 800px;
             width: 100%;
-            max-width: 600px; /* Mobile Friendly Max Width */
-            background: var(--brand-dark);
-            padding: 20px;
-            box-sizing: border-box;
-            position: relative;
+            margin: 40px 20px;
+            background-color: var(--brand-surface);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
             overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* Decorative Elements */
-        .glow-top {
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(212,181,133,0.15) 0%, rgba(15,23,42,0) 70%);
-            top: -100px;
-            right: -100px;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 1;
+        .header {
+            background: linear-gradient(135deg, rgba(212, 181, 133, 0.2) 0%, rgba(212, 181, 133, 0.05) 100%);
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(212, 181, 133, 0.2);
+        }
+
+        .header h1 {
+            color: var(--brand-primary);
+            font-family: Georgia, serif;
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin: 0;
         }
 
         .content {
-            position: relative;
-            z-index: 2;
+            padding: 40px;
         }
 
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 2rem;
-            position: relative;
+        .feature {
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.2s, background 0.2s;
         }
 
-        .header::after {
-            content: '';
-            display: block;
-            width: 50px;
-            height: 3px;
-            background: var(--brand-primary);
-            margin: 1.5rem auto 0;
-            border-radius: 2px;
+        .feature:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(212, 181, 133, 0.3);
+            transform: translateY(-2px);
         }
 
-        .logo {
-            font-family: 'Playfair Display', serif;
-            font-size: 2rem;
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: rgba(212, 181, 133, 0.1);
             color: var(--brand-primary);
-            letter-spacing: 1px;
-            font-style: italic;
-            margin-bottom: 0.5rem;
+            border-radius: 10px;
+            font-size: 1.2rem;
+        }
+
+        .feature h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .feature p {
+            color: var(--text-muted);
+            margin: 0 0 12px 0;
+            font-size: 0.95rem;
+        }
+
+        .feature ul {
+            margin: 0;
+            padding-inline-start: 20px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .feature li {
+            margin-bottom: 8px;
+        }
+
+        .feature li strong {
+            color: var(--text-main);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .badge {
-            background: rgba(212,181,133,0.1);
-            color: var(--brand-primary);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: inline-block;
-            border: 1px solid rgba(212,181,133,0.3);
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            margin: 0;
-            font-weight: 300;
-            line-height: 1.2;
-        }
-
-        h1 strong {
-            font-weight: 700;
-            color: var(--brand-primary);
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            color: var(--brand-secondary);
-            margin-top: 1rem;
-        }
-
-        /* Explanations Section */
-        .section-title {
-            color: var(--brand-primary);
-            font-size: 1.3rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 0.5rem;
-            margin-top: 2rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .text-content {
-            font-size: 1rem;
-            line-height: 1.6;
-            color: #cbd5e1;
-        }
-        
-        /* Features */
-        .features-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: var(--brand-surface);
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 1.2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .card h3 {
-            margin: 0 0 0.5rem 0;
-            color: #fff;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card p {
-            margin: 0;
-            color: var(--brand-secondary);
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-
-        /* Screenshot Area */
-        .screenshot-container {
-            margin: 2rem 0;
-            text-align: center;
-            background: var(--brand-surface);
-            border: 1px dashed var(--brand-primary);
-            border-radius: 12px;
-            padding: 0.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .screenshot-container img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            display: block;
-        }
-
-        .screenshot-placeholder {
-            padding: 3rem 1rem;
-            color: var(--brand-secondary);
-            font-weight: 300;
-            font-size: 0.9rem;
-        }
-
-        /* Call To Action */
-        .cta-container {
-            text-align: center;
-            margin-top: 2.5rem;
-            padding-top: 2rem;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding-bottom: 2rem;
-        }
-
-        .app-link {
             display: inline-block;
             background: var(--brand-primary);
             color: var(--brand-dark);
-            text-decoration: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 1.1rem;
-            transition: opacity 0.2s;
-            width: 100%;
-            box-sizing: border-box;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 16px;
         }
-
-        .app-link:hover {
-            opacity: 0.9;
-        }
-
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- Decor -->
-        <div class="glow-top"></div>
-
-        <div class="content">
-            <!-- Header -->
-            <div class="header">
-                <div class="logo">Yuval Studio</div>
-                <div class="badge">Release Notes • שדרוג מערכת</div>
-                <h1>שליטה טובה יותר, <br><strong>קופה חכמה מאי פעם.</strong></h1>
-                <p class="subtitle">עדכנו את המערכת עם פיצ'רים חדשים שיחסכו לך זמן ויעזרו לך להרוויח יותר מכל תור.</p>
-            </div>
-
-            <!-- What is it -->
-            <h2 class="section-title">✨ מה חדש בגרסה?</h2>
-            <div class="features-list">
-                
-                <div class="card">
-                    <h3>📊 דו״ח ניהול והכנסות (Profit Report)</h3>
-                    <p>אזור חדש שמאפשר לך להזין הוצאות שוטפות (סחורה, שיווק, הוצאות סטודיו) ולראות בצורה ברורה את מאזן ההכנסות וההוצאות החודשי והשנתי שלך, יחד עם חישוב רווח נקי אוטומטי. הכל במקום אחד, מסודר ומאורגן.</p>
-                </div>
-
-                <div class="card">
-                    <h3>🛠️ הכנות למחר (Smart Prep)</h3>
-                    <p>קובייה חדשה במסך הבית של האדמין שמחשבת עבורך אוטומטית אילו עגילים, מחטים וכלים תצטרכי לעקר למחר! היא לוקחת בחשבון את סוגי התורים, מכפיל אנטומי למידות שונות, ומקדם ביטחון של עגילים נוספים.</p>
-                </div>
-                
-                <div class="card">
-                    <h3>🛒 שיפור קופה (Upsell Services)</h3>
-                    <p>לקוחה הגיעה להליקס והחליטה לעשות גם נזם על המקום? מעכשיו בקופה תוכלי להוסיף לעגלה לא רק "תכשיטים", אלא גם **שירותים וטיפולים נוספים** שבוצעו במקום!</p>
-                </div>
-
-                <div class="card">
-                    <h3>📱 רשימת תורים מותאמת לנייד</h3>
-                    <p>שדרגנו את ממשק ניהול התורים בנייד! במקום לגלול שמאלה וימינה כדי לראות את כל הפרטים, כל תור מוצג עכשיו בכרטיסייה חכמה וברורה – כל המידע והאקשנים מול העיניים (כפתורי הווידוא, ביטול ושליחת וואטסאפ מרוכזים למטה).</p>
-                </div>
-
-                <div class="card">
-                    <h3>🔝 סידור תורים חכם</h3>
-                    <p>מעכשיו רשימת התורים באדמין מוצגת בסדר הגיוני יותר כברירת מחדל: תורים שממתינים לאישור יקפצו תמיד למעלה, ולאחר מכן תורים שטרם הושלמו לפי שעות, מהקרוב לרחוק.</p>
-                </div>
-
-                <div class="card">
-                    <h3>⏱️ שעות פעילות חכמות</h3>
-                    <p>הקשבנו ושדרגנו את מסך ההגדרות: מעכשיו תוכלי להגדיר חלונות זמן לרמת חצי השעה (10:30, 13:00) לתורים מדויקים אפילו יותר. בנוסף, סידרנו את תצוגת ההגדרות למראה נקי וידידותי יותר.</p>
-                </div>
-
-            </div>
-
-            <!-- Screenshot Placeholder -->
-            <h2 class="section-title">📷 איך זה נראה?</h2>
-            <div class="screenshot-container">
-                <!-- ישי: החלף את התמונה כאן עם צילום מסך של קוביית ההכנות, דוח ההוצאות או המובייל. -->
-                <img src="./feature_screenshot.png" alt="תצוגת הפיצ'רים החדשים" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <div class="screenshot-placeholder" style="display: none;">
-                    [ הכנס תמונה בשם feature_screenshot.png לתיקייה ]
-                </div>
-            </div>
-
-            <!-- CTA CTA -->
-            <div class="cta-container">
-                <p class="text-content" style="margin-bottom: 1rem;">הכל כבר מותקן ומחכה לך באדמין.</p>
-                <a href="https://yuval-studio-repo.vercel.app/#/admin" class="app-link" target="_blank">כניסה למערכת</a>
-            </div>
-
-        </div>
+<div class="container">
+    <div class="header">
+        <span class="badge">עדכון גרסה v2.1.0</span>
+        <h1>הסטודיו של יובל</h1>
+        <p>סקירת הפיצ׳רים החדשים במערכת הפירסינג והתורים</p>
     </div>
+
+    <div class="content">
+        
+        <!-- Feature 1 -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">🔗</div>
+                <h2>תוכנית חברה מביאה חברה!</h2>
+            </div>
+            <p>הוספנו תשתית אורגנית מלאה להבאת לקוחות חדשות.</p>
+            <ul>
+                <li><strong>קוד אישי לכל לקוחה:</strong> לכל לקוחה מחכה כעת "קוד הפניה" ייחודי באזור האישי שאפשר לשתף מול חברות בוואטסאפ בקליק אחד.</li>
+                <li><strong>10% הנחה למצטרפות:</strong> חברה שקובעת תור דרך הקישור, מקבלת הנחה אוטומטית של 10% במעמד הסיכום.</li>
+                <li><strong>30 ₪ לקרדיט למפנה:</strong> ברגע שהוזמן תור, הלקוחה המפנה מקבלת אוטומטית יתרת זכות של 30 ₪ שאותה תוכל לממש בסטודיו!</li>
+            </ul>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">🔑</div>
+                <h2>כניסה מהירה עם Google</h2>
+            </div>
+            <p>רצינו להקל על הלקוחות לפתוח פרופיל במערכת.</p>
+            <ul>
+                <li>כפתור "התחבר עם גוגל" נוסף למסך הבית.</li>
+                <li>באנר הזמנה מרהיב נוסף במהלך קביעת תור כדי לעודד לקוחות להתחבר ולשמור את היסטוריית הניקובים שלהן.</li>
+            </ul>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">💎</div>
+                <h2>גלריית תכשיטי פרימיום וסינונים חכמים</h2>
+            </div>
+            <p>משפרים את חווית הגלריה כדי למנוע בלבול עבור לקוחות הקצה.</p>
+            <ul>
+                <li>עמוד הגלריה חולק לטאבים נפרדים עבור "השראה" ו"מלאי עגילים".</li>
+                <li>אוטומטית מתבצע סינון של "עגילי הבסיס" (מחיר 0) כדי להציג רק את תכשיטי הפרימיום לרכישה בסטודיו.</li>
+                <li>נוספה <strong>הודעת הבהרה (Disclaimer)</strong> בולטת בעת תיאום התור לידיעת הלקוחות שמחיר התור מגלם את העגיל הרפואי.</li>
+            </ul>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">⚙️</div>
+                <h2>פאנל ניהול (Admin) ובקרה ליובל</h2>
+            </div>
+            <p>שדרוג משמעותי ליכולות הבקרה מהמערכת.</p>
+            <ul>
+                <li><strong>פרופיל לקוח מורחב:</strong> לחיצה על שם הלקוחה במנהל התורים תציג מעתה באיזה אופן הלקוחה התחברה (Google / Email), מה הקרדיט הקיים לה, ומי החברה שהפנתה אותה לסטודיו.</li>
+                <li><strong>Smart Prep מעודכן:</strong> הותאמו מחדש הנחיות הכנת הכלים, אורכי המוטות והעיקורים בסיום היום (מלקחיים, מוליכים, מוטות 8mm ו-10mm בהתאמה לאזור).</li>
+            </ul>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">⚡</div>
+                <h2>אופטימיזציית ביצועי מובייל</h2>
+            </div>
+            <p>כדי לוודא שהאתר מרגיש "חי" ומהיר לכולם.</p>
+            <ul>
+                <li>בוצע Refactor לרכיב ה-`SmartImage` של הגלריה כדי להפסיק הפעלת אפקטים מכבידים (Blur) תוך כדי טעינה.</li>
+                <li>האנימציות הומרו לפעולות Stagger חלקות ללא דרישת מעבד יקרה, מה שמספק גלילת גלריה חלקה לחלוטין.</li>
+            </ul>
+        </div>
+        
+    </div>
+
+    <div class="footer">
+        פותח על ידי Antigravity Engineering Team &bull; 2026
+    </div>
+</div>
 
 </body>
 </html>

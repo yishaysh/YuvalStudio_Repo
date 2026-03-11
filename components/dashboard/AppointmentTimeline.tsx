@@ -98,8 +98,13 @@ const TimelineNode = ({ appointment, isFuture, studioDetails }: { appointment: A
             >
                 <div className="p-5 flex justify-between items-start">
                     <div className="space-y-1">
-                        <div className="text-xs font-medium text-brand-primary uppercase tracking-widest mb-1">
-                            {service_name || 'טיפול כללי'}
+                        <div className="text-xs font-medium text-brand-primary uppercase tracking-widest mb-1 flex flex-wrap gap-1 items-center">
+                            <span>{service_name || 'טיפול כללי'}</span>
+                            {appointment.cart_items && appointment.cart_items.length > 0 && (
+                                <span className="text-[10px] opacity-80 normal-case text-slate-400">
+                                    (+ {appointment.cart_items.map(c => c.quantity > 1 ? `${c.name} x${c.quantity}` : c.name).join(', ')})
+                                </span>
+                            )}
                         </div>
                         <div className="text-xl font-serif text-white">
                             {date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })}

@@ -167,7 +167,7 @@ const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
 
     const totalApts = userAppointments.length;
     const cancelled = userAppointments.filter((a: any) => a.status === 'cancelled').length;
-    const completed = userAppointments.filter((a: any) => a.status === 'confirmed').length; // Assuming confirmed means completed/future confirmed
+    const completed = userAppointments.filter((a: any) => ['confirmed', 'completed'].includes(a.status)).length;
     // Calculate total revenue from this user
     const revenue = userAppointments.reduce((sum: number, apt: any) => sum + (apt.final_price || apt.services?.price || 0), 0);
 
@@ -245,9 +245,16 @@ const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
                         {userAppointments.length > 0 ? userAppointments.map((apt: any) => (
                             <div key={apt.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 hover:border-brand-primary/30 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-2 h-2 rounded-full ${apt.status === 'confirmed' ? 'bg-emerald-500' : apt.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
+                                    <div className={`w-2 h-2 rounded-full ${['confirmed', 'completed'].includes(apt.status) ? 'bg-emerald-500' : apt.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
                                     <div>
-                                        <div className="text-sm font-medium text-white">{apt.service_name || 'שירות כללי'}</div>
+                                        <div className="text-sm font-medium text-white">
+                                            {apt.service_name || 'שירות כללי'}
+                                            {apt.cart_items && apt.cart_items.length > 0 && (
+                                                <span className="text-xs text-brand-primary mr-2 opacity-80 font-normal">
+                                                    (+ {apt.cart_items.map((c: any) => c.quantity > 1 ? `${c.name} x${c.quantity}` : c.name).join(', ')})
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-slate-500">{new Date(apt.start_time).toLocaleDateString('he-IL')} • {new Date(apt.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
                                     </div>
                                 </div>
