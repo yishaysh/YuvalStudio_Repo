@@ -61,6 +61,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) {
                 console.warn('Error fetching profile:', error);
             } else if (data) {
+                // Auto-backfill referral_code for legacy users
+                if (!data.referral_code) {
+                    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const code = `YV${randomSuffix}`;
+                    data.referral_code = code;
+                    supabase.from('profiles').update({ referral_code: code }).eq('id', userId).then();
+                }
                 setProfile(data);
             }
         } catch (err) {
