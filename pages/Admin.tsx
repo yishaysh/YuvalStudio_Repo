@@ -522,6 +522,8 @@ const AppointmentsList = ({
     appointments,
     onStatusUpdate,
     onCancelRequest,
+    onEditRequest,
+    onDeleteRequest,
     filterId,
     onClearFilter,
     studioAddress,
@@ -1073,6 +1075,28 @@ const AppointmentsList = ({
                                                             <DollarSign className="w-4 h-4" />
                                                         </button>
                                                     )}
+                                                    {/* Edit Quick Sale Button */}
+                                                    {(apt.notes && apt.notes.includes('מכירה מהירה')) && onEditRequest && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onEditRequest(apt); }}
+                                                            className="p-3 lg:p-2 text-indigo-400 hover:bg-indigo-500/10 bg-indigo-500/5 lg:bg-transparent rounded-lg transition-colors"
+                                                            title="ערוך קופה מהירה"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+
+                                                    {/* Delete Permanent Button (for quick sales or cancelled) */}
+                                                    {((apt.notes && apt.notes.includes('מכירה מהירה')) || apt.status === 'cancelled') && onDeleteRequest && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); onDeleteRequest(apt); }} 
+                                                            className="p-3 lg:p-2 text-red-500 hover:bg-red-500/20 bg-red-500/10 lg:bg-transparent rounded-lg transition-colors" 
+                                                            title="מחק לצמיתות"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+
                                                     {apt.status !== 'cancelled' && (
                                                         <button onClick={(e) => { e.stopPropagation(); onCancelRequest(apt); }} className="p-3 lg:p-2 text-red-400 hover:bg-red-500/10 bg-red-500/5 lg:bg-transparent rounded-lg transition-colors" title="בטל תור">
                                                             <X className="w-4 h-4" />
@@ -1893,7 +1917,7 @@ const TomorrowsPrepCard = ({ appointments }: { appointments: Appointment[] }) =>
     );
 };
 
-const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout }: any) => {
+const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpdateSettings, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout, onEditRequest, onDeleteRequest }: any) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -1948,6 +1972,8 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
                     appointments={appointments.slice(0, 5)}
                     onStatusUpdate={() => { }}
                     onCancelRequest={() => { }}
+                    onEditRequest={onEditRequest}
+                    onDeleteRequest={onDeleteRequest}
                     filterId={null}
                     onClearFilter={() => { }}
                     studioAddress={settings.studio_details.address}
@@ -1962,7 +1988,7 @@ const DashboardTab = ({ stats, appointments, onViewAppointment, settings, onUpda
     );
 };
 
-const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout }: any) => {
+const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddress, onDownloadPdf, services, onSyncToCalendar, onViewVisualPlan, onCompleteCheckout, onEditRequest, onDeleteRequest }: any) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const appointmentsRef = useRef<HTMLDivElement>(null);
@@ -2046,6 +2072,8 @@ const CalendarTab = ({ appointments, onStatusUpdate, onCancelRequest, studioAddr
                         appointments={selectedDateAppointments}
                         onStatusUpdate={onStatusUpdate}
                         onCancelRequest={onCancelRequest}
+                        onEditRequest={onEditRequest}
+                        onDeleteRequest={onDeleteRequest}
                         filterId={null}
                         onClearFilter={() => { }}
                         studioAddress={studioAddress}
@@ -2946,6 +2974,7 @@ const Admin: React.FC = () => {
     const [selectedUserProfile, setSelectedUserProfile] = useState<any | null>(null);
     const [checkoutApt, setCheckoutApt] = useState<any | null>(null);
     const [quickSaleOpen, setQuickSaleOpen] = useState(false);
+    const [editingQuickSale, setEditingQuickSale] = useState<any>(null);
 
     const showNotification = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -3078,6 +3107,24 @@ const Admin: React.FC = () => {
         await handleUpdateSettings(updatedSettings, false); // Changed from true to false to refresh data
         showNotification("התיוגים נשמרו בהצלחה", 'success');
     };
+
+    const handleDeleteAppointment = async (apt: Appointment) => {
+        if (window.confirm('האם אתה בטוח שברצונך למחוק תור זה לצמיתות?')) {
+            const success = await api.deleteAppointment(apt.id);
+            if (success) {
+                showNotification('התור נמחק בהצלחה', 'success');
+                fetchData();
+            } else {
+                showNotification('שגיאה במחיקת התור', 'error');
+            }
+        }
+    };
+
+    const handleEditQuickSale = (apt: any) => {
+        setEditingQuickSale(apt);
+        setQuickSaleOpen(true);
+    };
+
     const handleStatusUpdate = async (id: string, status: 'pending' | 'confirmed' | 'cancelled' | 'completed') => { await api.updateAppointmentStatus(id, status); fetchData(); }
     const handleAddService = async (service: any) => { await api.addService(service); fetchData(); }
     const handleUpdateService = async (id: string, updates: any) => { await api.updateService(id, updates); fetchData(); }
@@ -3215,13 +3262,15 @@ const Admin: React.FC = () => {
 
                 <AnimatePresence mode="wait">
                     <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} />}
-                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} />}
+                        {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} onEditRequest={handleEditQuickSale} onDeleteRequest={handleDeleteAppointment} />}
+                        {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} onEditRequest={handleEditQuickSale} onDeleteRequest={handleDeleteAppointment} />}
                         {activeTab === 'appointments' && (
                             <AppointmentsList
                                 appointments={appointments}
                                 onStatusUpdate={handleStatusUpdate}
                                 onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })}
+                                onEditRequest={handleEditQuickSale}
+                                onDeleteRequest={handleDeleteAppointment}
                                 filterId={filterId}
                                 onClearFilter={() => setFilterId(null)}
                                 studioAddress={settings.studio_details?.address}
@@ -3353,7 +3402,8 @@ const Admin: React.FC = () => {
             {/* Quick Sale Modal */}
             <QuickSaleModal
                 isOpen={quickSaleOpen}
-                onClose={() => setQuickSaleOpen(false)}
+                editingApt={editingQuickSale}
+                onClose={() => { setQuickSaleOpen(false); setEditingQuickSale(null); }}
                 services={services}
                 settings={settings}
                 onSaved={() => { fetchData(); showNotification('מכירה נשמרה בהצלחה! 🎉', 'success'); }}

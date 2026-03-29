@@ -579,6 +579,16 @@ export const api = {
     return !error;
   },
 
+  deleteAppointment: async (id: string): Promise<boolean> => {
+    if (!supabase) return false;
+    const { error } = await supabase.from('appointments').delete().eq('id', id);
+    if (error) {
+      console.error("Error deleting appointment:", error);
+      return false;
+    }
+    return true;
+  },
+
   // --- DELETE ALL FUNCTION ---
   clearAppointments: async (): Promise<boolean> => {
     if (!supabase) return false;

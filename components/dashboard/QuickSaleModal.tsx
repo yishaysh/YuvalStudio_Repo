@@ -22,6 +22,7 @@ interface QuickSaleModalProps {
     services: Service[];
     settings: StudioSettings;
     onSaved: () => void;
+    editingApt?: any;
 }
 
 export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
@@ -29,7 +30,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
     onClose,
     services,
     settings,
-    onSaved
+    onSaved,
+    editingApt
 }) => {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [search, setSearch] = useState('');
@@ -64,6 +66,38 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
         }));
         return [...svc, ...inv];
     }, [inventoryItems, services]);
+
+    React.useEffect(() => {
+        if (isOpen && editingApt) {
+            setClientName(editingApt.client_name === 'לקוח מזדמן' ? '' : editingApt.client_name);
+            setClientPhone(editingApt.client_phone || '');
+            
+            if (editingApt.cart_items && Array.isArray(editingApt.cart_items)) {
+                const restoredCart: CartItem[] = editingApt.cart_items.map((ci: any) => {
+                    const matchedItem = allItems.find(ai => ai.id === ci.service_id);
+                    return {
+                        id: ci.service_id,
+                        name: ci.name,
+                        quantity: ci.quantity,
+                        cost_price: ci.cost_price || 0,
+                        final_price: ci.final_price || 0,
+                        is_service: matchedItem ? matchedItem.is_service : false,
+                        image_url: matchedItem?.image_url,
+                        category: matchedItem?.category
+                    };
+                });
+                setCart(restoredCart);
+            } else {
+                setCart([]);
+            }
+        } else if (!isOpen) {
+            setCart([]);
+            setClientName('');
+            setClientPhone('');
+            setSearch('');
+            setDone(false);
+        }
+    }, [isOpen, editingApt, allItems]);
 
     const filtered = useMemo(() => {
         if (!search) return allItems;
@@ -127,31 +161,47 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             // Find the first service in cart as the "primary" service; else use generic
             const primaryService = cart.find(c => c.is_service);
 
-            await api.updateAppointment(
-                (await api.createAppointment({
-                    client_id: undefined,
+            if (editingApt) {
+                // Update existing quick sale
+                await api.updateAppointment(editingApt.id, {
                     client_name: clientName || 'לקוח מזדמן',
-                    client_email: '',
                     client_phone: clientPhone || '',
                     service_id: primaryService?.id || cart[0].id,
                     service_name: primaryService?.name || cart[0].name,
-                    start_time: now,
-                    end_time: now,
-                    status: 'completed' as const,
-                    notes: 'מכירה מהירה (קופה)',
                     cart_items: cartItemsForApt,
                     final_price: totalRevenue,
+                    price: totalRevenue,
                     total_cost: totalCost,
                     total_profit: totalProfit
-                })).id,
-                {
-                    status: 'completed',
-                    cart_items: cartItemsForApt,
-                    final_price: totalRevenue,
-                    total_cost: totalCost,
-                    total_profit: totalProfit
-                }
-            );
+                });
+            } else {
+                // Create new quick sale
+                await api.updateAppointment(
+                    (await api.createAppointment({
+                        client_id: undefined,
+                        client_name: clientName || 'לקוח מזדמן',
+                        client_email: '',
+                        client_phone: clientPhone || '',
+                        service_id: primaryService?.id || cart[0].id,
+                        service_name: primaryService?.name || cart[0].name,
+                        start_time: now,
+                        end_time: now,
+                        status: 'completed' as const,
+                        notes: 'מכירה מהירה (קופה)',
+                        cart_items: cartItemsForApt,
+                        final_price: totalRevenue,
+                        total_cost: totalCost,
+                        total_profit: totalProfit
+                    })).id,
+                    {
+                        status: 'completed',
+                        cart_items: cartItemsForApt,
+                        final_price: totalRevenue,
+                        total_cost: totalCost,
+                        total_profit: totalProfit
+                    }
+                );
+            }
 
             setDone(true);
             setTimeout(() => {
@@ -173,7 +223,7 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
     const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="קופה מהירה ⚡">
+        <Modal isOpen={isOpen} onClose={onClose} title={editingApt ? "עריכת קופה מהירה ⚡" : "קופה מהירה ⚡"}>
             {/* Scrollable content area */}
             <div className="flex flex-col gap-5" style={{ paddingBottom: cart.length > 0 ? '80px' : '0' }}>
 
