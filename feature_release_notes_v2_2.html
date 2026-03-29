@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YuvalStudio - עדכון גרסה v2.2</title>
+    <style>
+        :root {
+            --brand-primary: #D4B585;
+            --brand-dark: #0A0A0A;
+            --brand-surface: #141414;
+            --text-main: #FFFFFF;
+            --text-muted: #94a3b8;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--brand-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            margin: 40px 20px;
+            background-color: var(--brand-surface);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(212,181,133,0.2) 0%, rgba(212,181,133,0.05) 100%);
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(212,181,133,0.2);
+        }
+        .header h1 { color: var(--brand-primary); font-family: Georgia, serif; font-size: 2.5rem; margin: 0 0 10px 0; }
+        .header p { color: var(--text-muted); font-size: 1.1rem; margin: 0; }
+        .content { padding: 40px; }
+        .feature {
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .feature:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(212,181,133,0.3);
+            transform: translateY(-2px);
+        }
+        .feature-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px;
+            background: rgba(212,181,133,0.1);
+            color: var(--brand-primary);
+            border-radius: 10px;
+            font-size: 1.2rem;
+        }
+        .feature h2 { margin: 0; font-size: 1.3rem; font-weight: 600; }
+        .feature p { color: var(--text-muted); margin: 0 0 12px 0; font-size: 0.95rem; }
+        .feature ul { margin: 0; padding-inline-start: 20px; color: var(--text-muted); font-size: 0.95rem; }
+        .feature li { margin-bottom: 8px; }
+        .feature li strong { color: var(--text-main); }
+        .sub-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .sub-section h3 { color: var(--brand-primary); font-size: 1rem; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; }
+        .footer {
+            text-align: center; padding: 24px;
+            color: var(--text-muted); font-size: 0.9rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .badge {
+            display: inline-block;
+            background: var(--brand-primary);
+            color: var(--brand-dark);
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 0.8rem; font-weight: bold; margin-bottom: 16px;
+        }
+        .new-badge {
+            display: inline-block;
+            background: rgba(212,181,133,0.15);
+            color: var(--brand-primary);
+            padding: 2px 8px; border-radius: 20px;
+            font-size: 0.7rem; font-weight: bold;
+            border: 1px solid rgba(212,181,133,0.3);
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <span class="badge">עדכון גרסה v2.2.0</span>
+        <h1>הסטודיו של יובל</h1>
+        <p>שני פיצ'רים חדשים בממשק הניהול</p>
+    </div>
+
+    <div class="content">
+
+        <!-- Quick Sale -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">⚡</div>
+                <h2>קופה מהירה <span class="new-badge">חדש</span></h2>
+            </div>
+            <p>מכרת ביריד? עמד מישהו בתור בדוכן? עכשיו אפשר לתעד כל מכירה ישירות, בלי להמציא תור פיקטיבי.</p>
+            <ul>
+                <li><strong>כפתור "קופה מהירה ⚡"</strong> מופיע בפינה השמאלית התחתונה בכל מסכי ה-Admin — תמיד זמין.</li>
+                <li>בוחרים שירות ו/או תכשיטים מהמלאי, המחיר והרווח מחושבים אוטומטית.</li>
+                <li>אפשר לשמור שם וטלפון לקוח — <strong>לא חובה</strong>. ברירת המחדל: "לקוח מזדמן".</li>
+                <li>לחיצה על "סיים וגבה תשלום" → המכירה נשמרת מיד כ-<strong>הושלם</strong> ומתעדכנת בסטטיסטיקות ובדוחות.</li>
+                <li>אין יותר צורך ביצירת תורים ידניים! 🎉</li>
+            </ul>
+        </div>
+
+        <!-- Notifications -->
+        <div class="feature">
+            <div class="feature-header">
+                <div class="icon">🔔</div>
+                <h2>מערכת התראות <span class="new-badge">חדש</span></h2>
+            </div>
+            <p>טאב "התראות" חדש בממשק הניהול — קבלי התראה מיידית בכל פעם שלקוחה קובעת תור. שלוש שיטות, מתג עצמאי לכל אחת.</p>
+
+            <div class="sub-section">
+                <h3>💬 Telegram Bot <small style="color:var(--text-muted); font-size:0.75rem;">(חינם לגמרי)</small></h3>
+                <ul>
+                    <li>הודעה מיידית לטלגרם עם שם הלקוחה, שירות, תאריך ושעה.</li>
+                    <li><strong>הגדרה:</strong> צרי בוט ב-@BotFather, הכניסי Bot Token + Chat ID בטאב "התראות".</li>
+                </ul>
+            </div>
+
+            <div class="sub-section">
+                <h3>📧 Email <small style="color:var(--text-muted); font-size:0.75rem;">(חינם עד 200 הודעות/חודש)</small></h3>
+                <ul>
+                    <li>אימייל אוטומטי לכתובת שתבחרי — נוחת בתוך שניות מקביעת התור.</li>
+                    <li><strong>הגדרה:</strong> הירשמי ל-<strong>emailjs.com</strong>, צרי Template עם שדות הלקוח, הכניסי Service ID + Template ID + Public Key.</li>
+                </ul>
+            </div>
+
+            <div class="sub-section">
+                <h3>📅 סנכרון גוגל יומן אוטומטי</h3>
+                <ul>
+                    <li>כל תור חדש נוחת ביומן גוגל ברגע הקביעה — ללא צורך בפעולה ידנית.</li>
+                    <li><strong>הגדרה:</strong> הפעלי את המתג — הסנכרון קורה דרך חשבון הגוגל המחובר ל-Admin.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        פותח על ידי Antigravity Engineering Team &bull; 2026
+    </div>
+</div>
+
+</body>
+</html>
