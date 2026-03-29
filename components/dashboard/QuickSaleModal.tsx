@@ -174,7 +174,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="קופה מהירה ⚡">
-            <div className="flex flex-col gap-5">
+            {/* Scrollable content area */}
+            <div className="flex flex-col gap-5" style={{ paddingBottom: cart.length > 0 ? '80px' : '0' }}>
 
                 {/* Client (Optional) */}
                 <div className="grid grid-cols-2 gap-3">
@@ -253,7 +254,7 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                                         <Minus className="w-3 h-3" />
                                     </button>
                                     <span className="text-white text-xs w-4 text-center">{item.quantity}</span>
-                                    <button onClick={() => addToCart(item)}
+                                    <button onClick={() => addToCart({ ...item, image_url: item.image_url ?? '', category: item.category ?? '' })}
                                         className="w-5 h-5 rounded-full bg-white/10 hover:bg-green-500/20 flex items-center justify-center text-slate-400 hover:text-green-400 transition-colors">
                                         <Plus className="w-3 h-3" />
                                     </button>
@@ -272,33 +273,58 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                         </div>
                     </div>
                 )}
-
-                {/* Save Button */}
-                <AnimatePresence mode="wait">
-                    {done ? (
-                        <motion.div
-                            key="done"
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="flex items-center justify-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl py-3 font-bold text-sm"
-                        >
-                            <Check className="w-4 h-4" /> המכירה נשמרה בהצלחה!
-                        </motion.div>
-                    ) : (
-                        <motion.div key="btn">
-                            <Button
-                                onClick={handleSave}
-                                disabled={cart.length === 0 || isSaving}
-                                className="w-full flex items-center justify-center gap-2"
-                                variant="primary"
-                            >
-                                <Zap className="w-4 h-4" />
-                                {isSaving ? 'שומר...' : `סיים וגבה תשלום • ₪${totalRevenue}`}
-                            </Button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
+
+            {/* Floating Pay Button – always visible at bottom when cart has items */}
+            <AnimatePresence>
+                {cart.length > 0 && (
+                    <motion.div
+                        key="floating-btn"
+                        initial={{ y: 30, opacity: 0, scale: 0.95 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 30, opacity: 0, scale: 0.95 }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        style={{
+                            position: 'sticky',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            zIndex: 10,
+                            marginTop: '12px',
+                            marginLeft: '-1.5rem',
+                            marginRight: '-1.5rem',
+                            padding: '12px 1.5rem 16px',
+                            background: 'linear-gradient(to top, rgba(15,15,30,0.98) 70%, transparent)',
+                            backdropFilter: 'blur(12px)',
+                        }}
+                    >
+                        <AnimatePresence mode="wait">
+                            {done ? (
+                                <motion.div
+                                    key="done"
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="flex items-center justify-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl py-3 font-bold text-sm"
+                                >
+                                    <Check className="w-4 h-4" /> המכירה נשמרה בהצלחה!
+                                </motion.div>
+                            ) : (
+                                <motion.div key="btn">
+                                    <Button
+                                        onClick={handleSave}
+                                        disabled={isSaving}
+                                        className="w-full flex items-center justify-center gap-2 py-3 text-base font-bold shadow-lg shadow-brand-primary/30"
+                                        variant="primary"
+                                    >
+                                        <Zap className="w-5 h-5" />
+                                        {isSaving ? 'שומר...' : `סיים וגבה תשלום • ₪${totalRevenue}`}
+                                    </Button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </Modal>
     );
 };
