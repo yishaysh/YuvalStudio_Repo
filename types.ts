@@ -147,6 +147,16 @@ export interface StudioSettings {
   show_pain_level?: boolean;
   whatsapp_templates?: Record<string, string>;
   inventory_items?: any[];
+  // --- Notification Settings ---
+  enable_telegram_notifications?: boolean;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+  enable_email_notifications?: boolean;
+  emailjs_service_id?: string;
+  emailjs_template_id?: string;
+  emailjs_public_key?: string;
+  notification_email?: string;
+  enable_calendar_sync?: boolean;
 }
 
 export enum BookingStep {

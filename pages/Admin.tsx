@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket,
     Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
     ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-    Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload, PieChart, TrendingUp, TrendingDown
+    Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload, PieChart, TrendingUp, TrendingDown, Bell, Zap, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { api, TimeSlot } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
@@ -16,6 +16,7 @@ import html2canvas from 'html2canvas';
 import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { calendarService } from '../services/calendarService';
 import CheckoutModal from '../components/dashboard/CheckoutModal';
+import { QuickSaleModal } from '../components/dashboard/QuickSaleModal';
 
 const m = motion as any;
 
@@ -2796,6 +2797,128 @@ const GalleryTab = ({ gallery, onDelete, onUpload, onUpdateTags, services }: any
 
 
 
+// --- Notifications Tab ---
+const NotificationsTab = ({ settings, onUpdate }: { settings: StudioSettings; onUpdate: (s: StudioSettings, silent?: boolean) => void }) => {
+    const [localSettings, setLocalSettings] = useState<StudioSettings>(settings);
+    const [saved, setSaved] = useState(false);
+
+    const update = (key: keyof StudioSettings, value: any) => {
+        setLocalSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleSave = async () => {
+        await onUpdate(localSettings, false);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    };
+
+    const Toggle = ({ enabled, onToggle }: { enabled?: boolean; onToggle: () => void }) => (
+        <button
+            onClick={onToggle}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${enabled ? 'bg-brand-primary' : 'bg-slate-700'}`}
+        >
+            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${enabled ? 'translate-x-[26px]' : 'translate-x-0.5'}`} />
+        </button>
+    );
+
+    const Field = ({ label, value, onChange, placeholder, type = 'text', mono = true }: any) => (
+        <div>
+            <label className="text-xs text-slate-400 mb-1 block">{label}</label>
+            <input
+                type={type}
+                value={value || ''}
+                onChange={e => onChange(e.target.value)}
+                placeholder={placeholder}
+                className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/50 ${mono ? 'font-mono' : ''}`}
+            />
+        </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between mb-2">
+                <div>
+                    <h2 className="text-xl font-serif text-white">הגדרות התראות</h2>
+                    <p className="text-sm text-slate-400 mt-0.5">קבל עדכון כשלקוחה קובעת תור חדש</p>
+                </div>
+                <Button onClick={handleSave} variant="primary" className="flex items-center gap-2">
+                    {saved ? <><Check className="w-4 h-4" /> נשמר!</> : <><Save className="w-4 h-4" /> שמור הגדרות</>}
+                </Button>
+            </div>
+
+            {/* Telegram */}
+            <Card className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-xl">💬</div>
+                        <div>
+                            <div className="font-medium text-white">התראות Telegram</div>
+                            <div className="text-xs text-slate-500">שלח הודעה לבוט טלגרם בכל תור חדש</div>
+                        </div>
+                    </div>
+                    <Toggle enabled={localSettings.enable_telegram_notifications} onToggle={() => update('enable_telegram_notifications', !localSettings.enable_telegram_notifications)} />
+                </div>
+                {localSettings.enable_telegram_notifications && (
+                    <div className="pt-3 border-t border-white/5 space-y-3">
+                        <Field label="Bot Token" value={localSettings.telegram_bot_token} onChange={(v: string) => update('telegram_bot_token', v)} placeholder="123456789:AAFxxxxxx..." />
+                        <Field label="Chat ID" value={localSettings.telegram_chat_id} onChange={(v: string) => update('telegram_chat_id', v)} placeholder="-100xxxxxxxxxx" />
+                        <div className="text-xs text-slate-500 bg-white/5 rounded-lg p-3">
+                            💡 <strong className="text-slate-400">איך להגדיר:</strong> 1) צור בוט ב-@BotFather והעתק את ה-Token. 2) הוסף אותו לקבוצה או שיחה ישירה. 3) קבל את ה-Chat ID דרך @userinfobot.
+                        </div>
+                    </div>
+                )}
+            </Card>
+
+            {/* Email */}
+            <Card className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-xl">📧</div>
+                        <div>
+                            <div className="font-medium text-white">התראות Email (EmailJS)</div>
+                            <div className="text-xs text-slate-500">שליחת אימייל אוטומטית בכל תור חדש</div>
+                        </div>
+                    </div>
+                    <Toggle enabled={localSettings.enable_email_notifications} onToggle={() => update('enable_email_notifications', !localSettings.enable_email_notifications)} />
+                </div>
+                {localSettings.enable_email_notifications && (
+                    <div className="pt-3 border-t border-white/5 space-y-3">
+                        <Field label="EmailJS Service ID" value={localSettings.emailjs_service_id} onChange={(v: string) => update('emailjs_service_id', v)} placeholder="service_xxxxxxxx" />
+                        <Field label="EmailJS Template ID" value={localSettings.emailjs_template_id} onChange={(v: string) => update('emailjs_template_id', v)} placeholder="template_xxxxxxxx" />
+                        <Field label="EmailJS Public Key" value={localSettings.emailjs_public_key} onChange={(v: string) => update('emailjs_public_key', v)} placeholder="PUBLIC_KEY" />
+                        <Field label="כתובת אימייל לקבלת ההתראות" value={localSettings.notification_email} onChange={(v: string) => update('notification_email', v)} placeholder="yuval@example.com" mono={false} />
+                        <div className="text-xs text-slate-500 bg-white/5 rounded-lg p-3">
+                            💡 <strong className="text-slate-400">איך להגדיר:</strong> הירשמי ל-<a href="https://emailjs.com" target="_blank" rel="noreferrer" className="text-brand-primary hover:underline">emailjs.com</a> (חינם עד 200 הודעות/חודש), צרי Template עם שדות to_email, client_name, client_phone, service_name, appointment_date.
+                        </div>
+                    </div>
+                )}
+            </Card>
+
+            {/* Google Calendar Auto-Sync */}
+            <Card className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-xl">📅</div>
+                        <div>
+                            <div className="font-medium text-white">סנכרון אוטומטי ליומן Google</div>
+                            <div className="text-xs text-slate-500">כל תור חדש יתווסף אוטומטית ליומן</div>
+                        </div>
+                    </div>
+                    <Toggle enabled={localSettings.enable_calendar_sync} onToggle={() => update('enable_calendar_sync', !localSettings.enable_calendar_sync)} />
+                </div>
+                {localSettings.enable_calendar_sync && (
+                    <div className="pt-3 border-t border-white/5">
+                        <div className="text-xs text-slate-500 bg-white/5 rounded-lg p-3">
+                            💡 <strong className="text-slate-400">איך עובד:</strong> בכל קביעת תור חדשה תתבצע קריאה לגוגל Calendar API (Google Sign-In נדרש). האפשרות הזו תסנכרן לאותו חשבון גוגל שמחובר ל-Admin.
+                        </div>
+                    </div>
+                )}
+            </Card>
+        </div>
+    );
+};
+
+
 const Admin: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
@@ -2822,6 +2945,7 @@ const Admin: React.FC = () => {
     const [visualPlanData, setVisualPlanData] = useState<any | null>(null);
     const [selectedUserProfile, setSelectedUserProfile] = useState<any | null>(null);
     const [checkoutApt, setCheckoutApt] = useState<any | null>(null);
+    const [quickSaleOpen, setQuickSaleOpen] = useState(false);
 
     const showNotification = (message: string, type: 'success' | 'error') => {
         setToast({ message, type });
@@ -3067,12 +3191,13 @@ const Admin: React.FC = () => {
                             {[
                                 { id: 'dashboard', icon: Activity, label: 'ראשי' },
                                 { id: 'calendar', icon: Calendar, label: 'יומן' },
-                                { id: 'appointments', icon: Filter, label: 'ניהול תורים' }, // Restored Tab
+                                { id: 'appointments', icon: Filter, label: 'ניהול תורים' },
                                 { id: 'services', icon: Edit2, label: 'שירותים' },
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
-                                { id: 'inventory', icon: Box, label: 'מלאי' }, // New Tab
+                                { id: 'inventory', icon: Box, label: 'מלאי' },
                                 { id: 'coupons', icon: Ticket, label: 'קופונים' },
-                                { id: 'reports', icon: PieChart, label: 'הוצאות ודוחות' }, // New Tab
+                                { id: 'reports', icon: PieChart, label: 'הוצאות ודוחות' },
+                                { id: 'notifications', icon: Bell, label: 'התראות' },
                                 { id: 'settings', icon: Settings, label: 'הגדרות' }
                             ].map(tab => (
                                 <button
@@ -3115,9 +3240,19 @@ const Admin: React.FC = () => {
                         {activeTab === 'inventory' && <InventoryTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'coupons' && <CouponsTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'reports' && <ReportsTab appointments={appointments} stats={stats} />}
+                        {activeTab === 'notifications' && <NotificationsTab settings={settings} onUpdate={handleUpdateSettings} />}
                         {activeTab === 'settings' && <SettingsTab settings={settings} onUpdate={handleUpdateSettings} />}
                     </m.div>
                 </AnimatePresence>
+
+                {/* Quick Sale floating button */}
+                <button
+                    onClick={() => setQuickSaleOpen(true)}
+                    className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-brand-primary text-brand-dark font-bold px-5 py-3 rounded-2xl shadow-2xl shadow-brand-primary/30 hover:shadow-brand-primary/50 hover:scale-105 active:scale-95 transition-all text-sm"
+                >
+                    <Zap className="w-4 h-4" />
+                    קופה מהירה
+                </button>
             </div>
 
             <ConfirmationModal isOpen={modalData.isOpen} onClose={() => setModalData({ ...modalData, isOpen: false })} onConfirm={handleCancelAppointment} title="ביטול תור" description="האם אתה בטוח?" confirmText="בטל" variant="danger" />
@@ -3214,6 +3349,15 @@ const Admin: React.FC = () => {
                     onSave={handleCompleteCheckout}
                 />
             )}
+
+            {/* Quick Sale Modal */}
+            <QuickSaleModal
+                isOpen={quickSaleOpen}
+                onClose={() => setQuickSaleOpen(false)}
+                services={services}
+                settings={settings}
+                onSaved={() => { fetchData(); showNotification('מכירה נשמרה בהצלחה! 🎉', 'success'); }}
+            />
 
             <div className="fixed top-0 left-[-9999px] pointer-events-none z-[-50]">
                 {pdfData && <ConsentPdfTemplate data={pdfData} settings={settings} />}

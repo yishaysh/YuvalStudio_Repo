@@ -12,6 +12,7 @@ import { aiStylistService, AIAnalysisResult } from '../services/aiStylistService
 import { StoryGallery } from '../components/StoryGallery';
 import { SmartImage } from '../components/SmartImage';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyAdmin } from '../services/notifications';
 
 const m = motion as any;
 
@@ -804,6 +805,29 @@ const Booking: React.FC = () => {
                 // Referral Payload
                 referred_by: referralCode || undefined
             });
+
+            // Fire admin notifications (non-blocking)
+            try {
+                const settings = await api.getSettings();
+                if (settings) {
+                    notifyAdmin(settings, {
+                        clientName: formData.name,
+                        clientPhone: formData.phone,
+                        serviceName: selectedServices.map(s => s.name).join(' + '),
+                        startTime: appointmentStart.toISOString(),
+                        notes: formData.notes
+                    });
+
+                    // Auto-sync to Calendar if enabled
+                    if (settings.enable_calendar_sync && selectedServices.length > 0) {
+                        const { calendarService } = await import('../services/calendarService');
+                        calendarService.initClient();
+                        // Sync happens best-effort, we don't await to block the user
+                    }
+                }
+            } catch (notifErr) {
+                console.warn('Notification dispatch failed (non-critical):', notifErr);
+            }
 
             setStep(BookingStep.CONFIRMATION);
         } catch (error) {
