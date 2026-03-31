@@ -37,6 +37,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
     const [search, setSearch] = useState('');
     const [clientName, setClientName] = useState('');
     const [clientPhone, setClientPhone] = useState('');
+    const [discountPercent, setDiscountPercent] = useState<number>(0);
+    const [couponCode, setCouponCode] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
     const [done, setDone] = useState(false);
 
@@ -95,6 +97,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             setClientName('');
             setClientPhone('');
             setSearch('');
+            setDiscountPercent(0);
+            setCouponCode('');
             setDone(false);
         }
     }, [isOpen, editingApt, allItems]);
@@ -135,15 +139,17 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
         });
     };
 
-    const { totalRevenue, totalCost, totalProfit } = useMemo(() => {
+    const { totalRevenue, totalCost, totalProfit, baseRevenue } = useMemo(() => {
         let revenue = 0;
         let cost = 0;
         cart.forEach(c => {
             revenue += c.final_price * c.quantity;
             cost += c.cost_price * c.quantity;
         });
-        return { totalRevenue: revenue, totalCost: cost, totalProfit: revenue - cost };
-    }, [cart]);
+        
+        const finalRev = Math.max(0, revenue * (1 - (discountPercent / 100)));
+        return { totalRevenue: finalRev, totalCost: cost, totalProfit: finalRev - cost, baseRevenue: revenue };
+    }, [cart, discountPercent]);
 
     const handleSave = async () => {
         if (cart.length === 0) return;
@@ -161,6 +167,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             // Find the first service in cart as the "primary" service; else use generic
             const primaryService = cart.find(c => c.is_service);
 
+            const notesStr = `מכירה מהירה (קופה)${discountPercent > 0 ? `\nהנחה מיושמת: ${discountPercent}%` : ''}`;
+
             if (editingApt) {
                 // Update existing quick sale
                 await api.updateAppointment(editingApt.id, {
@@ -170,9 +178,11 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                     service_name: primaryService?.name || cart[0].name,
                     cart_items: cartItemsForApt,
                     final_price: totalRevenue,
-                    price: totalRevenue,
+                    price: baseRevenue,
+                    notes: notesStr,
                     total_cost: totalCost,
-                    total_profit: totalProfit
+                    total_profit: totalProfit,
+                    coupon_code: couponCode || undefined
                 });
             } else {
                 // Create new quick sale
@@ -187,7 +197,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                         start_time: now,
                         end_time: now,
                         status: 'completed' as const,
-                        notes: 'מכירה מהירה (קופה)',
+                        notes: notesStr,
+                        coupon_code: couponCode || undefined,
                         cart_items: cartItemsForApt,
                         final_price: totalRevenue,
                         total_cost: totalCost,
@@ -198,7 +209,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                         cart_items: cartItemsForApt,
                         final_price: totalRevenue,
                         total_cost: totalCost,
-                        total_profit: totalProfit
+                        total_profit: totalProfit,
+                        coupon_code: couponCode || undefined
                     }
                 );
             }
@@ -313,6 +325,32 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                                 <span className="text-brand-primary font-bold">₪{item.final_price * item.quantity}</span>
                             </div>
                         ))}
+                        
+                        {/* Discount and Coupon Config */}
+                        <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-3 mt-2">
+                            <div>
+                                <label className="text-[10px] text-slate-400 mb-1 block">הנחה (%)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={discountPercent || ''}
+                                    onChange={e => setDiscountPercent(Number(e.target.value) || 0)}
+                                    placeholder="0"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/50"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-slate-400 mb-1 block">קוד קופון</label>
+                                <input
+                                    value={couponCode}
+                                    onChange={e => setCouponCode(e.target.value)}
+                                    placeholder="הזן קוד..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-slate-600 outline-none focus:border-brand-primary/50"
+                                />
+                            </div>
+                        </div>
+
                         <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold">
                             <span className="text-slate-400">סה״כ לתשלום</span>
                             <span className="text-white text-base">₪{totalRevenue}</span>

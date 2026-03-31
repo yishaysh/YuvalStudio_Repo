@@ -6,8 +6,10 @@ import { Menu, X, Instagram, Facebook, MapPin, Lock, User, Sparkles } from 'luci
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { LoginModal } from './components/LoginModal';
 import { NavigationModal } from './components/ui';
+import { AccessibilityMenu } from './components/ui/AccessibilityMenu';
 
 // Lazy Load Pages - Must use explicit string literals for static analysis
 const Home = lazy(() => import('./pages/Home'));
@@ -20,6 +22,7 @@ const StyleMatcherPage = lazy(() => import('./pages/StyleMatcher'));
 const PersonalArea = lazy(() => import('./pages/PersonalArea'));
 const UserGallery = lazy(() => import('./components/dashboard/UserGallery').then(module => ({ default: module.UserGallery })));
 const UserSettings = lazy(() => import('./components/dashboard/UserSettings').then(module => ({ default: module.UserSettings })));
+const AccessibilityStatement = lazy(() => import('./pages/AccessibilityStatement').then(module => ({ default: module.AccessibilityStatement })));
 
 const m = motion as any;
 
@@ -253,11 +256,13 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <ReferralTracker />
-        <Navbar />
+    <AccessibilityProvider>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <ReferralTracker />
+          <Navbar />
+          <AccessibilityMenu />
         <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -271,6 +276,7 @@ const App: React.FC = () => {
               <Route path="/dashboard/gallery" element={<UserGallery />} />
               <Route path="/dashboard/settings" element={<UserSettings />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/accessibility-statement" element={<AccessibilityStatement />} />
               <Route path="*" element={<Home />} />
             </Routes>
           </Suspense>
@@ -316,13 +322,15 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="border-t border-white/5 pt-8 text-center text-xs text-slate-600">
-              © 2026 Yuval Studio. כל הזכויות שמורות.
+            <div className="border-t border-white/5 pt-8 text-center flex flex-col items-center gap-2">
+              <span className="text-xs text-slate-600">© 2026 Yuval Studio. כל הזכויות שמורות.</span>
+              <Link to="/accessibility-statement" className="text-xs text-slate-500 hover:text-white transition-colors">הצהרת נגישות</Link>
             </div>
           </div>
         </footer>
       </Router>
     </AuthProvider>
+    </AccessibilityProvider>
   );
 };
 

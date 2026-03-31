@@ -1,3 +1,57 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Accessibility Overrides */
+
+/* Grayscale */
+.a11y-grayscale {
+    filter: grayscale(100%) !important;
+}
+
+/* High Contrast mode */
+.a11y-high-contrast {
+    --tw-bg-opacity: 1 !important;
+    background-color: #000000 !important;
+    color: #ffff00 !important;
+}
+
+.a11y-high-contrast * {
+    background-color: transparent !important;
+    color: inherit !important;
+    border-color: #ffff00 !important;
+}
+
+.a11y-high-contrast button {
+    border: 2px solid #ffff00 !important;
+    background-color: #000000 !important;
+}
+
+.a11y-high-contrast img, 
+.a11y-high-contrast svg {
+    filter: contrast(200%) grayscale(100%) !important;
+}
+
+/* Readable Font */
+.a11y-readable-font * {
+    font-family: Arial, Helvetica, sans-serif !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Highlight Links */
+.a11y-highlight-links a, 
+.a11y-highlight-links button {
+    text-decoration: underline !important;
+    text-decoration-color: currentColor !important;
+    text-decoration-thickness: 2px !important;
+    text-underline-offset: 4px !important;
+}
+
+/* Stop Animations */
+.a11y-stop-animations *, 
+.a11y-stop-animations *::before, 
+.a11y-stop-animations *::after {
+    animation-play-state: paused !important;
+    animation: none !important;
+    transition: none !important;
+}
