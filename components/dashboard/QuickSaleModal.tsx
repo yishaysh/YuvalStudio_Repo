@@ -41,6 +41,7 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
     const [couponCode, setCouponCode] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
     const [done, setDone] = useState(false);
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
     const inventoryItems: JewelryItem[] = (settings.inventory_items || []).filter(
         (item: JewelryItem) => item.price > 0
@@ -100,6 +101,7 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             setDiscountPercent(0);
             setCouponCode('');
             setDone(false);
+            setEnlargedImage(null);
         }
     }, [isOpen, editingApt, allItems]);
 
@@ -235,7 +237,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
     const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={editingApt ? "עריכת קופה מהירה ⚡" : "קופה מהירה ⚡"}>
+        <>
+            <Modal isOpen={isOpen} onClose={onClose} title={editingApt ? "עריכת קופה מהירה ⚡" : "קופה מהירה ⚡"}>
             {/* Scrollable content area */}
             <div className="flex flex-col gap-5" style={{ paddingBottom: cart.length > 0 ? '80px' : '0' }}>
 
@@ -281,21 +284,38 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                                 key={item.id}
                                 whileTap={{ scale: 0.96 }}
                                 onClick={() => addToCart(item)}
-                                className={`relative text-right p-2.5 rounded-xl border transition-all text-sm ${
+                                className={`relative flex gap-2 p-2.5 rounded-xl border transition-all text-sm text-right ${
                                     inCart
                                         ? 'bg-brand-primary/15 border-brand-primary/40 text-white'
                                         : 'bg-white/5 border-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10'
                                 }`}
+                                style={{ alignItems: 'center' }}
                             >
                                 {inCart && (
-                                    <span className="absolute top-1.5 left-1.5 w-5 h-5 bg-brand-primary text-xs text-black font-bold rounded-full flex items-center justify-center">
+                                    <span className="absolute -top-2 -left-2 w-5 h-5 bg-brand-primary text-xs text-black font-bold rounded-full flex items-center justify-center z-10 shadow-md">
                                         {inCart.quantity}
                                     </span>
                                 )}
-                                <div className="font-medium truncate text-xs">{item.name}</div>
-                                <div className="text-brand-primary font-bold mt-0.5">₪{item.final_price}</div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">
-                                    {item.is_service ? '🎯 שירות' : '💎 תכשיט'}
+                                <div 
+                                    className={`w-10 h-10 rounded-md shrink-0 overflow-hidden border border-white/10 flex flex-col items-center justify-center text-lg ${item.image_url ? 'cursor-zoom-in bg-black/40' : 'bg-white/5'}`}
+                                    onClick={(e) => {
+                                        if (item.image_url) {
+                                            e.stopPropagation();
+                                            setEnlargedImage(item.image_url);
+                                        }
+                                    }}
+                                >
+                                    {item.image_url ? 
+                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-md" /> :
+                                        <span>{item.is_service ? '🎯' : '💎'}</span>
+                                    }
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium truncate text-xs" title={item.name}>{item.name}</div>
+                                    <div className="text-brand-primary font-bold mt-0.5">₪{item.final_price}</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">
+                                        {item.is_service ? 'שירות' : 'תכשיט'}
+                                    </div>
                                 </div>
                             </motion.button>
                         );
@@ -413,6 +433,41 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </Modal>
+            </Modal>
+
+            {/* Enlarged Image Modal */}
+            <AnimatePresence>
+                {enlargedImage && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-brand-dark/95 backdrop-blur-md"
+                        onClick={() => setEnlargedImage(null)}
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="relative max-w-4xl w-full max-h-screen flex items-center justify-center pointer-events-none"
+                        >
+                            <img 
+                                src={enlargedImage} 
+                                alt="enlarged preview" 
+                                className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl pointer-events-auto border border-white/10" 
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            <button 
+                                className="absolute -top-12 right-0 p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all pointer-events-auto"
+                                onClick={() => setEnlargedImage(null)}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
     );
 };
