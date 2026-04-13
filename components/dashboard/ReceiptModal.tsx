@@ -23,24 +23,30 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     const [isExporting, setIsExporting] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
-    // Calc totals
-    const cartItems = appointment.cart_items || [];
-    const mainServicePrice = appointment.service_price || 0;
+    const isQuickSale = appointment.id === 'QUICK-SALE' || appointment.notes?.includes('מכירה מהירה');
+    const hasBaseService = !isQuickSale && appointment.service_name && appointment.service_name !== 'כללי';
     
-    // Total price is either final_price from the API, or the calculated based on items
-    const rawTotal = mainServicePrice + cartItems.reduce((acc, item) => acc + (item.final_price * item.quantity), 0);
-    const total = appointment.final_price ?? rawTotal;
-    // Calculate any overall discount comparing the sum with the final price
-    const discountStr = (appointment.price && appointment.price > total) ? appointment.price - total : 0;
+    // Total price of items in cart (undiscounted)
+    const cartUndiscountedTotal = cartItems.reduce((acc, item) => acc + ((item.final_price || item.price || 0) * item.quantity), 0);
+    
+    // Extract base service price (full price without discount)
+    const inferredBasePrice = appointment.price ? Math.max(0, appointment.price - cartUndiscountedTotal) : 0;
+    const mainServicePrice = appointment.service_price !== undefined ? appointment.service_price : inferredBasePrice;
+
+    // Total final price to map onto receipt (either directly final_price, or calculated sum)
+    const totalToPay = appointment.final_price ?? (mainServicePrice + cartUndiscountedTotal);
+    
+    // Overall discount string format
+    const discountStr = appointment.price && appointment.price > totalToPay ? appointment.price - totalToPay : 0;
     
     // Combine items for display
     const receiptItems = [
-        ...(appointment.service_name !== 'כללי' && appointment.service_name 
+        ...(hasBaseService 
             ? [{ name: appointment.service_name, price: mainServicePrice, quantity: 1 }] 
             : []),
         ...cartItems.map(item => ({
             name: item.name,
-            price: item.final_price,
+            price: item.final_price || item.price || 0,
             quantity: item.quantity
         }))
     ];
@@ -119,10 +125,24 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     {/* Decorative Top Pattern */}
                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-primary/20 via-brand-primary to-brand-primary/20 rounded-t-2xl"></div>
 
-                    {/* Header */}
-                    <div className="text-center mb-8 mt-4">
-                        <div className="font-script text-4xl text-brand-primary mb-1 tracking-wider">{details.name || 'Yuval'}</div>
-                        <h2 className="text-[10px] uppercase tracking-[0.3em] font-medium text-slate-500 mb-5">{details.name ? 'Studio' : 'Studio'}</h2>
+                    {/* Header with Logo */}
+                    <div className="text-center mb-8 mt-4 flex flex-col items-center">
+                        <img 
+                            src="/logo.png" 
+                            alt={details.name} 
+                            className="h-20 w-auto object-contain mb-3" 
+                            onError={(e) => {
+                                // Fallback to text if logo not found
+                                e.currentTarget.style.display = 'none';
+                                const nextEl = e.currentTarget.nextElementSibling as HTMLElement;
+                                if (nextEl) nextEl.style.display = 'block';
+                            }}
+                        />
+                        <div className="hidden">
+                            <div className="font-script text-4xl text-brand-primary mb-1 tracking-wider">{details.name || 'Yuval'}</div>
+                            <h2 className="text-[10px] uppercase tracking-[0.3em] font-medium text-slate-500 mb-5">{details.name ? 'Studio' : 'Studio'}</h2>
+                        </div>
+
                         <h1 className="text-xl font-serif text-slate-100">סיכום חשבון</h1>
                         <p className="text-xs text-slate-400 mt-1">{new Date(appointment.start_time).toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' })} • {new Date(appointment.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
@@ -174,7 +194,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                         )}
                         <div className="flex justify-between items-end pt-1">
                             <span className="text-sm font-bold text-slate-300">סה״כ שולם:</span>
-                            <span className="text-2xl font-serif text-brand-primary font-bold">₪{total.toFixed(2)}</span>
+                            <span className="text-2xl font-serif text-brand-primary font-bold">₪{totalToPay.toFixed(2)}</span>
                         </div>
                     </div>
 
