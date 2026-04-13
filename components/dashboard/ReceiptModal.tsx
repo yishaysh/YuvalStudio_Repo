@@ -251,7 +251,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                         <p className="font-serif italic text-sm text-brand-primary/80 mb-3">תודה שבחרת בנו 💫</p>
                         <p>{details.address}</p>
                         <p>{details.phone}</p>
-                        {details.instagram_url && <p>Instagram: @{details.instagram_url.split('.com/')[1]?.replace('/','') || 'yuval_studio'}</p>}
+                        {details.instagram_url && <p>Instagram: @{(() => {
+                            const match = details.instagram_url.match(/instagram\.com\/([^/?#]+)/i);
+                            if (match && match[1] && !['stories', 'p', 'reel', 'explore'].includes(match[1])) {
+                                return match[1];
+                            }
+                            return 'yuval_studio';
+                        })()}</p>}
                     </div>
                 </div>
 
