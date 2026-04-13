@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Appointment, StudioDetails } from '../../types';
 import { Calendar, CheckCircle2, Clock, XCircle, MapPin, Sparkles, FileText } from 'lucide-react';
 import { Card, NavigationModal } from '../ui';
+import { ReceiptModal } from './ReceiptModal';
 import { DEFAULT_STUDIO_DETAILS } from '../../constants';
 
 interface AppointmentTimelineProps {
@@ -13,6 +14,7 @@ interface AppointmentTimelineProps {
 export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appointments, studioDetails }) => {
     const details = studioDetails || DEFAULT_STUDIO_DETAILS;
     const now = new Date();
+    const [receiptApt, setReceiptApt] = useState<Appointment | null>(null);
 
     // Sort logic: Future (Ascending), Past (Descending)
     const future = appointments
@@ -36,7 +38,7 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
                 </h3>
                 {future.length > 0 ? (
                     future.map(app => (
-                        <TimelineNode key={app.id} appointment={app} isFuture={true} studioDetails={details} />
+                        <TimelineNode key={app.id} appointment={app} isFuture={true} studioDetails={details} onViewReceipt={setReceiptApt} />
                     ))
                 ) : (
                     <div className="pr-4 text-slate-500 italic text-sm">אין תורים עתידיים כרגע.</div>
@@ -51,15 +53,25 @@ export const AppointmentTimeline: React.FC<AppointmentTimelineProps> = ({ appoin
                         היסטוריה
                     </h3>
                     {past.map(app => (
-                        <TimelineNode key={app.id} appointment={app} isFuture={false} studioDetails={details} />
+                        <TimelineNode key={app.id} appointment={app} isFuture={false} studioDetails={details} onViewReceipt={setReceiptApt} />
                     ))}
                 </div>
+            )}
+            
+            {/* Receipt Modal Layer */}
+            {receiptApt && (
+                <ReceiptModal
+                    isOpen={!!receiptApt}
+                    onClose={() => setReceiptApt(null)}
+                    appointment={receiptApt}
+                    studioDetails={details}
+                />
             )}
         </div>
     );
 };
 
-const TimelineNode = ({ appointment, isFuture, studioDetails }: { appointment: Appointment, isFuture: boolean, studioDetails: StudioDetails }) => {
+const TimelineNode = ({ appointment, isFuture, studioDetails, onViewReceipt }: { appointment: Appointment, isFuture: boolean, studioDetails: StudioDetails, onViewReceipt: (apt: Appointment) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const { status, start_time, service_name } = appointment;
@@ -152,7 +164,23 @@ const TimelineNode = ({ appointment, isFuture, studioDetails }: { appointment: A
                                             />
                                         </div>
                                     </div>
-                                    {/* Receipt Download Removed */}
+                                    {appointment.status === 'completed' && (
+                                        <div className="flex items-start gap-2">
+                                            <FileText className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                                            <div>
+                                                <div className="font-medium text-white">סיכום חשבון</div>
+                                                <div
+                                                    className="text-white hover:text-brand-primary cursor-pointer transition-colors mt-1"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onViewReceipt(appointment);
+                                                    }}
+                                                >
+                                                    <span className="underline decoration-brand-primary/30 underline-offset-4">צפה בקבלה</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {appointment.visual_plan && (

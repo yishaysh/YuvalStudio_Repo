@@ -17,6 +17,7 @@ import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
 import { calendarService } from '../services/calendarService';
 import CheckoutModal from '../components/dashboard/CheckoutModal';
 import { QuickSaleModal } from '../components/dashboard/QuickSaleModal';
+import { ReceiptModal } from '../components/dashboard/ReceiptModal';
 
 const m = motion as any;
 
@@ -544,6 +545,7 @@ const AppointmentsList = ({
     const [viewImage, setViewImage] = useState<string | null>(null);
     const [reviewApt, setReviewApt] = useState<any | null>(null);
     const [editTimeApt, setEditTimeApt] = useState<any | null>(null);
+    const [receiptApt, setReceiptApt] = useState<any | null>(null);
 
     useEffect(() => {
         if (filterId && rowRefs.current[filterId]) {
@@ -1075,6 +1077,11 @@ const AppointmentsList = ({
                                                             <DollarSign className="w-4 h-4" />
                                                         </button>
                                                     )}
+                                                    {(apt.status === 'completed') && (
+                                                        <button onClick={(e) => { e.stopPropagation(); setReceiptApt(apt); }} className="p-3 lg:p-2 text-brand-primary hover:bg-brand-primary/10 bg-brand-primary/5 lg:bg-transparent rounded-lg transition-colors flex-1 lg:flex-none flex justify-center items-center" title="הפק קבלה / סיכום חשבון">
+                                                            <FileText className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     {/* Edit Quick Sale Button */}
                                                     {(apt.notes && apt.notes.includes('מכירה מהירה')) && onEditRequest && (
                                                         <button
@@ -1133,6 +1140,16 @@ const AppointmentsList = ({
                     </Modal>
                 )
             }
+            
+            {/* Receipt Modal */}
+            {receiptApt && (
+                <ReceiptModal 
+                    isOpen={!!receiptApt}
+                    onClose={() => setReceiptApt(null)}
+                    appointment={receiptApt}
+                    studioDetails={settings?.studio_details}
+                />
+            )}
         </>
     );
 };

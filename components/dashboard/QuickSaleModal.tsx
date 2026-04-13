@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Plus, Minus, ShoppingBag, Zap, Check } from 'lucide-react';
+import { X, Search, Plus, Minus, ShoppingBag, Zap, Check, FileText } from 'lucide-react';
 import { Modal, Button } from '../ui';
+import { ReceiptModal } from './ReceiptModal';
 import { Service, JewelryItem, StudioSettings } from '../../types';
 import { api } from '../../services/mockApi';
 
@@ -42,6 +43,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [done, setDone] = useState(false);
     const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+    const [savedApt, setSavedApt] = useState<any | null>(null);
+    const [showReceipt, setShowReceipt] = useState(false);
 
     const inventoryItems: JewelryItem[] = (settings.inventory_items || []).filter(
         (item: JewelryItem) => item.price > 0
@@ -102,6 +105,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             setCouponCode('');
             setDone(false);
             setEnlargedImage(null);
+            setSavedApt(null);
+            setShowReceipt(false);
         }
     }, [isOpen, editingApt, allItems]);
 
@@ -152,6 +157,16 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
         const finalRev = Math.max(0, revenue * (1 - (discountPercent / 100)));
         return { totalRevenue: finalRev, totalCost: cost, totalProfit: finalRev - cost, baseRevenue: revenue };
     }, [cart, discountPercent]);
+
+    const closeAndReset = () => {
+        setDone(false);
+        setCart([]);
+        setClientName('');
+        setClientPhone('');
+        setSavedApt(null);
+        onSaved();
+        onClose();
+    };
 
     const handleSave = async () => {
         if (cart.length === 0) return;
@@ -217,15 +232,21 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                 );
             }
 
+            const aptDataForReceipt = {
+                id: editingApt ? editingApt.id : 'QUICK-SALE',
+                client_name: clientName || 'לקוח מזדמן',
+                client_phone: clientPhone || '',
+                service_id: primaryService?.id || cart[0].id,
+                service_name: primaryService?.name || cart[0].name,
+                cart_items: cartItemsForApt,
+                final_price: totalRevenue,
+                price: baseRevenue,
+                start_time: now
+            };
+
+            setSavedApt(aptDataForReceipt);
             setDone(true);
-            setTimeout(() => {
-                setDone(false);
-                setCart([]);
-                setClientName('');
-                setClientPhone('');
-                onSaved();
-                onClose();
-            }, 1800);
+            
         } catch (err) {
             console.error('Quick Sale error:', err);
             alert('אירעה שגיאה בשמירת המכירה');
@@ -412,9 +433,14 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                                     key="done"
                                     initial={{ scale: 0.8, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
-                                    className="flex items-center justify-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl py-3 font-bold text-sm"
+                                    className="grid grid-cols-2 gap-3 w-full"
                                 >
-                                    <Check className="w-4 h-4" /> המכירה נשמרה בהצלחה!
+                                    <Button onClick={() => setShowReceipt(true)} variant="primary" className="flex items-center justify-center gap-2 py-3">
+                                        <FileText className="w-4 h-4" /> קבלה
+                                    </Button>
+                                    <Button onClick={closeAndReset} className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white py-3">
+                                        <Check className="w-4 h-4" /> סגור
+                                    </Button>
                                 </motion.div>
                             ) : (
                                 <motion.div key="btn">
@@ -468,6 +494,16 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Receipt Modal Layer */}
+            {savedApt && showReceipt && (
+                <ReceiptModal 
+                    isOpen={showReceipt} 
+                    onClose={() => setShowReceipt(false)} 
+                    appointment={savedApt} 
+                    studioDetails={settings.studio_details} 
+                />
+            )}
         </>
     );
 };
