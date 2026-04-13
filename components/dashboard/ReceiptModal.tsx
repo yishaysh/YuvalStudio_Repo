@@ -25,6 +25,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
     const isQuickSale = appointment.id === 'QUICK-SALE' || appointment.notes?.includes('מכירה מהירה');
     const hasBaseService = !isQuickSale && appointment.service_name && appointment.service_name !== 'כללי';
+    const cartItems = appointment.cart_items || [];
     
     // Total price of items in cart (undiscounted)
     const cartUndiscountedTotal = cartItems.reduce((acc, item) => acc + ((item.final_price || item.price || 0) * item.quantity), 0);
