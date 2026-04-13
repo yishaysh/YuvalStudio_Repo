@@ -3,7 +3,7 @@ import html2canvas from 'html2canvas';
 import { Download, Share2, Printer, Check } from 'lucide-react';
 import { Modal, Button } from '../ui';
 import { Appointment, StudioDetails } from '../../types';
-import { DEFAULT_STUDIO_DETAILS } from '../../constants';
+import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG, SERVICES } from '../../constants';
 
 interface ReceiptModalProps {
     isOpen: boolean;
@@ -25,8 +25,32 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
     const isQuickSale = appointment.id === 'QUICK-SALE' || appointment.notes?.includes('מכירה מהירה');
     const hasBaseService = !isQuickSale && appointment.service_name && appointment.service_name !== 'כללי';
-    const cartItems = appointment.cart_items || [];
-    
+    const cartItems = [...(appointment.cart_items || [])];
+
+    // For historical appointments from the AppointmentsList, cart_items might be empty.
+    // We recreate it from ai_recommendation_text and extras.
+    if (cartItems.length === 0 && appointment.ai_recommendation_text) {
+        try {
+            const visualPlan = JSON.parse(appointment.ai_recommendation_text);
+            if (visualPlan.selected_items && Array.isArray(visualPlan.selected_items)) {
+                visualPlan.selected_items.forEach((id: string) => {
+                    const item = JEWELRY_CATALOG.find(j => j.id === id);
+                    if (item) cartItems.push({ name: item.name, price: item.price, final_price: item.price, cost_price: 0, quantity: 1, service_id: id } as any);
+                });
+            }
+        } catch (e) {}
+    }
+    if (cartItems.length === 0 && appointment.notes && appointment.notes.includes('תוספות:')) {
+        const match = appointment.notes.match(/תוספות: (.*?)(?:\n|$)/);
+        if (match && match[1]) {
+            const extras = match[1].split(', ').map(s => s.trim());
+            extras.forEach(extraName => {
+                const s = SERVICES.find(srv => srv.name === extraName);
+                cartItems.push({ name: extraName, price: s ? s.price : 0, final_price: s ? s.price : 0, cost_price: 0, quantity: 1, service_id: 'extra' } as any);
+            });
+        }
+    }
+        
     // Total price of items in cart (undiscounted)
     const cartUndiscountedTotal = cartItems.reduce((acc, item) => acc + ((item.final_price || item.price || 0) * item.quantity), 0);
     
@@ -128,22 +152,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
                     {/* Header with Logo */}
                     <div className="text-center mb-8 mt-4 flex flex-col items-center">
-                        <img 
-                            src="/logo.png" 
-                            alt={details.name} 
-                            className="h-20 w-auto object-contain mb-3" 
-                            onError={(e) => {
-                                // Fallback to text if logo not found
-                                e.currentTarget.style.display = 'none';
-                                const nextEl = e.currentTarget.nextElementSibling as HTMLElement;
-                                if (nextEl) nextEl.style.display = 'block';
-                            }}
-                        />
-                        <div className="hidden">
-                            <div className="font-script text-4xl text-brand-primary mb-1 tracking-wider">{details.name || 'Yuval'}</div>
-                            <h2 className="text-[10px] uppercase tracking-[0.3em] font-medium text-slate-500 mb-5">{details.name ? 'Studio' : 'Studio'}</h2>
+                        <div className="w-20 h-20 mb-3 rounded-full bg-[#2A2A3A] flex items-center justify-center overflow-hidden border border-brand-primary/20 relative">
+                            <img 
+                                src="/logo.png" 
+                                alt="Studio Logo" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    if (e.currentTarget.nextElementSibling) {
+                                        (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                                    }
+                                }}
+                            />
+                            {/* Fallback View if Logo not loaded */}
+                            <div className="hidden absolute inset-0 flex-col items-center justify-center text-center p-2 text-brand-primary/50 text-[9px] leading-tight">
+                                <span>שים את</span>
+                                <span className="font-bold">logo.png</span>
+                                <span>בתיקיית</span>
+                                <span>הפרויקט</span>
+                            </div>
                         </div>
-
                         <h1 className="text-xl font-serif text-slate-100">סיכום חשבון</h1>
                         <p className="text-xs text-slate-400 mt-1">{new Date(appointment.start_time).toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' })} • {new Date(appointment.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
