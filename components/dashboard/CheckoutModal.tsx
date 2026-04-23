@@ -186,7 +186,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                     <div
                                         key={item.id}
                                         onClick={() => handleAddItem(item)}
-                                        className={`relative p-2 rounded-xl border cursor-pointer transition-all hover:scale-[1.02] flex flex-col items-center text-center group ${inCart ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-brand-surface border-white/5 hover:border-brand-primary/30'}`}
+                                        className={`relative p-2 rounded-xl border cursor-pointer transition-[transform,background-color,border-color] duration-[160ms] ease-emil-out hover:scale-[1.02] active:scale-[0.97] flex flex-col items-center text-center group ${inCart ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-brand-surface border-white/5 hover:border-brand-primary/30'}`}
                                     >
                                         {inCart && (
                                             <div className="absolute -top-2 -right-2 w-6 h-6 bg-brand-primary rounded-full text-brand-dark flex items-center justify-center font-bold text-xs shadow-lg z-10">

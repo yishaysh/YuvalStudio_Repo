@@ -195,9 +195,9 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                         {taggedProducts.length > 0 && (
                             <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center pb-safe">
                                 <motion.button
-                                    whileTap={{ scale: 0.95 }}
+                                    whileTap={{ scale: 0.97 }}
                                     onClick={() => setShowProducts(true)}
-                                    className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold shadow-xl hover:bg-brand-primary transition-colors"
+                                    className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold shadow-xl hover:bg-brand-primary transition-colors duration-[160ms] ease-emil-out"
                                 >
                                     <ShoppingBag className="w-4 h-4" />
                                     Shop The Look ({taggedProducts.length})
@@ -210,9 +210,9 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                     <AnimatePresence>
                         {showProducts && (
                             <motion.div
-                                initial={{ x: "100%", opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={{ x: "100%", opacity: 0 }}
+                                initial={{ opacity: 0, transform: "translateX(100%)" }}
+                                animate={{ opacity: 1, transform: "translateX(0%)" }}
+                                exit={{ opacity: 0, transform: "translateX(100%)" }}
                                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
                                 className="absolute md:relative inset-0 md:inset-auto md:w-[400px] bg-brand-surface/95 backdrop-blur-xl border-l border-white/10 z-40 flex flex-col h-full shadow-2xl"
                             >

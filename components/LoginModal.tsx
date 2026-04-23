@@ -38,9 +38,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
                     {/* Modal */}
                     <motion.div
-                        initial={{ scale: 0.95, y: 20 }}
-                        animate={{ scale: 1, y: 0 }}
-                        exit={{ scale: 0.95, y: 20 }}
+                        initial={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
+                        animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+                        exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
+                        transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.3 }}
                         className="relative w-full max-w-md bg-zinc-900/90 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -63,7 +64,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                             <div className="space-y-4">
                                 <Button
                                     onClick={handleGoogleLogin}
-                                    className="w-full bg-white text-black hover:bg-gray-100 flex items-center justify-center gap-3 py-6 rounded-xl font-medium transition-transform active:scale-[0.98]"
+                                    className="w-full bg-white text-black hover:bg-gray-100 flex items-center justify-center gap-3 py-6 rounded-xl font-medium transition-[transform,background-color] duration-[160ms] ease-emil-out active:scale-[0.97]"
                                 >
                                     <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />

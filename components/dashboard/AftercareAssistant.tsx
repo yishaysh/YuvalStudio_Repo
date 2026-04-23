@@ -166,8 +166,9 @@ export const AftercareAssistant: React.FC<AftercareAssistantProps> = ({ appointm
                             </Button>
                         ) : (
                             <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
+                                initial={{ opacity: 0, transform: "scale(0.95)" }}
+                                animate={{ opacity: 1, transform: "scale(1)" }}
+                                transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.3 }}
                                 className="flex items-center gap-2 text-green-400 font-medium px-4 py-2"
                             >
                                 <CheckCircle2 className="w-5 h-5" />

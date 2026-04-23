@@ -18,7 +18,7 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading,
   ...props
 }) => {
-  const baseStyle = "relative px-6 py-3 text-sm font-medium tracking-wide transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.98]";
+  const baseStyle = "relative px-6 py-3 text-sm font-medium tracking-wide transition duration-[160ms] ease-emil-out disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.97]";
 
   const variants = {
     primary: "bg-brand-primary text-brand-dark hover:bg-brand-primaryHover",
@@ -74,7 +74,7 @@ export const Input: React.FC<InputProps> = ({ label, icon, className = '', ...pr
       <label className="text-sm font-medium text-slate-400 ms-1">{label}</label>
       <div className="relative">
         <input
-          className={`w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 ${icon ? 'pl-12' : ''} ${className}`}
+          className={`w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-[border-color,box-shadow,color] duration-[160ms] ease-emil-out placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 ${icon ? 'pl-12' : ''} ${className}`}
           {...props}
         />
         {icon && (
@@ -129,9 +129,10 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
           {/* Modal Content */}
           <m.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, transform: 'scale(0.95) translateY(20px)' }}
+            animate={{ opacity: 1, transform: 'scale(1) translateY(0px)' }}
+            exit={{ opacity: 0, transform: 'scale(0.95) translateY(20px)' }}
+            transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.3 }}
             className={`w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl relative z-10 max-h-[90vh] flex flex-col overflow-hidden ${className}`}
           >
             {/* Header */}
@@ -262,12 +263,11 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
             className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-[9999]"
           />
           <m.div
-            initial={{ opacity: 0, scale: 0.95, y: '-50%', x: '-50%' }}
-            animate={{ opacity: 1, scale: 1, y: '-50%', x: '-50%' }}
-            exit={{ opacity: 0, scale: 0.95, y: '-50%', x: '-50%' }}
-            transition={{ type: "spring", duration: 0.5 }}
+            initial={{ opacity: 0, transform: 'translate(-50%, -50%) scale(0.95)' }}
+            animate={{ opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}
+            exit={{ opacity: 0, transform: 'translate(-50%, -50%) scale(0.95)' }}
+            transition={{ type: "spring", duration: 0.4, bounce: 0.2 }}
             className="fixed top-1/2 left-1/2 w-[90%] max-w-sm bg-brand-surface border border-white/10 rounded-2xl shadow-2xl z-[10000] p-6 text-center origin-center"
-            style={{ transform: 'translate(-50%, -50%)' }} // Fallback / Ensure centering
           >
             <button
               onClick={onClose}

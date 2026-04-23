@@ -29,6 +29,11 @@ export default {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'soft-glow': 'linear-gradient(135deg, rgba(212, 181, 133, 0.05) 0%, rgba(15, 23, 42, 0) 100%)',
+      },
+      transitionTimingFunction: {
+        'emil-out': 'cubic-bezier(0.23, 1, 0.32, 1)',
+        'emil-in-out': 'cubic-bezier(0.77, 0, 0.175, 1)',
+        'emil-drawer': 'cubic-bezier(0.32, 0.72, 0, 1)',
       }
     },
   },

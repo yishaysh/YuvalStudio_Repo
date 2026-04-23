@@ -303,9 +303,9 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                         return (
                             <motion.button
                                 key={item.id}
-                                whileTap={{ scale: 0.96 }}
+                                whileTap={{ scale: 0.97 }}
                                 onClick={() => addToCart(item)}
-                                className={`relative flex gap-2 p-2.5 rounded-xl border transition-all text-sm text-right ${
+                                className={`relative flex gap-2 p-2.5 rounded-xl border transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out text-sm text-right ${
                                     inCart
                                         ? 'bg-brand-primary/15 border-brand-primary/40 text-white'
                                         : 'bg-white/5 border-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10'
@@ -409,9 +409,9 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                 {cart.length > 0 && (
                     <motion.div
                         key="floating-btn"
-                        initial={{ y: 30, opacity: 0, scale: 0.95 }}
-                        animate={{ y: 0, opacity: 1, scale: 1 }}
-                        exit={{ y: 30, opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, transform: "translateY(30px) scale(0.95)" }}
+                        animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+                        exit={{ opacity: 0, transform: "translateY(30px) scale(0.95)" }}
                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                         style={{
                             position: 'sticky',
@@ -472,9 +472,9 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                         onClick={() => setEnlargedImage(null)}
                     >
                         <motion.div 
-                            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-                            animate={{ scale: 1, y: 0, opacity: 1 }}
-                            exit={{ scale: 0.9, y: 20, opacity: 0 }}
+                            initial={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
+                            animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+                            exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
                             className="relative max-w-4xl w-full max-h-screen flex items-center justify-center pointer-events-none"
                         >
