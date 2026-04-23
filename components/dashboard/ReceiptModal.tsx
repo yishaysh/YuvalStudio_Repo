@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 import { Download, Share2, Printer, Check } from 'lucide-react';
 import { Modal, Button } from '../ui';
 import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG, SERVICES } from '../../constants';
+import { Appointment, StudioDetails } from '../../types';
 
 const StudioLogo = ({ className }: { className?: string }) => (
   <svg
