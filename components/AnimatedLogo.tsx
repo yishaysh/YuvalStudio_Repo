@@ -23,7 +23,7 @@ export const AnimatedLogo: React.FC<AnimatedLogoProps> = ({ className }) => {
       <div className="lottie-container" style={{ width: '100%', height: '100%' }}>
         <Lottie 
           animationData={animationData} 
-          loop={true} 
+          loop={false} 
           autoplay={true} 
           renderer="svg"
         />

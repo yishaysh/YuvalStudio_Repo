@@ -47,7 +47,7 @@ const Home: React.FC = () => {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="will-change-transform"
           >
-            <AnimatedLogo className="w-32 md:w-40 h-auto mx-auto mb-10 text-brand-primary drop-shadow-[0_0_15px_rgba(212,181,133,0.3)]" />
+            <AnimatedLogo className="w-56 md:w-80 h-auto mx-auto mb-10 text-brand-primary drop-shadow-[0_0_15px_rgba(212,181,133,0.3)]" />
 
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-dark/60 backdrop-blur-md border border-white/20 mb-8 shadow-lg">
               <Sparkles className="w-3 h-3 text-brand-primary" />
