@@ -4,7 +4,7 @@ import { neon } from '@neondatabase/serverless';
 const databaseUrl =
   (import.meta as any).env?.VITE_NEON_DATABASE_URL ||
   (import.meta as any).env?.DATABASE_URL ||
-  'postgresql://neondb_owner:npg_vS4dZ5qhHtiF@ep-winter-sound-b129wwdq-pooler.c-5.eu-central-1.aws.neon.tech/neondb?sslmode=require';
+  '';
 
 const sql = neon(databaseUrl);
 
