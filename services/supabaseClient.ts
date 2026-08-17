@@ -6,9 +6,13 @@ const databaseUrl =
   (import.meta as any).env?.DATABASE_URL ||
   '';
 
-const sql = neon(databaseUrl);
+const sql = databaseUrl ? neon(databaseUrl) : null;
 
 async function runSql(queryText: string, params: any[] = []): Promise<any[]> {
+  if (!databaseUrl || !sql) {
+    console.warn('Neon database URL is not configured.');
+    return [];
+  }
   try {
     if (typeof (sql as any).query === 'function') {
       const res = await (sql as any).query(queryText, params);
