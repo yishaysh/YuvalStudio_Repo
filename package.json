@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.40.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@supabase/supabase-js": "^2.39.0",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.0",
