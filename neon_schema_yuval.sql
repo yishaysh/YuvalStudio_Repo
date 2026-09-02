@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   end_time timestamp with time zone NOT NULL,
   price decimal(10,2),
   final_price decimal(10,2),
+  coupon_code text,
   status text DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed')),
   notes text,
   signature text,

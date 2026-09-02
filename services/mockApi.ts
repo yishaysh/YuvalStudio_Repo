@@ -414,7 +414,8 @@ export const api = {
       is_under_16: appt.is_under_16,
       parent_name: appt.parent_name,
       parent_id: appt.parent_id,
-      parent_phone: appt.parent_phone
+      parent_phone: appt.parent_phone,
+      coupon_code: appt.coupon_code
     };
 
     const { data, error } = await dbClient.from('appointments').insert([payload]).select().single();
@@ -576,8 +577,57 @@ export const api = {
 
   updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
     if (!dbClient) return true;
-    const { error } = await dbClient.from('appointments').update(updates).eq('id', id);
-    return !error;
+
+    // Filter and map fields to known database columns
+    const payload: Record<string, any> = {};
+
+    // Map client-side field aliases to actual DB column names
+    if ('client_name' in updates && updates.client_name !== undefined) payload.guest_name = updates.client_name;
+    if ('client_phone' in updates && updates.client_phone !== undefined) payload.guest_phone = updates.client_phone;
+    if ('client_email' in updates && updates.client_email !== undefined) payload.guest_email = updates.client_email;
+
+    const validDbColumns = [
+      'client_id',
+      'service_id',
+      'guest_name',
+      'guest_email',
+      'guest_phone',
+      'start_time',
+      'end_time',
+      'price',
+      'final_price',
+      'coupon_code',
+      'status',
+      'notes',
+      'signature',
+      'total_cost',
+      'total_profit',
+      'cart_items',
+      'visual_plan',
+      'ai_recommendation_text',
+      'anatomy_image_url',
+      'anatomy_status',
+      'anatomy_review_comment',
+      'is_under_16',
+      'parent_name',
+      'parent_id',
+      'parent_phone'
+    ];
+
+    for (const col of validDbColumns) {
+      if (col in updates && (updates as any)[col] !== undefined) {
+        payload[col] = (updates as any)[col];
+      }
+    }
+
+    if (Object.keys(payload).length === 0) return true;
+
+    const { error } = await dbClient.from('appointments').update(payload).eq('id', id);
+    if (error) {
+      console.error('Error updating appointment:', error);
+      return false;
+    }
+    return true;
   },
 
   deleteAppointment: async (id: string): Promise<boolean> => {
