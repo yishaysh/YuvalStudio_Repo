@@ -6,5 +6,5 @@
 -- 1. מחיקת כל התורים הקיימים
 DELETE FROM public.appointments;
 
--- הערה: אין למחוק את טבלת הפרופילים (profiles) כי היא קשורה למערכת ההזדהות של Supabase (auth.users)
+-- הערה: אין למחוק את טבלת הפרופילים (profiles) כי היא קשורה למערכת ההזדהות של Database (auth.users)
 -- השירותים המחירים (services), המלאי וההגדרות (settings) נשארים כמו שהם.

@@ -29,6 +29,23 @@ export interface Profile {
   auth_provider?: string;
 }
 
+export interface AuthUser {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    full_name?: string;
+    avatar_url?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  access_token?: string;
+  [key: string]: any;
+}
+
 export interface GalleryItem {
   id: string;
   image_url: string;

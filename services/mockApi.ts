@@ -1,7 +1,7 @@
 
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
 import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
-import { supabase } from './supabaseClient';
+import { dbClient } from './dbClient';
 
 export interface TimeSlot {
   time: string;
@@ -39,7 +39,7 @@ export const api = {
       inventory_items: undefined
     };
 
-    if (!supabase) {
+    if (!dbClient) {
       cachedSettings = defaultSettings;
       return defaultSettings;
     }
@@ -47,7 +47,7 @@ export const api = {
     settingsPromise = (async () => {
       try {
         // Fetch settings keys
-        const { data, error } = await supabase
+        const { data, error } = await dbClient
           .from('settings')
           .select('*')
           .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery', 'enable_style_matcher', 'show_pain_level', 'whatsapp_templates', 'inventory_items']);
@@ -104,7 +104,7 @@ export const api = {
   },
 
   updateSettings: async (settings: StudioSettings): Promise<boolean> => {
-    if (!supabase) return false;
+    if (!dbClient) return false;
 
     const updates = [
       { key: 'working_hours', value: settings.working_hours },
@@ -120,7 +120,7 @@ export const api = {
       { key: 'inventory_items', value: settings.inventory_items || [] }
     ];
 
-    const { error } = await supabase
+    const { error } = await dbClient
       .from('settings')
       .upsert(updates, { onConflict: 'key' });
 
@@ -150,15 +150,15 @@ export const api = {
 
   // --- Helper to ensure profile exists ---
   ensureProfileExists: async (userId: string): Promise<boolean> => {
-    if (!supabase) return false;
+    if (!dbClient) return false;
     // 1. Check if exists
-    const { data } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+    const { data } = await dbClient.from('profiles').select('id').eq('id', userId).maybeSingle();
     if (data) return true;
 
     console.log("Profile missing for user", userId, " - Attempting to create...");
 
     // 2. Fetch User Email from Auth
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await dbClient.auth.getUser();
 
     // Safety check: ensure the logged in user matches the target ID
     if (!user || user.id !== userId) {
@@ -167,7 +167,7 @@ export const api = {
     }
 
     // 3. Insert new profile
-    const { error } = await supabase.from('profiles').insert([
+    const { error } = await dbClient.from('profiles').insert([
       {
         id: userId,
         email: user.email,
@@ -190,11 +190,11 @@ export const api = {
     if (cachedServices) return cachedServices;
     if (servicesPromise) return servicesPromise;
 
-    if (!supabase) return SERVICES;
+    if (!dbClient) return SERVICES;
 
     servicesPromise = (async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await dbClient
           .from('services')
           .select('*')
           .eq('is_active', true)
@@ -215,8 +215,8 @@ export const api = {
   },
 
   addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
-    if (!supabase) return null;
-    const { data, error } = await supabase.from('services').insert([service]).select().single();
+    if (!dbClient) return null;
+    const { data, error } = await dbClient.from('services').insert([service]).select().single();
     if (error) { console.error(error); return null; }
 
     cachedServices = null; // Invalidate cache
@@ -224,8 +224,8 @@ export const api = {
   },
 
   updateService: async (id: string, updates: Partial<Service>): Promise<Service | null> => {
-    if (!supabase) return null;
-    const { data, error } = await supabase.from('services').update(updates).eq('id', id).select().single();
+    if (!dbClient) return null;
+    const { data, error } = await dbClient.from('services').update(updates).eq('id', id).select().single();
     if (error) { console.error(error); return null; }
 
     cachedServices = null; // Invalidate cache
@@ -233,8 +233,8 @@ export const api = {
   },
 
   deleteService: async (id: string): Promise<boolean> => {
-    if (!supabase) return false;
-    const { error } = await supabase.from('services').update({ is_active: false }).eq('id', id);
+    if (!dbClient) return false;
+    const { error } = await dbClient.from('services').update({ is_active: false }).eq('id', id);
 
     if (!error) cachedServices = null; // Invalidate cache
     return !error;
@@ -244,11 +244,11 @@ export const api = {
   getAvailability: async (date: Date): Promise<TimeSlot[]> => {
     // 1. Fetch Settings (Use cache if available)
     let workingHours = DEFAULT_WORKING_HOURS;
-    if (supabase) {
+    if (dbClient) {
       if (cachedSettings) {
         workingHours = cachedSettings.working_hours;
       } else {
-        const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').single();
+        const { data } = await dbClient.from('settings').select('*').eq('key', 'working_hours').single();
         if (data?.value && data.value['0'] && data.value['0'].ranges) {
           workingHours = data.value;
         }
@@ -291,7 +291,7 @@ export const api = {
     // Map to object structure
     const slotsWithStatus = allSlots.map(time => ({ time, available: true }));
 
-    if (!supabase) return slotsWithStatus;
+    if (!dbClient) return slotsWithStatus;
 
     // 4. Check against existing appointments (Range Check)
     try {
@@ -301,7 +301,7 @@ export const api = {
       endOfDay.setHours(23, 59, 59, 999);
 
       // Fetch Start AND End time
-      const { data: existingAppointments, error } = await supabase
+      const { data: existingAppointments, error } = await dbClient
         .from('appointments')
         .select('start_time, end_time')
         .gte('start_time', startOfDay.toISOString())
@@ -336,7 +336,7 @@ export const api = {
   },
 
   createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
-    if (!supabase) {
+    if (!dbClient) {
       // Mock fallback
       return {
         id: 'mock',
@@ -373,9 +373,9 @@ export const api = {
     }
 
     // --- Process Referral Bonus ---
-    if (appt.referred_by && supabase) {
+    if (appt.referred_by && dbClient) {
       try {
-        const { data: referrer } = await supabase
+        const { data: referrer } = await dbClient
           .from('profiles')
           .select('id, credit_balance')
           .eq('referral_code', appt.referred_by)
@@ -383,7 +383,7 @@ export const api = {
 
         if (referrer) {
           const newBalance = (Number(referrer.credit_balance) || 0) + 30; // Provide 30 NIS credit
-          await supabase
+          await dbClient
             .from('profiles')
             .update({ credit_balance: newBalance })
             .eq('id', referrer.id);
@@ -417,7 +417,7 @@ export const api = {
       parent_phone: appt.parent_phone
     };
 
-    const { data, error } = await supabase.from('appointments').insert([payload]).select().single();
+    const { data, error } = await dbClient.from('appointments').insert([payload]).select().single();
 
     if (error) {
       if (error.code === 'PGRST204') {
@@ -449,9 +449,9 @@ export const api = {
   },
 
   getAppointments: async (): Promise<Appointment[]> => {
-    if (!supabase) return MOCK_APPOINTMENTS as Appointment[];
+    if (!dbClient) return MOCK_APPOINTMENTS as Appointment[];
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dbClient
         .from('appointments')
         .select(`
             *,
@@ -470,16 +470,17 @@ export const api = {
         client_avatar_url: item.profiles?.avatar_url, // Map avatar
         service_id: item.service_id,
         service_name: item.services?.name,
-        service_price: item.services?.price,
+        service_price: item.services?.price !== null && item.services?.price !== undefined ? Number(item.services?.price) : undefined,
         start_time: item.start_time,
         end_time: item.end_time,
         status: item.status,
         notes: item.notes,
         signature: item.signature,
         created_at: item.created_at,
-        final_price: item.final_price, // Ensure we return this from DB
-        total_profit: item.total_profit,
-        total_cost: item.total_cost,
+        final_price: item.final_price !== null && item.final_price !== undefined ? Number(item.final_price) : undefined,
+        total_profit: item.total_profit !== null && item.total_profit !== undefined ? Number(item.total_profit) : undefined,
+        total_cost: item.total_cost !== null && item.total_cost !== undefined ? Number(item.total_cost) : undefined,
+        cart_items: item.cart_items,
         visual_plan: item.visual_plan,
         ai_recommendation_text: item.ai_recommendation_text,
         anatomy_image_url: item.anatomy_image_url,
@@ -497,9 +498,9 @@ export const api = {
   },
 
   getAppointmentsForUser: async (userId: string): Promise<Appointment[]> => {
-    if (!supabase) return [];
+    if (!dbClient) return [];
     try {
-      const { data, error } = await supabase
+      const { data, error } = await dbClient
         .from('appointments')
         .select(`
             *,
@@ -518,15 +519,15 @@ export const api = {
         client_phone: item.guest_phone,
         service_id: item.service_id,
         service_name: item.services?.name,
-        service_price: item.services?.price,
+        service_price: item.services?.price !== null && item.services?.price !== undefined ? Number(item.services?.price) : undefined,
         start_time: item.start_time,
         status: item.status,
         notes: item.notes,
         signature: item.signature,
         created_at: item.created_at,
-        final_price: item.final_price,
-        total_profit: item.total_profit,
-        total_cost: item.total_cost,
+        final_price: item.final_price !== null && item.final_price !== undefined ? Number(item.final_price) : undefined,
+        total_profit: item.total_profit !== null && item.total_profit !== undefined ? Number(item.total_profit) : undefined,
+        total_cost: item.total_cost !== null && item.total_cost !== undefined ? Number(item.total_cost) : undefined,
         cart_items: item.cart_items,
         visual_plan: item.visual_plan,
         ai_recommendation_text: item.ai_recommendation_text,
@@ -545,17 +546,17 @@ export const api = {
   },
 
   updateAppointmentStatus: async (id: string, status: Appointment['status'], notes?: string): Promise<boolean> => {
-    if (!supabase) return false;
+    if (!dbClient) return false;
     const updates: any = { status };
     if (notes) updates.notes = notes;
 
-    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+    const { error } = await dbClient.from('appointments').update(updates).eq('id', id);
     if (error) { console.error(error); return false; }
     return true;
   },
 
   updateAppointmentTime: async (id: string, start_time: Date, durationMinutes: number): Promise<boolean> => {
-    if (!supabase) return false;
+    if (!dbClient) return false;
 
     // Calculate new end time based on the selected duration
     const endTime = new Date(start_time.getTime() + durationMinutes * 60000);
@@ -565,7 +566,7 @@ export const api = {
       end_time: endTime.toISOString()
     };
 
-    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+    const { error } = await dbClient.from('appointments').update(updates).eq('id', id);
     if (error) {
       console.error("Error updating appointment time:", error);
       return false;
@@ -574,14 +575,14 @@ export const api = {
   },
 
   updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
-    if (!supabase) return true;
-    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
+    if (!dbClient) return true;
+    const { error } = await dbClient.from('appointments').update(updates).eq('id', id);
     return !error;
   },
 
   deleteAppointment: async (id: string): Promise<boolean> => {
-    if (!supabase) return false;
-    const { error } = await supabase.from('appointments').delete().eq('id', id);
+    if (!dbClient) return false;
+    const { error } = await dbClient.from('appointments').delete().eq('id', id);
     if (error) {
       console.error("Error deleting appointment:", error);
       return false;
@@ -591,67 +592,81 @@ export const api = {
 
   // --- DELETE ALL FUNCTION ---
   clearAppointments: async (): Promise<boolean> => {
-    if (!supabase) return false;
+    if (!dbClient) return false;
     // We use a filter that matches all rows to satisfy safe delete policies if strict, 
     // or just straight delete.
     // NOTE: RLS Policies must allow DELETE for this to work.
-    const { error } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await dbClient.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     return !error;
   },
 
   // --- Stats ---
   getMonthlyStats: async () => {
-    if (!supabase) return { revenue: 0, appointments: 0, pending: 0 };
+    if (!dbClient) return { revenue: 0, profit: 0, appointments: 0, pending: 0 };
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
 
-    const { data } = await supabase
-      .from('appointments')
-      .select(`status, services(price), final_price, total_profit`)
-      .gte('start_time', startOfMonth)
-      .lte('start_time', endOfMonth)
-      .neq('status', 'cancelled');
+      const { data, error } = await dbClient
+        .from('appointments')
+        .select(`status, services(price), final_price, total_profit`)
+        .gte('start_time', startOfMonth)
+        .lte('start_time', endOfMonth)
+        .neq('status', 'cancelled');
 
-    let revenue = 0;
-    let profit = 0;
-    let pending = 0;
+      if (error) throw error;
 
-    data?.forEach((app: any) => {
-      // Only tally revenue and profit for completed appointments
-      if (app.status === 'completed') {
-        // Prefer final_price if exists, else service price
-        revenue += (app.final_price !== undefined && app.final_price !== null) ? app.final_price : (app.services?.price || 0);
-        profit += (app.total_profit || 0);
-      }
-      if (app.status === 'pending') pending++;
-    });
+      let revenue = 0;
+      let profit = 0;
+      let pending = 0;
 
-    return {
-      revenue,
-      profit,
-      appointments: data?.length || 0,
-      pending
-    };
+      data?.forEach((app: any) => {
+        // Only tally revenue and profit for completed appointments
+        if (app.status === 'completed') {
+          // Prefer final_price if exists, else service price
+          const appPrice = (app.final_price !== undefined && app.final_price !== null)
+            ? Number(app.final_price)
+            : Number(app.services?.price || 0);
+          revenue += (isNaN(appPrice) ? 0 : appPrice);
+          const appProfit = Number(app.total_profit || 0);
+          profit += (isNaN(appProfit) ? 0 : appProfit);
+        }
+        if (app.status === 'pending') pending++;
+      });
+
+      return {
+        revenue,
+        profit,
+        appointments: data?.length || 0,
+        pending
+      };
+    } catch (err) {
+      console.error('Error fetching monthly stats:', err);
+      return { revenue: 0, profit: 0, appointments: 0, pending: 0 };
+    }
   },
 
   // --- Expenses ---
   getExpenses: async (month?: number, year?: number): Promise<Expense[]> => {
-    if (!supabase) return [];
+    if (!dbClient) return [];
     try {
-      let query = supabase.from('expenses').select('*').order('expense_date', { ascending: false });
+      let query = dbClient.from('expenses').select('*').order('expense_date', { ascending: false });
       
       if (month !== undefined && year !== undefined) {
          // month is 0-indexed (0=Jan, 11=Dec)
          const startDate = new Date(year, month, 1).toISOString();
-         const endDate = new Date(year, month + 1, 0).toISOString();
+         const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
          query = query.gte('expense_date', startDate).lte('expense_date', endDate);
       }
       
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return (data || []).map((exp: any) => ({
+        ...exp,
+        amount: Number(exp.amount)
+      }));
     } catch (e) {
       console.error(e);
       return [];
@@ -659,15 +674,15 @@ export const api = {
   },
 
   addExpense: async (expense: Omit<Expense, 'id' | 'created_at'>): Promise<Expense | null> => {
-    if (!supabase) return null;
-    const { data, error } = await supabase.from('expenses').insert([expense]).select().single();
+    if (!dbClient) return null;
+    const { data, error } = await dbClient.from('expenses').insert([expense]).select().single();
     if (error) { console.error(error); return null; }
     return data;
   },
 
   deleteExpense: async (id: string): Promise<boolean> => {
-    if (!supabase) return false;
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (!dbClient) return false;
+    const { error } = await dbClient.from('expenses').delete().eq('id', id);
     return !error;
   },
 
@@ -677,13 +692,13 @@ export const api = {
     // If no pagination args provided (legacy calls), we might return all or default first page.
     // However, to be safe during refactor, let's just support pagination.
 
-    if (!supabase) return { items: [], total: 0 };
+    if (!dbClient) return { items: [], total: 0 };
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
     // Fetch gallery images range + total count
-    const { data: galleryData, count, error } = await supabase
+    const { data: galleryData, count, error } = await dbClient
       .from('gallery')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
@@ -710,39 +725,39 @@ export const api = {
   },
   // --- Storage ---
   addToGallery: async (imageUrl: string) => {
-    if (!supabase) return;
-    await supabase.from('gallery').insert([{ image_url: imageUrl }]);
+    if (!dbClient) return;
+    await dbClient.from('gallery').insert([{ image_url: imageUrl }]);
     cachedGallery = null; // Invalidate cache
   },
 
   deleteFromGallery: async (id: string) => {
-    if (!supabase) return false;
-    const { error } = await supabase.from('gallery').delete().eq('id', id);
+    if (!dbClient) return false;
+    const { error } = await dbClient.from('gallery').delete().eq('id', id);
 
     if (!error) cachedGallery = null; // Invalidate cache
     return !error;
   },
 
   uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
-    if (!supabase) return null;
+    if (!dbClient) return null;
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
+    const { error: uploadError } = await dbClient.storage.from(bucket).upload(filePath, file);
     if (uploadError) {
       console.error(uploadError);
       return null;
     }
 
-    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    const { data } = dbClient.storage.from(bucket).getPublicUrl(filePath);
     return data.publicUrl;
   },
 
   // Convert Base64 Data URL to File/Blob and upload
   uploadBase64Image: async (base64Data: string, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
-    if (!supabase) return null;
+    if (!dbClient) return null;
 
     try {
       // 1. Convert Base64 to Blob
@@ -761,18 +776,18 @@ export const api = {
       const fileName = `ai_upload_${Math.random().toString(36).substring(2)}.jpg`;
 
       // 3. Upload
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, blob, {
+      const { error: uploadError } = await dbClient.storage.from(bucket).upload(fileName, blob, {
         contentType: 'image/jpeg',
         upsert: false
       });
 
       if (uploadError) {
-        console.error("Supabase Upload Error:", uploadError);
+        console.error("Database Upload Error:", uploadError);
         return null;
       }
 
       // 4. Get URL
-      const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      const { data } = dbClient.storage.from(bucket).getPublicUrl(fileName);
       return data.publicUrl;
 
     } catch (e) {
@@ -782,13 +797,13 @@ export const api = {
   },
   // --- Wishlist ---
   toggleWishlist: async (userId: string, serviceId: string): Promise<string[]> => {
-    if (!supabase) return [];
+    if (!dbClient) return [];
 
     // Ensure profile exists before trying to read/write
     await api.ensureProfileExists(userId);
 
     // 1. Get current profile
-    const { data: profile } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
+    const { data: profile } = await dbClient.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
     let currentWishlist: string[] = profile?.wishlist || [];
 
     // 2. Toggle
@@ -799,7 +814,7 @@ export const api = {
     }
 
     // 3. Update
-    const { error } = await supabase.from('profiles').update({ wishlist: currentWishlist }).eq('id', userId);
+    const { error } = await dbClient.from('profiles').update({ wishlist: currentWishlist }).eq('id', userId);
 
     if (error) {
       console.error("Failed to update wishlist:", error);
@@ -810,12 +825,12 @@ export const api = {
   },
 
   getWishlist: async (userId: string): Promise<any[]> => {
-    if (!supabase) return [];
+    if (!dbClient) return [];
 
     console.log("Fetching wishlist for user:", userId);
 
     // 1. Get IDs from profile
-    const { data: profile, error: profileError } = await supabase.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
+    const { data: profile, error: profileError } = await dbClient.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
 
     if (profileError) {
       console.error("Error fetching profile wishlist:", profileError);
@@ -840,7 +855,7 @@ export const api = {
       const potentialGalleryIds = ids.filter(id => !serviceIds.has(id));
 
       if (potentialGalleryIds.length > 0) {
-        const { data: galleryData, error: galleryError } = await supabase
+        const { data: galleryData, error: galleryError } = await dbClient
           .from('gallery')
           .select('*')
           .in('id', potentialGalleryIds);
@@ -891,14 +906,14 @@ export const api = {
 
   // --- Aftercare Persistence ---
   checkInAftercare: async (userId: string): Promise<boolean> => {
-    if (!supabase) return false;
+    if (!dbClient) return false;
 
     await api.ensureProfileExists(userId);
 
     const now = new Date().toISOString();
 
     // Use select() to confirm the update happened
-    const { data, error } = await supabase
+    const { data, error } = await dbClient
       .from('profiles')
       .update({ last_aftercare_checkin: now })
       .eq('id', userId)
@@ -914,8 +929,8 @@ export const api = {
   },
 
   getLastAftercareCheckin: async (userId: string): Promise<string | null> => {
-    if (!supabase) return null;
-    const { data, error } = await supabase.from('profiles').select('last_aftercare_checkin').eq('id', userId).maybeSingle();
+    if (!dbClient) return null;
+    const { data, error } = await dbClient.from('profiles').select('last_aftercare_checkin').eq('id', userId).maybeSingle();
     if (error) {
       console.error("Failed to fetch last checkin:", error);
       return null;

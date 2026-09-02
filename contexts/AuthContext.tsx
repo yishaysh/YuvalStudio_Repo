@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../services/supabaseClient';
+import { AuthUser, AuthSession } from '../types';
+import { dbClient } from '../services/dbClient';
 
 interface AuthContextType {
-    user: User | null;
-    session: Session | null;
+    user: AuthUser | null;
+    session: AuthSession | null;
     profile: any | null;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
@@ -15,19 +15,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [session, setSession] = useState<Session | null>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
+    const [session, setSession] = useState<AuthSession | null>(null);
     const [profile, setProfile] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!supabase) {
+        if (!dbClient) {
             setLoading(false);
             return;
         }
 
         // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        dbClient.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
             if (session?.user) fetchProfile(session.user.id);
@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = dbClient.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
             if (session?.user) {
@@ -50,9 +50,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const fetchProfile = async (userId: string) => {
-        if (!supabase) return;
+        if (!dbClient) return;
         try {
-            const { data, error } = await supabase
+            const { data, error } = await dbClient
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
                     const code = `YV${randomSuffix}`;
                     data.referral_code = code;
-                    supabase.from('profiles').update({ referral_code: code }).eq('id', userId).then();
+                    dbClient.from('profiles').update({ referral_code: code }).eq('id', userId).then();
                 }
                 setProfile(data);
             }
@@ -82,8 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signInWithGoogle = async () => {
-        if (!supabase) return;
-        const { error } = await supabase.auth.signInWithOAuth({
+        if (!dbClient) return;
+        const { error } = await dbClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
                 redirectTo: window.location.origin
@@ -93,8 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signOut = async () => {
-        if (!supabase) return;
-        await supabase.auth.signOut();
+        if (!dbClient) return;
+        await dbClient.auth.signOut();
         setProfile(null);
         setUser(null);
         setSession(null);

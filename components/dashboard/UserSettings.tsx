@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Save, User, Phone, Mail, Loader2, AlertCircle, CheckCircle2, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../services/supabaseClient';
+import { dbClient } from '../../services/dbClient';
 import { api } from '../../services/mockApi';
 import { Button, Input } from '../ui';
 
@@ -39,15 +39,15 @@ export const UserSettings: React.FC = () => {
         setMessage(null);
 
         try {
-            // Upload to Supabase Storage (using gallery-images as general storage for now)
+            // Upload image (using gallery-images as storage bucket)
             const publicUrl = await api.uploadImage(file, 'gallery-images');
 
             if (publicUrl) {
                 setAvatarUrl(publicUrl);
                 // Optional: Save immediately or wait for general save? 
                 // Let's save immediately for better UX with images
-                if (user && supabase) {
-                    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+                if (user && dbClient) {
+                    await dbClient.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
                     await refreshProfile();
                 }
                 setMessage({ type: 'success', text: 'תמונת פרופיל עודכנה בהצלחה' });
@@ -76,12 +76,12 @@ export const UserSettings: React.FC = () => {
                 avatar_url: avatarUrl
             };
 
-            if (!supabase) {
+            if (!dbClient) {
                 setMessage({ type: 'error', text: 'שגיאת מערכת: לא ניתן להתחבר לשרת' });
                 return;
             }
 
-            const { error } = await supabase
+            const { error } = await dbClient
                 .from('profiles')
                 .update(updateData)
                 .eq('id', user.id);

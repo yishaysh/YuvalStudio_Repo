@@ -146,9 +146,9 @@ const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
         const fetchProfile = async () => {
             if (user?.client_id && isOpen) {
                 try {
-                    const { supabase } = await import('../services/supabaseClient');
-                    if (supabase) {
-                        const { data } = await supabase.from('profiles').select('*').eq('id', user.client_id).maybeSingle();
+                    const { dbClient } = await import('../services/dbClient');
+                    if (dbClient) {
+                        const { data } = await dbClient.from('profiles').select('*').eq('id', user.client_id).maybeSingle();
                         if (data) setFullProfile(data);
                     }
                 } catch (e) {

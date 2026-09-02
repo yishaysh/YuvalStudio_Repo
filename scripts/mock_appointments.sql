@@ -1,7 +1,7 @@
 -- ==========================================
 -- SCRIPT: mock_appointments.sql
 -- PURPOSE: Insert 3 mock appointments for tomorrow to demonstrate the "Tomorrow's Preparations" widget.
--- HOW TO USE: Run this in your Supabase SQL Editor.
+-- HOW TO USE: Run this in your Database SQL Editor.
 -- ==========================================
 
 -- Insert 3 mock appointments for tomorrow
@@ -50,7 +50,7 @@ VALUES
 -- ==========================================
 -- SCRIPT: remove_mock_appointments_for_screenshot.sql
 -- PURPOSE: Delete the mock appointments we just created.
--- HOW TO USE: Run this in your Supabase SQL Editor AFTER taking the screenshot.
+-- HOW TO USE: Run this in your Database SQL Editor AFTER taking the screenshot.
 -- ==========================================
 
 /* 
