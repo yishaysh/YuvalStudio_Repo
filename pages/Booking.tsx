@@ -686,15 +686,22 @@ const Booking: React.FC = () => {
         const today = new Date();
         const days = [];
         const workingHours = studioSettings?.working_hours || DEFAULT_WORKING_HOURS;
-        for (let i = 0; i < 21; i++) {
+        // Limit open appointments to 1 week ahead (up to 7 days from today)
+        for (let i = 0; i <= 7; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() + i);
             const dayIndex = d.getDay().toString();
             const dayConfig = workingHours[dayIndex];
             if (dayConfig && dayConfig.isOpen) days.push(d);
         }
-        return days.slice(0, 14);
+        return days.slice(0, 7);
     }, [studioSettings]);
+
+    const maxBookingDate = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        return d.toISOString().split('T')[0];
+    }, []);
 
     const handleBook = useCallback(async () => {
         setIsSubmitting(true);
@@ -1198,7 +1205,26 @@ const Booking: React.FC = () => {
                                                 בחר תאריך
                                                 <span className="text-xs font-normal text-slate-400">(לחץ לפתיחת יומן)</span>
                                             </button>
-                                            <input type="date" ref={datePickerRef} className="invisible absolute" min={new Date().toISOString().split('T')[0]} onChange={(e) => { if (e.target.valueAsDate) { setSelectedDate(e.target.valueAsDate); } }} />
+                                            <input 
+                                                type="date" 
+                                                ref={datePickerRef} 
+                                                className="invisible absolute" 
+                                                min={new Date().toISOString().split('T')[0]} 
+                                                max={maxBookingDate}
+                                                onChange={(e) => { 
+                                                    if (e.target.valueAsDate) { 
+                                                        const chosen = e.target.valueAsDate;
+                                                        const maxLimit = new Date();
+                                                        maxLimit.setDate(maxLimit.getDate() + 7);
+                                                        maxLimit.setHours(23, 59, 59, 999);
+                                                        if (chosen > maxLimit) {
+                                                            alert('ניתן לקבוע תור עד שבוע מראש בלבד');
+                                                            return;
+                                                        }
+                                                        setSelectedDate(chosen); 
+                                                    } 
+                                                }} 
+                                            />
                                         </div>
                                         <div className="flex gap-3 overflow-x-auto pb-4">
                                             {calendarDays.map((date, i) => {
