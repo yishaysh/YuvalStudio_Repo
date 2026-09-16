@@ -125,10 +125,15 @@ export const DEFAULT_WORKING_HOURS: StudioSettings['working_hours'] = {
 
 export const DEFAULT_STUDIO_DETAILS: StudioDetails = {
   name: 'Yuval Studio',
-  phone: '0547513343',
-  address: 'ברקת 40 מעלה שומרון',
+  business_name: 'יובל שבלב - סטודיו לפירסינג ותכשיטים',
+  registration_number: 'ע.מ 318854291',
+  phone: '054-7513343',
+  address: 'ברקת 40, מעלה שומרון',
   email: 'shavlev.yuval@gmail.com',
-  instagram_url: 'https://www.instagram.com/yuval_studio'
+  instagram_url: 'https://www.instagram.com/yuval_studio',
+  accessibility_coordinator_name: 'יובל שבלב',
+  accessibility_coordinator_phone: '054-7513343',
+  accessibility_coordinator_email: 'shavlev.yuval@gmail.com'
 };
 
 export const DEFAULT_MONTHLY_GOALS: MonthlyGoals = {

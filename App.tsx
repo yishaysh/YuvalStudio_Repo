@@ -23,6 +23,11 @@ const PersonalArea = lazy(() => import('./pages/PersonalArea'));
 const UserGallery = lazy(() => import('./components/dashboard/UserGallery').then(module => ({ default: module.UserGallery })));
 const UserSettings = lazy(() => import('./components/dashboard/UserSettings').then(module => ({ default: module.UserSettings })));
 const AccessibilityStatement = lazy(() => import('./pages/AccessibilityStatement').then(module => ({ default: module.AccessibilityStatement })));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
+const ShippingPolicy = lazy(() => import('./pages/ShippingPolicy'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const m = motion as any;
 
@@ -236,12 +241,14 @@ const App: React.FC = () => {
   const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_STUDIO_DETAILS.instagram_url);
   const [coordinates, setCoordinates] = useState(DEFAULT_STUDIO_DETAILS.coordinates);
+  const [businessName, setBusinessName] = useState(DEFAULT_STUDIO_DETAILS.business_name || 'יובל שבלב - סטודיו לפירסינג ותכשיטים');
+  const [registrationNumber, setRegistrationNumber] = useState(DEFAULT_STUDIO_DETAILS.registration_number || 'ע.מ 318854291');
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   useEffect(() => {
     // Non-blocking fetch
     api.getSettings().then(settings => {
-      if (settings.studio_details) {
+      if (settings?.studio_details) {
         setAddress(settings.studio_details.address);
         setPhone(settings.studio_details.phone);
         setEmail(settings.studio_details.email);
@@ -250,6 +257,12 @@ const App: React.FC = () => {
         }
         if (settings.studio_details.coordinates) {
           setCoordinates(settings.studio_details.coordinates);
+        }
+        if (settings.studio_details.business_name) {
+          setBusinessName(settings.studio_details.business_name);
+        }
+        if (settings.studio_details.registration_number) {
+          setRegistrationNumber(settings.studio_details.registration_number);
         }
       }
     });
@@ -277,33 +290,118 @@ const App: React.FC = () => {
               <Route path="/dashboard/settings" element={<UserSettings />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/accessibility-statement" element={<AccessibilityStatement />} />
-              <Route path="*" element={<Home />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/refunds" element={<RefundPolicy />} />
+              <Route path="/shipping" element={<ShippingPolicy />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </main>
 
-        <footer className="bg-brand-surface py-16 border-t border-white/5">
+        <footer className="bg-brand-surface py-16 border-t border-white/5 text-right">
           <div className="container mx-auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center md:text-right mb-12">
-              <div className="col-span-1 md:col-span-2">
-                <h3 className="text-2xl font-serif text-white mb-6">Yuval Studio</h3>
-                <p className="text-slate-400 text-sm leading-relaxed max-w-md">
-                  סטודיו בוטיק לפירסינג ותכשיטנות גוף. אנו מאמינים בשילוב של אסתטיקה גבוהה, סטריליות חסרת פשרות ויחס אישי לכל לקוח.
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+              {/* Col 1: Business Identity & Registration */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <StudioLogo className="h-8 w-auto text-brand-primary" />
+                  <span className="text-xl font-serif text-white">Yuval Studio</span>
+                </div>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  סטודיו בוטיק מקצועי לפירסינג ותכשיטנות גוף. סטריליזציה ברמה רפואית, מחטי פירסינג חד-פעמיות, תכשיטי טיטניום ASTM F-136 וזהב מלא 14K/18K.
                 </p>
+                <div className="pt-2 border-t border-white/5 space-y-1 text-xs text-slate-400">
+                  <p className="text-slate-300 font-medium">{businessName}</p>
+                  <p>{registrationNumber}</p>
+                </div>
               </div>
 
-              <div>
-                <h4 className="text-white font-medium mb-6">יצירת קשר</h4>
-                <ul className="space-y-4 text-sm text-slate-400">
-                  <li className="flex items-center justify-center md:justify-start gap-3">
-                    <MapPin className="w-4 h-4 text-brand-primary" />
-                    <button onClick={() => setIsNavOpen(true)} className="hover:text-white hover:underline transition-colors text-right">
-                      {address}
-                    </button>
+              {/* Col 2: Quick Links */}
+              <div className="space-y-4">
+                <h4 className="text-white font-serif font-medium text-base">ניווט מהיר</h4>
+                <ul className="space-y-2.5 text-sm text-slate-400">
+                  <li>
+                    <Link to="/" className="hover:text-brand-primary transition-colors">דף הבית</Link>
                   </li>
-                  <li>{phone}</li>
-                  <li>{email}</li>
+                  <li>
+                    <Link to="/booking" className="hover:text-brand-primary transition-colors">הזמנת תור לפירסינג</Link>
+                  </li>
+                  <li>
+                    <Link to="/services" className="hover:text-brand-primary transition-colors">מחירון שירותים</Link>
+                  </li>
+                  <li>
+                    <Link to="/jewelry" className="hover:text-brand-primary transition-colors">גלריית תכשיטים</Link>
+                  </li>
+                  <li>
+                    <Link to="/aftercare" className="hover:text-brand-primary transition-colors">הוראות טיפול והחלמה</Link>
+                  </li>
+                  <li>
+                    <Link to="/style-matcher" className="hover:text-brand-primary transition-colors">סטייל מאצ&apos;ר AI</Link>
+                  </li>
                 </ul>
+              </div>
+
+              {/* Col 3: Legal & Regulatory Policies */}
+              <div className="space-y-4">
+                <h4 className="text-white font-serif font-medium text-base">תקנון ומדיניות</h4>
+                <ul className="space-y-2.5 text-sm text-slate-400">
+                  <li>
+                    <Link to="/terms" className="hover:text-brand-primary transition-colors">תקנון ותנאי שימוש</Link>
+                  </li>
+                  <li>
+                    <Link to="/privacy" className="hover:text-brand-primary transition-colors">מדיניות פרטיות ואבטחת מידע</Link>
+                  </li>
+                  <li>
+                    <Link to="/refunds" className="hover:text-brand-primary transition-colors">מדיניות ביטולים והחזרים</Link>
+                  </li>
+                  <li>
+                    <Link to="/shipping" className="hover:text-brand-primary transition-colors">מדיניות משלוחים והספקה</Link>
+                  </li>
+                  <li>
+                    <Link to="/accessibility-statement" className="hover:text-brand-primary transition-colors">הצהרת נגישות (ת&quot;י 5568 AA)</Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Col 4: Verified Contact & Location */}
+              <div className="space-y-4">
+                <h4 className="text-white font-serif font-medium text-base">יצירת קשר ושעות פעילות</h4>
+                <ul className="space-y-3 text-sm text-slate-400">
+                  <li className="flex items-start gap-2.5">
+                    <MapPin className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                    <div>
+                      <button onClick={() => setIsNavOpen(true)} className="hover:text-white hover:underline transition-colors text-right">
+                        {address}
+                      </button>
+                      <span className="block text-xs text-slate-500">חניה נגישה במקום</span>
+                    </div>
+                  </li>
+                  <li>
+                    <a href={`tel:${phone}`} className="hover:text-white transition-colors">
+                      טלפון / וואטסאפ: {phone}
+                    </a>
+                  </li>
+                  <li>
+                    <a href={`mailto:${email}`} className="hover:text-white transition-colors">
+                      דוא&quot;ל: {email}
+                    </a>
+                  </li>
+                </ul>
+                <div className="pt-2">
+                  <h5 className="text-xs text-slate-400 mb-2">עקבו אחרי הסטודיו</h5>
+                  <div className="flex gap-3">
+                    <a
+                      href={instagramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all border border-white/10"
+                      aria-label="עמוד האינסטגרם של יובל סטודיו"
+                    >
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
                 <NavigationModal
                   isOpen={isNavOpen}
                   onClose={() => setIsNavOpen(false)}
@@ -311,20 +409,22 @@ const App: React.FC = () => {
                   coordinates={coordinates}
                 />
               </div>
-
-              <div>
-                <h4 className="text-white font-medium mb-6">עקבו אחרינו</h4>
-                <div className="flex justify-center md:justify-start gap-4">
-                  <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all">
-                    <Instagram className="w-5 h-5" />
-                  </a>
-                </div>
-              </div>
             </div>
 
-            <div className="border-t border-white/5 pt-8 text-center flex flex-col items-center gap-2">
-              <span className="text-xs text-slate-600">© 2026 Yuval Studio. כל הזכויות שמורות.</span>
-              <Link to="/accessibility-statement" className="text-xs text-slate-500 hover:text-white transition-colors">הצהרת נגישות</Link>
+            {/* Bottom Sub-bar */}
+            <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-right">
+                <span>© 2026 {studio.name}. כל הזכויות שמורות.</span>
+                <span className="hidden sm:inline text-white/10">|</span>
+                <span>{businessName} ({registrationNumber})</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <Link to="/terms" className="hover:text-slate-300 transition-colors">תקנון</Link>
+                <Link to="/privacy" className="hover:text-slate-300 transition-colors">פרטיות</Link>
+                <Link to="/refunds" className="hover:text-slate-300 transition-colors">ביטולים</Link>
+                <Link to="/shipping" className="hover:text-slate-300 transition-colors">משלוחים</Link>
+                <Link to="/accessibility-statement" className="hover:text-slate-300 transition-colors">הצהרת נגישות</Link>
+              </div>
             </div>
           </div>
         </footer>

@@ -132,6 +132,11 @@ export interface StudioDetails {
     lat: number;
     lng: number;
   };
+  business_name?: string;
+  registration_number?: string; // Authorized business or company registration number (ח.פ / ע.מ)
+  accessibility_coordinator_name?: string;
+  accessibility_coordinator_phone?: string;
+  accessibility_coordinator_email?: string;
 }
 
 export interface MonthlyGoals {
