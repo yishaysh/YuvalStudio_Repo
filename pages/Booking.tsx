@@ -7,7 +7,7 @@ import { Service, BookingStep, StudioSettings, Coupon } from '../types';
 import { api, TimeSlot } from '../services/mockApi';
 import { Button, Card, Input } from '../components/ui';
 import { DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG } from '../constants';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { aiStylistService, AIAnalysisResult } from '../services/aiStylistService';
 import { StoryGallery } from '../components/StoryGallery';
 import { SmartImage } from '../components/SmartImage';
@@ -367,9 +367,11 @@ const Booking: React.FC = () => {
     const [isLoadingSlots, setIsLoadingSlots] = useState(false);
     const [studioSettings, setStudioSettings] = useState<StudioSettings | null>(null);
     const [jewelryCatalog, setJewelryCatalog] = useState<any[]>(JEWELRY_CATALOG);
-    const [formData, setFormData] = useState({ name: '', phone: '', email: '', nationalId: '', notes: '' });
+    const [formData, setFormData] = useState({ name: '', phone: '', email: '', notes: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+    const [hasAgreedToHealth, setHasAgreedToHealth] = useState(false);
+    const [marketingOptIn, setMarketingOptIn] = useState(false);
     const [signatureData, setSignatureData] = useState<string | null>(null);
 
     // Parental Consent State
@@ -763,13 +765,10 @@ const Booking: React.FC = () => {
 
         const endTime = new Date(appointmentStart.getTime() + duration * 60000).toISOString();
 
-        // 5. Append Image URL and National ID to notes for easy admin access
+        // 5. Append Image URL to notes for easy admin access
         let updatedNotes = formData.notes;
         if (finalImageUrl && finalImageUrl.startsWith('http')) {
             updatedNotes += `\n\n[תמונת לקוח מצורפת](${finalImageUrl})`;
-        }
-        if (formData.nationalId) {
-            updatedNotes += `\nת.ז: ${formData.nationalId}`;
         }
 
         // 6. Upload Anatomy Image if present
@@ -802,6 +801,12 @@ const Booking: React.FC = () => {
                 visual_plan: visualPlanString,
                 ai_recommendation_text: visualPlanString,
                 anatomy_image_url: finalAnatomyImageUrl || undefined,
+
+                // Legal & Compliance Consent Audit Payload
+                terms_accepted: hasAgreedToTerms,
+                privacy_accepted: hasAgreedToTerms,
+                marketing_opt_in: marketingOptIn,
+                consent_timestamp: new Date().toISOString(),
 
                 // Parental Consent Payload
                 is_under_16: isUnder16,
@@ -1290,7 +1295,7 @@ const Booking: React.FC = () => {
                                             <Input label="שם מלא" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                                             <Input label="טלפון" type="tel" inputMode="numeric" dir="ltr" className="text-right" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
                                             <Input
                                                 label="אימייל"
                                                 type="email"
@@ -1309,7 +1314,6 @@ const Booking: React.FC = () => {
                                                 spellCheck="false"
                                                 autoComplete="email"
                                             />
-                                            <Input label="תעודת זהות" type="tel" inputMode="numeric" maxLength={9} value={formData.nationalId} onChange={e => setFormData({ ...formData, nationalId: e.target.value })} />
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-medium text-slate-400 ms-1">הערות נוספות</label>
@@ -1437,15 +1441,82 @@ const Booking: React.FC = () => {
                                             </AnimatePresence>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                                            <div className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setHasAgreedToTerms(!hasAgreedToTerms)}>
-                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${hasAgreedToTerms ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
+                                        {/* Statutory Consent & Health Declaration Checkboxes (Phase 2 Compliance) */}
+                                        <div className="space-y-3 mb-8">
+                                            {/* 1. Mandatory Health Declaration */}
+                                            <label className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 mt-0.5 ${hasAgreedToHealth ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
+                                                    {hasAgreedToHealth && <Check className="w-3.5 h-3.5 stroke-[4]" />}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    className="hidden"
+                                                    checked={hasAgreedToHealth}
+                                                    onChange={(e) => setHasAgreedToHealth(e.target.checked)}
+                                                />
+                                                <span className="text-sm text-slate-200 select-none leading-relaxed">
+                                                    <span className="text-brand-primary font-medium">[חובה]</span> {isUnder16 ? 'אני ההורה/אפוטרופוס החתום למטה מאשר כי קראתי את כל סעיפי הצהרת הבריאות לעיל, הפרטים שמסרתי נכונים ומלאים, ואני מאשר את ביצוע הנקיב לבני/בתי.' : 'אני מאשר/ת בזאת כי קראתי את כל סעיפי הצהרת הבריאות לעיל, הפרטים שמסרתי נכונים ומלאים, ואני מאשר/ת את ביצוע הפעולה.'}
+                                                </span>
+                                            </label>
+
+                                            {/* 2. Mandatory Terms & Privacy Consent */}
+                                            <label className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 mt-0.5 ${hasAgreedToTerms ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
                                                     {hasAgreedToTerms && <Check className="w-3.5 h-3.5 stroke-[4]" />}
                                                 </div>
-                                                <span className="text-sm text-slate-200 select-none">
-                                                    {isUnder16 ? 'אני החתום למטה מאשר כי קראתי ההצהרה ומאשר את ביצוע הפעולה לבני/בתי.' : 'אני מאשר כי קראתי את כל הסעיפים ומסכים לתוכן.'}
+                                                <input
+                                                    type="checkbox"
+                                                    className="hidden"
+                                                    checked={hasAgreedToTerms}
+                                                    onChange={(e) => setHasAgreedToTerms(e.target.checked)}
+                                                />
+                                                <span className="text-sm text-slate-200 select-none leading-relaxed">
+                                                    <span className="text-brand-primary font-medium">[חובה]</span> קראתי ואני מסכים/ה ל
+                                                    <Link
+                                                        to="/terms"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-brand-primary underline hover:text-brand-primary/80 mx-1 font-medium transition-colors"
+                                                    >
+                                                        תנאי השימוש
+                                                    </Link>
+                                                    ו
+                                                    <Link
+                                                        to="/privacy"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-brand-primary underline hover:text-brand-primary/80 mx-1 font-medium transition-colors"
+                                                    >
+                                                        מדיניות הפרטיות
+                                                    </Link>
+                                                    של הסטודיו.
                                                 </span>
-                                            </div>
+                                            </label>
+
+                                            {/* 3. Optional Marketing Opt-In */}
+                                            <label className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 mt-0.5 ${marketingOptIn ? 'bg-brand-primary border-brand-primary text-brand-dark' : 'border-slate-600'}`}>
+                                                    {marketingOptIn && <Check className="w-3.5 h-3.5 stroke-[4]" />}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    className="hidden"
+                                                    checked={marketingOptIn}
+                                                    onChange={(e) => setMarketingOptIn(e.target.checked)}
+                                                />
+                                                <span className="text-sm text-slate-300 select-none leading-relaxed">
+                                                    <span className="text-slate-400 font-medium">[רשות]</span> אני מאשר/ת קבלת עדכונים, מבצעים והטבות בלעדיות מהסטודיו באמצעות WhatsApp או הודעות SMS (ניתן לבטל את ההסכמה בכל עת).
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        {/* Digital Signature Pad */}
+                                        <div className="pt-2 border-t border-white/5">
+                                            <label className="text-sm font-medium text-slate-300 block mb-2">
+                                                {isUnder16 ? 'חתימת ההורה / האפוטרופוס (חובה)' : 'חתימת המזמין/ה (חובה)'}
+                                            </label>
                                             <SignaturePad onSave={(data) => setSignatureData(data)} onClear={() => setSignatureData(null)} />
                                         </div>
                                     </Card>
@@ -1528,8 +1599,8 @@ const Booking: React.FC = () => {
                                 disabled={
                                     (step === BookingStep.SELECT_SERVICE && selectedServices.length === 0 && selectedJewelry.length === 0) ||
                                     (step === BookingStep.SELECT_DATE && (!selectedDate || !selectedSlot)) ||
-                                    (step === BookingStep.DETAILS && (!formData.name || !formData.phone || !formData.nationalId)) ||
-                                    (step === BookingStep.CONSENT && (!hasAgreedToTerms || !signatureData || (isUnder16 && (!parentData.name || !parentData.id || !parentData.phone)))) ||
+                                    (step === BookingStep.DETAILS && (!formData.name || !formData.phone)) ||
+                                    (step === BookingStep.CONSENT && (!hasAgreedToTerms || !hasAgreedToHealth || !signatureData || (isUnder16 && (!parentData.name || !parentData.id || !parentData.phone)))) ||
                                     isSubmitting || isAnalyzing
                                 }
                                 isLoading={isSubmitting}

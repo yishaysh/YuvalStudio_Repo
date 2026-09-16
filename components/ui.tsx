@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, X, Navigation } from 'lucide-react';
+import { AlertTriangle, X, Navigation, Check, ShieldCheck } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 const m = motion as any;
@@ -318,5 +318,26 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
       )}
     </AnimatePresence>,
     document.body
+  );
+};
+
+// --- Verified Buyer Badge (Phase 2 Compliance) ---
+export interface VerifiedBuyerBadgeProps {
+  className?: string;
+  label?: string;
+}
+
+export const VerifiedBuyerBadge: React.FC<VerifiedBuyerBadgeProps> = ({
+  className = '',
+  label = 'לקוח/ה מאומת/ת'
+}) => {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ${className}`}
+      title="ביקורת מלקוח/ה שביצע/ה טיפול או רכישה מאומתת בסטודיו"
+    >
+      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+      <span>{label}</span>
+    </span>
   );
 };

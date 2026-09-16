@@ -90,6 +90,23 @@ export interface Appointment {
 
   // --- הפניות (Referrals) ---
   referred_by?: string;
+
+  // --- Compliance & Consent Audit (Phase 2) ---
+  terms_accepted?: boolean;
+  privacy_accepted?: boolean;
+  marketing_opt_in?: boolean;
+  consent_timestamp?: string;
+}
+
+export interface CustomerReview {
+  id: string;
+  client_name: string;
+  service_name: string;
+  rating: number; // 1-5 stars
+  comment: string;
+  created_at: string;
+  is_verified_buyer: boolean; // Must be true, tied to an actual completed appointment
+  appointment_id?: string;
 }
 
 export interface Expense {

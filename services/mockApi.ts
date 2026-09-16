@@ -18,6 +18,61 @@ let cachedGallery: any[] | null = null;
 
 let cachedSettings: StudioSettings | null = null;
 let settingsPromise: Promise<StudioSettings> | null = null;
+/**
+ * Strict Payload Validation & PII Minimization (Phase 2 Compliance)
+ * Validates mandatory client information, formats, and consent flags before DB insertion.
+ */
+export const validateAndSanitizeAppointmentPayload = (appt: Partial<Appointment>): void => {
+  // 1. Full name validation
+  const name = (appt.client_name || '').trim();
+  if (!name || name.length < 2) {
+    throw new Error('שם לקוח לא תקין. יש להזין שם מלא בן 2 תווים לפחות.');
+  }
+  if (name.length > 100 || /[<>]/.test(name)) {
+    throw new Error('שם לקוח מכיל תווים לא מורשים.');
+  }
+
+  // 2. Email format validation (RFC 5322 standard)
+  const email = (appt.client_email || '').trim();
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!email || !emailRegex.test(email)) {
+    throw new Error('כתובת דואר אלקטרוני לא תקינה. יש להזין כתובת דוא"ל חוקית.');
+  }
+
+  // 3. Israeli phone format validation
+  const cleanPhone = (appt.client_phone || '').replace(/[\s-]/g, '');
+  const phoneRegex = /^(?:(?:\+?972)|0)(?:[23489]|5[0-9]|7[0-9])\d{7}$/;
+  if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+    throw new Error('מספר טלפון לא תקין. יש להזין מספר טלפון ישראלי תקין (9 או 10 ספרות).');
+  }
+
+  // 4. Mandatory legal consent validation
+  if (appt.terms_accepted !== true || appt.privacy_accepted !== true) {
+    throw new Error('חובה לאשר את תקנון האתר ומדיניות הפרטיות להשלמת הזמנת התור.');
+  }
+
+  // 5. Digital signature validation
+  if (!appt.signature || appt.signature.trim().length === 0) {
+    throw new Error('חובה לחתום דיגיטלית על טופס ההסכמה והצהרת הבריאות.');
+  }
+
+  // 6. Minor protection & PII minimization
+  if (appt.is_under_16) {
+    const parentName = (appt.parent_name || '').trim();
+    const parentId = (appt.parent_id || '').trim();
+    const cleanParentPhone = (appt.parent_phone || '').replace(/[\s-]/g, '');
+
+    if (!parentName || parentName.length < 2) {
+      throw new Error('עבור לקוח מתחת לגיל 16, חובה להזין שם הורה או אפוטרופוס מלא.');
+    }
+    if (!parentId || !/^\d{9}$/.test(parentId)) {
+      throw new Error('תעודת זהות של ההורה חייבת להכיל 9 ספרות בדיוק.');
+    }
+    if (!cleanParentPhone || !phoneRegex.test(cleanParentPhone)) {
+      throw new Error('מספר טלפון של ההורה אינו תקין.');
+    }
+  }
+};
 
 export const api = {
   // --- Settings ---
@@ -336,13 +391,8 @@ export const api = {
   },
 
   createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
-    if (!dbClient) {
-      // Mock fallback
-      return {
-        id: 'mock',
-        ...appt
-      } as Appointment;
-    }
+    // Validate payload and enforce consent & PII minimization
+    validateAndSanitizeAppointmentPayload(appt);
 
     const startTime = new Date(appt.start_time!);
     const duration = 30;
@@ -353,11 +403,15 @@ export const api = {
       endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
     }
 
-    // Append coupon info to notes if present
-    let finalNotes = appt.notes || '';
+    // Append coupon and legal compliance audit trail into notes
+    let finalNotes = (appt.notes || '').replace(/[<>]/g, '').trim();
     if (appt.coupon_code) {
       finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
     }
+
+    const consentTimestamp = appt.consent_timestamp || new Date().toISOString();
+    const marketingText = appt.marketing_opt_in ? 'אושר' : 'לא אושר';
+    finalNotes += `\n\n=== תיעוד הסכמות וציות חוקי (Phase 2) ===\n• תקנון ומדיניות פרטיות: אושרו ב-${new Date(consentTimestamp).toLocaleString('he-IL')}\n• הצהרת בריאות: אושרה ונחתמה דיגיטלית\n• אישור דיוור שיווקי: ${marketingText}`;
 
     // --- Transaction-like Logic for Coupon ---
     // In a real DB we'd use a transaction. Here we optimistically update settings.
@@ -393,14 +447,29 @@ export const api = {
       }
     }
 
+    if (!dbClient) {
+      // Mock fallback
+      return {
+        id: 'mock',
+        ...appt,
+        notes: finalNotes,
+        end_time: endTime
+      } as Appointment;
+    }
+
+    // Strictly minimize PII: if not minor under 16, sanitize parent data to null
+    const parentName = appt.is_under_16 ? (appt.parent_name || '').trim() : null;
+    const parentId = appt.is_under_16 ? (appt.parent_id || '').trim() : null;
+    const parentPhone = appt.is_under_16 ? (appt.parent_phone || '').trim() : null;
+
     const payload = {
       client_id: appt.client_id,
       service_id: appt.service_id,
       start_time: appt.start_time,
       end_time: endTime,
-      guest_name: appt.client_name,
-      guest_email: appt.client_email,
-      guest_phone: appt.client_phone,
+      guest_name: (appt.client_name || '').trim(),
+      guest_email: (appt.client_email || '').trim().toLowerCase(),
+      guest_phone: (appt.client_phone || '').trim(),
       notes: finalNotes,
       signature: appt.signature,
       status: 'pending', // Default to pending
@@ -411,10 +480,10 @@ export const api = {
       anatomy_image_url: appt.anatomy_image_url,
       anatomy_status: appt.anatomy_status,
       anatomy_review_comment: appt.anatomy_review_comment,
-      is_under_16: appt.is_under_16,
-      parent_name: appt.parent_name,
-      parent_id: appt.parent_id,
-      parent_phone: appt.parent_phone,
+      is_under_16: Boolean(appt.is_under_16),
+      parent_name: parentName,
+      parent_id: parentId,
+      parent_phone: parentPhone,
       coupon_code: appt.coupon_code
     };
 

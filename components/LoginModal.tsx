@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail } from 'lucide-react';
 import { Button } from './ui';
@@ -88,8 +89,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                             </div>
 
                             <div className="mt-8 text-center">
-                                <p className="text-xs text-zinc-600">
-                                    בלחיצה על התחברות את מאשרת את תנאי השימוש ומדיניות הפרטיות שלנו
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    בהתחברות לאתר את/ה מאשר/ת את{' '}
+                                    <Link to="/terms" onClick={onClose} className="text-brand-primary underline hover:text-white transition-colors">
+                                        תקנון ותנאי השימוש
+                                    </Link>{' '}
+                                    ואת{' '}
+                                    <Link to="/privacy" onClick={onClose} className="text-brand-primary underline hover:text-white transition-colors">
+                                        מדיניות הפרטיות
+                                    </Link>{' '}
+                                    שלנו.
                                 </p>
                             </div>
                         </div>
