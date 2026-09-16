@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Lock, Eye, Database, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react';
+import { ArrowRight, Lock, Eye, Database, ShieldCheck, UserCheck, AlertCircle, Cookie, SlidersHorizontal } from 'lucide-react';
 import { Card } from '../components/ui';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { api } from '../services/mockApi';
+import { useCookieConsent } from '../contexts/CookieConsentContext';
 
 export const PrivacyPolicy: React.FC = () => {
   const navigate = useNavigate();
   const [studio, setStudio] = useState(DEFAULT_STUDIO_DETAILS);
+  const { openSettingsModal } = useCookieConsent();
 
   useEffect(() => {
     api.getSettings().then(settings => {
@@ -176,11 +178,61 @@ export const PrivacyPolicy: React.FC = () => {
                 </p>
               </section>
 
-              {/* Section 7: Data Protection Contact */}
+              {/* Section 7: Cookie and Tracking Technologies */}
+              <section className="space-y-4 pt-6 border-t border-white/10">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <h2 className="text-xl font-bold text-brand-primary flex items-center gap-2">
+                    <Cookie className="w-5 h-5 text-brand-primary" />
+                    7. מדיניות קובצי עוגיות (Cookies) וטכנולוגיות מעקב
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={openSettingsModal}
+                    className="px-4 py-2 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary text-xs font-semibold transition-all flex items-center gap-2 shadow-sm"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>ניהול הגדרות עוגיות</span>
+                  </button>
+                </div>
+                <p>
+                  אתר הסטודיו מכבד את פרטיותך ופועל על פי עקרון <strong>ההסכמה המוקדמת (Prior Consent)</strong>. משמעות הדבר היא ששום קובץ עוגייה שאינו חיוני באופן מוחלט לתפעול השוטף אינו מופעל במכשירך ללא אישורך המפורש.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                    <span className="font-semibold text-white text-sm">א. עוגיות הכרחיות (חובה)</span>
+                    <p className="text-xs text-slate-400">
+                      מאפשרות את תפקודו התקין והמאובטח של האתר, לרבות סשן התחברות מאובטח, שמירת מזהה תור פעיל ומניעת מתקפות סייבר. לא ניתן להשבית עוגיות אלו.
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                    <span className="font-semibold text-white text-sm">ב. עוגיות אנליטיקה (אופציונלי)</span>
+                    <p className="text-xs text-slate-400">
+                      איסוף סטטיסטי אנונימי (למשל Google Analytics) לצורך מדידת כמות המבקרים, הבנת דפוסי שימוש ושיפור ביצועי האתר.
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                    <span className="font-semibold text-white text-sm">ג. עוגיות שיווק ומדיה (אופציונלי)</span>
+                    <p className="text-xs text-slate-400">
+                      התאמת תוכן פרסומי והצגת מודעות רלוונטיות של תכשיטים ושירותי הסטודיו ברשתות החברתיות (כגון Meta Pixel) על בסיס תחומי עניין.
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-1">
+                    <span className="font-semibold text-white text-sm">ד. עוגיות העדפות (אופציונלי)</span>
+                    <p className="text-xs text-slate-400">
+                      זכירת העדפות תצוגה אישיות, המלצות הסטייל מאצ&apos;ר ושמירת מסנני חיפוש מועדפים לגלישה נוחה ואישית.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 pt-1">
+                  באפשרותך לשנות את הסכמתך או לחזור בך בכל עת באמצעות לחיצה על כפתור העוגייה הצף בתחתית המסך, או דרך קישור &quot;ניהול העדפות עוגיות&quot; המופיע בתחתית כל עמוד (Footer).
+                </p>
+              </section>
+
+              {/* Section 8: Data Protection Contact */}
               <section className="space-y-3 pt-6 border-t border-white/10">
                 <h2 className="text-xl font-bold text-brand-primary flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-brand-primary" />
-                  7. פניות ופרטי ממונה הגנת הפרטיות
+                  8. פניות ופרטי ממונה הגנת הפרטיות
                 </h2>
                 <p>
                   אם יש לך שאלות בנוגע למדיניות זו, או אם ברצונך לממש את זכויותיך על פי החוק, אנא פנה/י אלינו:

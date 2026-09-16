@@ -10,6 +10,10 @@ import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { LoginModal } from './components/LoginModal';
 import { NavigationModal } from './components/ui';
 import { AccessibilityMenu } from './components/ui/AccessibilityMenu';
+import { CookieConsentProvider, useCookieConsent } from './contexts/CookieConsentContext';
+import { CookieBanner } from './components/ui/CookieBanner';
+import { CookieSettingsModal } from './components/ui/CookieSettingsModal';
+import { CookieManagerTrigger } from './components/ui/CookieManagerTrigger';
 
 // Lazy Load Pages - Must use explicit string literals for static analysis
 const Home = lazy(() => import('./pages/Home'));
@@ -235,6 +239,23 @@ const ReferralTracker = () => {
   return null;
 };
 
+// Footer Cookie Settings Trigger Button
+const FooterCookieButton: React.FC<{ className?: string; label?: string }> = ({
+  className = "hover:text-brand-primary transition-colors text-right",
+  label = "ניהול העדפות עוגיות"
+}) => {
+  const { openSettingsModal } = useCookieConsent();
+  return (
+    <button
+      type="button"
+      onClick={openSettingsModal}
+      className={className}
+    >
+      {label}
+    </button>
+  );
+};
+
 const App: React.FC = () => {
   const [studioName, setStudioName] = useState(DEFAULT_STUDIO_DETAILS.name);
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
@@ -274,12 +295,16 @@ const App: React.FC = () => {
 
   return (
     <AccessibilityProvider>
-      <AuthProvider>
-        <Router>
-          <ScrollToTop />
-          <ReferralTracker />
-          <Navbar />
-          <AccessibilityMenu />
+      <CookieConsentProvider>
+        <AuthProvider>
+          <Router>
+            <ScrollToTop />
+            <ReferralTracker />
+            <Navbar />
+            <AccessibilityMenu />
+            <CookieBanner />
+            <CookieSettingsModal />
+            <CookieManagerTrigger />
         <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -365,6 +390,9 @@ const App: React.FC = () => {
                   <li>
                     <Link to="/accessibility-statement" className="hover:text-brand-primary transition-colors">הצהרת נגישות (ת&quot;י 5568 AA)</Link>
                   </li>
+                  <li>
+                    <FooterCookieButton />
+                  </li>
                 </ul>
               </div>
 
@@ -428,12 +456,17 @@ const App: React.FC = () => {
                 <Link to="/refunds" className="hover:text-slate-300 transition-colors">ביטולים</Link>
                 <Link to="/shipping" className="hover:text-slate-300 transition-colors">משלוחים</Link>
                 <Link to="/accessibility-statement" className="hover:text-slate-300 transition-colors">הצהרת נגישות</Link>
+                <FooterCookieButton
+                  className="hover:text-slate-300 transition-colors"
+                  label="הגדרות עוגיות"
+                />
               </div>
             </div>
           </div>
         </footer>
       </Router>
     </AuthProvider>
+    </CookieConsentProvider>
     </AccessibilityProvider>
   );
 };

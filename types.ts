@@ -207,3 +207,25 @@ export enum BookingStep {
   CONFIRMATION = 6,
   SUCCESS = 7 // הוספתי Success למקרה שהשתמשנו בו ב-HandleBook
 }
+
+// --- Cookie & Tracker Consent Management ---
+export type CookieCategory = 'necessary' | 'analytics' | 'marketing' | 'preferences';
+
+export interface CookieConsentPreferences {
+  necessary: boolean; // Always true - required for authentication, security, and basic cart/booking functionality
+  analytics: boolean; // Statistical metrics, anonymized visitor analysis (Google Analytics)
+  marketing: boolean; // Ad personalization, social media pixels (Meta / Google Ads)
+  preferences: boolean; // User display preferences, saved selections, UI theme
+  consentTimestamp: string | null; // ISO timestamp when user submitted choice
+  hasInteracted: boolean; // True once user has accepted, rejected, or customized
+  version: string; // Policy version identifier
+}
+
+export interface CookieCategoryMeta {
+  id: CookieCategory;
+  title: string;
+  description: string;
+  purpose: string;
+  isMandatory: boolean;
+  examples: string[];
+}
