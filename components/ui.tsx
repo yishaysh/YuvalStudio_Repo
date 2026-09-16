@@ -18,7 +18,7 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading,
   ...props
 }) => {
-  const baseStyle = "relative px-6 py-3 text-sm font-medium tracking-wide transition duration-[160ms] ease-emil-out disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.97]";
+  const baseStyle = "relative px-6 py-3 text-sm font-medium tracking-wide transition duration-[160ms] ease-emil-out disabled:opacity-50 disabled:cursor-not-allowed rounded-xl overflow-hidden shadow-lg hover:shadow-xl active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 focus-visible:ring-offset-brand-dark";
 
   const variants = {
     primary: "bg-brand-primary text-brand-dark hover:bg-brand-primaryHover",
@@ -32,14 +32,16 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       className={`${baseStyle} ${variants[variant]} ${className}`}
       disabled={isLoading || props.disabled}
+      aria-busy={isLoading ? true : undefined}
       {...props}
     >
       <span className={`relative z-10 flex items-center justify-center gap-2 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
         {children}
       </span>
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center z-20">
+        <div className="absolute inset-0 flex items-center justify-center z-20" aria-hidden="true">
           <div className="w-5 h-5 border-2 border-current border-t-transparent animate-spin rounded-full"></div>
+          <span className="sr-only">טוען...</span>
         </div>
       )}
     </button>
@@ -66,23 +68,37 @@ export const Card: React.FC<CardProps> = ({ children, className = '', ...props }
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: React.ReactNode;
+  error?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ label, icon, className = '', ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, icon, id, error, className = '', ...props }) => {
+  const inputId = id || (props.name ? `input-${props.name}` : `input-${label.replace(/\s+/g, '-').toLowerCase()}`);
+  const errorId = error ? `${inputId}-error` : undefined;
+
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-slate-400 ms-1">{label}</label>
+      <label htmlFor={inputId} className="text-sm font-medium text-slate-400 ms-1 cursor-pointer">
+        {label}
+      </label>
       <div className="relative">
         <input
-          className={`w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-[border-color,box-shadow,color] duration-[160ms] ease-emil-out placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 ${icon ? 'pl-12' : ''} ${className}`}
+          id={inputId}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={errorId}
+          className={`w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-[border-color,box-shadow,color] duration-[160ms] ease-emil-out placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 focus-visible:ring-2 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary ${icon ? 'pl-12' : ''} ${error ? 'border-red-500/60' : ''} ${className}`}
           {...props}
         />
         {icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" aria-hidden="true">
             {icon}
           </div>
         )}
       </div>
+      {error && (
+        <p id={errorId} role="alert" className="text-xs text-red-400 ms-1">
+          {error}
+        </p>
+      )}
     </div>
   );
 };
@@ -114,10 +130,28 @@ interface ModalProps {
 }
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon, className = '' }) => {
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const modalId = `modal-title-${title.replace(/\s+/g, '-').toLowerCase()}`;
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={modalId}
+        >
           {/* Backdrop */}
           <m.div
             initial={{ opacity: 0 }}
@@ -137,10 +171,11 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
           >
             {/* Header */}
             <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
-              <h3 className="text-xl font-serif text-white">{title}</h3>
+              <h3 id={modalId} className="text-xl font-serif text-white">{title}</h3>
               <button
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-all"
+                aria-label="סגור חלון"
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -149,7 +184,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             {/* Scrollable Body */}
             <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
               {icon && (
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6" aria-hidden="true">
                   {icon}
                 </div>
               )}

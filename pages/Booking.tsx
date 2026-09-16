@@ -203,6 +203,9 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
                     ref={canvasRef}
                     width={600}
                     height={300}
+                    role="application"
+                    aria-label="משטח לחתימה דיגיטלית ידנית"
+                    tabIndex={0}
                     onMouseDown={startDrawing}
                     onMouseUp={stopDrawing}
                     onMouseMove={draw}
@@ -210,9 +213,14 @@ const SignaturePad: React.FC<{ onSave: (data: string) => void, onClear: () => vo
                     onTouchStart={startDrawing}
                     onTouchEnd={stopDrawing}
                     onTouchMove={draw}
-                    className="w-full h-[150px] cursor-crosshair touch-none"
+                    className="w-full h-[150px] cursor-crosshair touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                 />
-                <button onClick={clearCanvas} type="button" className="absolute top-2 left-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
+                <button
+                    onClick={clearCanvas}
+                    type="button"
+                    aria-label="נקה משטח חתימה"
+                    className="absolute top-2 left-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                >
                     <Eraser className="w-4 h-4" />
                 </button>
             </div>
@@ -237,7 +245,11 @@ const TicketSummary: React.FC<any> = ({
                             <div className="flex items-center gap-2">
                                 <span className="text-brand-primary">₪{s.price}</span>
                                 {step === BookingStep.SELECT_SERVICE && !readOnly && (
-                                    <button onClick={(e) => { e.stopPropagation(); onToggleService(s); }} className="text-red-400 hover:text-red-300">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onToggleService(s); }}
+                                        aria-label={`הסר טיפול ${s.name}`}
+                                        className="text-red-400 hover:text-red-300 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                                    >
                                         <Trash2 className="w-3 h-3" />
                                     </button>
                                 )}
@@ -255,7 +267,11 @@ const TicketSummary: React.FC<any> = ({
                             <div className="flex items-center gap-2">
                                 <span className="text-brand-primary">₪{item.price}</span>
                                 {!readOnly && (
-                                    <button onClick={() => onToggleJewelry(item)} className="text-red-400 hover:text-red-300">
+                                    <button
+                                        onClick={() => onToggleJewelry(item)}
+                                        aria-label={`הסר תכשיט ${item.name}`}
+                                        className="text-red-400 hover:text-red-300 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                                    >
                                         <Trash2 className="w-3 h-3" />
                                     </button>
                                 )}
@@ -875,14 +891,27 @@ const Booking: React.FC = () => {
                     <div className="flex-1 w-full z-10">
                         {/* Header */}
                         <div className="mb-4">
-                            <h1 className="text-4xl font-serif text-white mb-2">
+                            <h1 className="sr-only">הזמנת תור לפירסינג ותכשיטים - סטודיו יובל</h1>
+                            {/* Accessible Step Transition Announcement */}
+                            <div aria-live="polite" aria-atomic="true" className="sr-only">
+                                {step === BookingStep.CONFIRMATION
+                                    ? 'ההזמנה הושלמה בהצלחה! אישור הזמנה מוצג כעת.'
+                                    : `עברת לשלב ${currentStepDisplay} מתוך ${totalSteps}: ${
+                                        step === BookingStep.SELECT_SERVICE ? 'בחירת טיפול' :
+                                        step === BookingStep.AI_STYLIST ? 'מעצב האוזן האישי' :
+                                        step === BookingStep.SELECT_DATE ? 'תאריך ושעה' :
+                                        step === BookingStep.DETAILS ? 'פרטים אישיים' :
+                                        step === BookingStep.CONSENT ? 'הצהרת בריאות ואישור' : 'אישור הזמנה'
+                                    }`}
+                            </div>
+                            <h2 className="text-4xl font-serif text-white mb-2">
                                 {step === BookingStep.SELECT_SERVICE && 'בחירת טיפול'}
                                 {step === BookingStep.AI_STYLIST && 'מעצב האוזן האישי (AI)'}
                                 {step === BookingStep.SELECT_DATE && 'תאריך ושעה'}
                                 {step === BookingStep.DETAILS && 'פרטים אישיים'}
                                 {step === BookingStep.CONSENT && 'הצהרת בריאות ואישור'}
                                 {step === BookingStep.CONFIRMATION && 'אישור הזמנה'}
-                            </h1>
+                            </h2>
                             <p className="text-slate-400 flex items-center gap-2">
                                 {step !== BookingStep.CONFIRMATION && (
                                     <span className="bg-brand-primary/10 text-brand-primary text-xs px-2 py-0.5 rounded-full border border-brand-primary/20">
@@ -899,6 +928,8 @@ const Booking: React.FC = () => {
                             <div className="lg:hidden mb-6 relative z-[70]">
                                 <button
                                     onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
+                                    aria-expanded={isMobileSummaryOpen}
+                                    aria-label="פתח או סגור סיכום ביניים לתור"
                                     className="w-full flex items-center justify-between p-4 bg-brand-surface/90 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-all active:scale-[0.98] relative z-20"
                                 >
                                     <div className="flex items-center gap-3">

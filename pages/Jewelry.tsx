@@ -254,6 +254,7 @@ const JewelryPage: React.FC = () => {
       </div>
 
       <div className="container mx-auto px-6">
+        <h2 className="sr-only">גלריית השראה וקטלוג עגילי פירסינג</h2>
         {activeTab === 'gallery' ? (
           galleryItems.length > 0 ? (
             <>
@@ -303,7 +304,8 @@ const JewelryPage: React.FC = () => {
                           console.log("User not logged in");
                         }
                       }}
-                      className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn"
+                      aria-label="הוסף או הסר מרשימת משאלות"
+                      className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                     >
                       <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
                     </button>
@@ -321,7 +323,7 @@ const JewelryPage: React.FC = () => {
 
                     <SmartImage
                       src={item.image_url}
-                      alt={`Jewelry ${i}`}
+                      alt={item.title || item.name || `תכשיט פירסינג בגלריה - דגם ${i + 1}`}
                       className="w-full h-full object-cover"
                       priority={i < 4}
                     />
@@ -400,23 +402,35 @@ const JewelryPage: React.FC = () => {
           >
             {/* ... modal content ... */}
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="תצוגת תכשיט מוגדלת"
               className="relative w-full max-w-6xl h-full md:h-auto md:max-h-[90vh] bg-brand-surface rounded-none md:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/10"
               onClick={(e: any) => e.stopPropagation()}
             >
               {/* ... */}
               <button
                 onClick={() => setSelectedIndex(null)}
-                className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all border border-white/10"
+                aria-label="סגור תצוגה מוגדלת"
+                className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <X className="w-6 h-6" />
               </button>
 
               <div className="w-full md:w-2/3 h-[40vh] md:h-auto relative bg-black flex items-center justify-center group overflow-hidden">
                 {/* Navigation Arrows */}
-                <button onClick={handlePrev} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5">
+                <button
+                  onClick={handlePrev}
+                  aria-label="לתמונה הקודמת"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                >
                   <ChevronRight className="w-6 h-6" />
                 </button>
-                <button onClick={handleNext} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5">
+                <button
+                  onClick={handleNext}
+                  aria-label="לתמונה הבאה"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
 

@@ -83,7 +83,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-brand-dark/80 backdrop-blur-lg border-b border-white/5 transition-all duration-300">
+      <nav aria-label="ניווט ראשי" className="fixed top-0 left-0 right-0 z-50 bg-brand-dark/80 backdrop-blur-lg border-b border-white/5 transition-all duration-300">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="group flex items-center gap-3">
@@ -168,8 +168,13 @@ const Navbar = () => {
               </button>
             )}
 
-            <button onClick={() => setIsOpen(!isOpen)} className="text-white hover:text-brand-primary transition-colors">
-              {isOpen ? <X /> : <Menu />}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              aria-expanded={isOpen}
+              aria-label={isOpen ? 'סגור תפריט ניווט' : 'פתח תפריט ניווט ראשי'}
+              className="text-white hover:text-brand-primary transition-colors p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            >
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
@@ -298,6 +303,14 @@ const App: React.FC = () => {
       <CookieConsentProvider>
         <AuthProvider>
           <Router>
+            {/* Accessible Skip Link for Keyboard & Screen Reader Users */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:z-[99999] focus:px-6 focus:py-3 focus:bg-brand-primary focus:text-brand-dark focus:font-bold focus:rounded-xl focus:shadow-2xl focus:outline-none focus:ring-4 focus:ring-white"
+            >
+              דלג לתוכן המרכזי
+            </a>
+
             <ScrollToTop />
             <ReferralTracker />
             <Navbar />
@@ -305,7 +318,7 @@ const App: React.FC = () => {
             <CookieBanner />
             <CookieSettingsModal />
             <CookieManagerTrigger />
-        <main className="min-h-screen bg-brand-dark text-slate-200 pt-20">
+        <main id="main-content" tabIndex={-1} className="min-h-screen bg-brand-dark text-slate-200 pt-20 outline-none">
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -328,7 +341,7 @@ const App: React.FC = () => {
           </Suspense>
         </main>
 
-        <footer className="bg-brand-surface py-16 border-t border-white/5 text-right">
+        <footer role="contentinfo" aria-label="מידע על הסטודיו וקישורים משפטיים" className="bg-brand-surface py-16 border-t border-white/5 text-right">
           <div className="container mx-auto px-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
               {/* Col 1: Business Identity & Registration */}

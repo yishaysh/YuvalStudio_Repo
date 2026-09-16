@@ -15,6 +15,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
 
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
     const handleGoogleLogin = async () => {
         setIsLoading(true);
         try {
@@ -45,6 +55,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
                     {/* Modal */}
                     <motion.div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="login-modal-title"
                         initial={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
                         animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
                         exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
@@ -60,10 +73,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-8">
                                 <div>
-                                    <h2 className="text-2xl font-serif text-white mb-2">ברוכים הבאים</h2>
+                                    <h2 id="login-modal-title" className="text-2xl font-serif text-white mb-2">ברוכים הבאים</h2>
                                     <p className="text-zinc-400 text-sm">התחברי כדי לנהל את התורים שלך ולצפות בתוכנית העיצוב האישית</p>
                                 </div>
-                                <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+                                <button
+                                    onClick={onClose}
+                                    aria-label="סגור חלון התחברות"
+                                    className="text-zinc-500 hover:text-white transition-colors p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                                >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>

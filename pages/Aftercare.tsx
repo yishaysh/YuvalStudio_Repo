@@ -52,7 +52,7 @@ const AftercarePage: React.FC = () => {
                 <step.icon className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-medium text-white mb-2">{step.title}</h3>
+                <h2 className="text-xl font-medium text-white mb-2">{step.title}</h2>
                 <p className="text-slate-400 leading-relaxed">{step.content}</p>
               </div>
             </Card>
@@ -61,7 +61,7 @@ const AftercarePage: React.FC = () => {
       </div>
 
       <div className="mt-16 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
-        <h3 className="text-red-400 font-medium mb-2">מתי לפנות אלינו?</h3>
+        <h2 className="text-red-400 font-medium mb-2">מתי לפנות אלינו?</h2>
         <p className="text-slate-400 text-sm">
           בכל מקרה של נפיחות חריגה, חום מקומי, כאב שמתגבר או הפרשה מוגלתית (ירוקה/כהה), יש ליצור קשר מיידי עם הסטודיו או לפנות לרופא.
         </p>
