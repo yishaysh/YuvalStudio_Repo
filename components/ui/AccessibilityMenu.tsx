@@ -4,12 +4,14 @@ import { useAccessibility } from '../../contexts/AccessibilityContext';
 import { 
     Accessibility, X, Eye, Type, Link, RefreshCcw, ZoomIn, ZoomOut, Play, Square, Settings2 
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export const AccessibilityMenu = () => {
     const [isOpen, setIsOpen] = useState(false);
     const { settings, updateSetting, resetSettings } = useAccessibility();
     const navigate = useNavigate();
+    const location = useLocation();
+    const isBookingPage = location.pathname === '/booking';
 
     const handleZoomIn = () => {
         if (settings.fontSize < 1.4) {
@@ -24,7 +26,9 @@ export const AccessibilityMenu = () => {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[9999] print:hidden">
+        <div className={`fixed right-6 z-[9999] print:hidden transition-all duration-300 ${
+            isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'
+        }`}>
             {/* Main Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}

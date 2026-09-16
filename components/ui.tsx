@@ -85,7 +85,7 @@ export const Input: React.FC<InputProps> = ({ label, icon, id, error, className 
           id={inputId}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={errorId}
-          className={`w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-[border-color,box-shadow,color] duration-[160ms] ease-emil-out placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 focus-visible:ring-2 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary ${icon ? 'pl-12' : ''} ${error ? 'border-red-500/60' : ''} ${className}`}
+          className={`w-full text-base min-h-[44px] bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-[border-color,box-shadow,color] duration-[160ms] ease-emil-out placeholder:text-slate-600 focus:ring-1 focus:ring-brand-primary/20 focus-visible:ring-2 focus-visible:ring-brand-primary/50 focus-visible:border-brand-primary ${icon ? 'pl-12' : ''} ${error ? 'border-red-500/60' : ''} ${className}`}
           {...props}
         />
         {icon && (

@@ -148,23 +148,25 @@ const Navbar = () => {
 
           {/* Mobile Toggle */}
           {/* Mobile Toggle & User Icon */}
-          <div className="md:hidden flex items-center gap-4">
+          <div className="md:hidden flex items-center gap-2">
             {/* User Icon (Mobile) */}
             {user ? (
               <Link
                 to="/dashboard"
                 title="אזור אישי"
-                className="w-10 h-10 flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-all border border-brand-primary/20"
+                aria-label="אזור אישי"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-all border border-brand-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
-                <User className="w-4 h-4" />
+                <User className="w-5 h-5" />
               </Link>
             ) : (
               <button
                 onClick={() => setIsLoginOpen(true)}
                 title="התחברות לאזור אישי"
-                className="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                aria-label="התחברות לאזור אישי"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
-                <User className="w-4 h-4" />
+                <User className="w-5 h-5" />
               </button>
             )}
 
@@ -172,7 +174,7 @@ const Navbar = () => {
               onClick={() => setIsOpen(!isOpen)}
               aria-expanded={isOpen}
               aria-label={isOpen ? 'סגור תפריט ניווט' : 'פתח תפריט ניווט ראשי'}
-              className="text-white hover:text-brand-primary transition-colors p-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-white hover:text-brand-primary transition-colors p-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
             >
               {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -187,9 +189,9 @@ const Navbar = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-screen will-change-transform"
+              className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-[calc(100dvh-5rem)] overflow-y-auto pb-safe will-change-transform"
             >
-              <div className="flex flex-col p-8 gap-8 items-center text-center pt-20">
+              <div className="flex flex-col p-8 gap-8 items-center text-center pt-10">
                 <Link to="/" className="text-2xl font-serif text-white hover:text-brand-primary">דף הבית</Link>
                 <Link to="/booking" className="text-2xl font-serif text-white hover:text-brand-primary">הזמן תור</Link>
                 <Link to="/services" className="text-2xl font-serif text-white hover:text-brand-primary">שירותים ומחירים</Link>

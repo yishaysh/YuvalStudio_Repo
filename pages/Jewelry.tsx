@@ -232,7 +232,7 @@ const JewelryPage: React.FC = () => {
         <div className="flex bg-brand-surface/50 p-1 rounded-full border border-white/10">
           <button
             onClick={() => setActiveTab('gallery')}
-            className={`px-8 py-2.5 rounded-full text-sm font-medium transition-all ${
+            className={`min-h-[44px] px-8 py-2.5 rounded-full text-sm font-medium transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
               activeTab === 'gallery'
                 ? 'bg-brand-primary text-brand-dark shadow-lg'
                 : 'text-slate-400 hover:text-white'
@@ -242,7 +242,7 @@ const JewelryPage: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`px-8 py-2.5 rounded-full text-sm font-medium transition-all ${
+            className={`min-h-[44px] px-8 py-2.5 rounded-full text-sm font-medium transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
               activeTab === 'inventory'
                 ? 'bg-brand-primary text-brand-dark shadow-lg'
                 : 'text-slate-400 hover:text-white'
@@ -305,7 +305,7 @@ const JewelryPage: React.FC = () => {
                         }
                       }}
                       aria-label="הוסף או הסר מרשימת משאלות"
-                      className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                      className="absolute top-3 right-3 z-20 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-black/50 hover:bg-brand-primary/20 text-white hover:text-red-500 transition-colors border border-white/10 group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                     >
                       <Heart className={`w-5 h-5 wishlist-icon transition-colors ${item.isInWishlist ? 'text-red-500 fill-current' : ''}`} />
                     </button>

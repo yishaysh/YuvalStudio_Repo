@@ -24,7 +24,7 @@ export const CookieBanner: React.FC = () => {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed bottom-0 left-0 right-0 z-[10001] p-4 sm:p-6 bg-brand-surface/98 backdrop-blur-2xl border-t border-brand-primary/20 shadow-[0_-10px_35px_rgba(0,0,0,0.6)] text-right"
+        className="fixed bottom-0 left-0 right-0 z-[10001] p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-brand-surface/98 backdrop-blur-2xl border-t border-brand-primary/20 shadow-[0_-10px_35px_rgba(0,0,0,0.6)] text-right"
       >
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
