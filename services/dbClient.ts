@@ -398,13 +398,35 @@ class NeonQueryBuilder implements PromiseLike<any> {
 export const dbClient = {
   from: (tableName: string) => new NeonQueryBuilder(tableName),
   auth: {
-    getSession: async () => ({ data: { session: null }, error: null }),
-    getUser: async () => ({ data: { user: null }, error: null }),
+    getSession: async () => {
+      try {
+        const saved = localStorage.getItem('yuval_auth_session');
+        if (saved) return { data: { session: JSON.parse(saved) }, error: null };
+      } catch (e) {}
+      return { data: { session: null }, error: null };
+    },
+    getUser: async () => {
+      try {
+        const saved = localStorage.getItem('yuval_auth_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { data: { user: parsed?.user || null }, error: null };
+        }
+      } catch (e) {}
+      return { data: { user: null }, error: null };
+    },
     onAuthStateChange: (_callback: any) => ({
       data: { subscription: { unsubscribe: () => {} } }
     }),
     signInWithOAuth: async () => ({ error: null }),
-    signOut: async () => ({ error: null })
+    signOut: async () => {
+      try {
+        localStorage.removeItem('yuval_auth_session');
+        localStorage.removeItem('g_access_token');
+        localStorage.removeItem('g_token_expiry');
+      } catch (e) {}
+      return { error: null };
+    }
   },
   channel: (_name: string) => ({
     on: () => ({

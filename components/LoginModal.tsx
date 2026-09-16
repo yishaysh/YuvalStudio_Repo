@@ -1,7 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail } from 'lucide-react';
+import { X, Mail, Loader2 } from 'lucide-react';
 import { Button } from './ui';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -12,13 +12,19 @@ interface LoginModalProps {
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const { signInWithGoogle } = useAuth();
+    const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleGoogleLogin = async () => {
+        setIsLoading(true);
         try {
             await signInWithGoogle();
             onClose();
+            navigate('/dashboard');
         } catch (error) {
             console.error("Login Failed:", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -65,6 +71,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                             <div className="space-y-4">
                                 <Button
                                     onClick={handleGoogleLogin}
+                                    isLoading={isLoading}
                                     className="w-full bg-white text-black hover:bg-gray-100 flex items-center justify-center gap-3 py-6 rounded-xl font-medium transition-[transform,background-color] duration-[160ms] ease-emil-out active:scale-[0.97]"
                                 >
                                     <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

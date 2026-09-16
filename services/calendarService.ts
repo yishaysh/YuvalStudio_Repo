@@ -1,7 +1,8 @@
 
 import { Appointment } from '../types';
+import { GOOGLE_CLIENT_ID } from '../constants';
 
-const CLIENT_ID = '759724009388-ioarr6mlm21tm3gbdnfehquakdc1bg06.apps.googleusercontent.com';
+const CLIENT_ID = GOOGLE_CLIENT_ID;
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const GSI_SCRIPT = 'https://accounts.google.com/gsi/client';
 
