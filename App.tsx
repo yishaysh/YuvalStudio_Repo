@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, Suspense, lazy } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Instagram, Facebook, MapPin, Lock, User, Sparkles } from 'lucide-react';
 import { api } from './services/mockApi';
@@ -306,6 +306,15 @@ const App: React.FC = () => {
             {/* Accessible Skip Link for Keyboard & Screen Reader Users */}
             <a
               href="#main-content"
+              onClick={(e) => {
+                e.preventDefault();
+                const target = document.getElementById('main-content');
+                if (target) {
+                  target.tabIndex = -1;
+                  target.focus({ preventScroll: true });
+                  target.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
               className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:z-[99999] focus:px-6 focus:py-3 focus:bg-brand-primary focus:text-brand-dark focus:font-bold focus:rounded-xl focus:shadow-2xl focus:outline-none focus:ring-4 focus:ring-white"
             >
               דלג לתוכן המרכזי
@@ -336,6 +345,7 @@ const App: React.FC = () => {
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/refunds" element={<RefundPolicy />} />
               <Route path="/shipping" element={<ShippingPolicy />} />
+              <Route path="/main-content" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
