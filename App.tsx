@@ -236,6 +236,7 @@ const ReferralTracker = () => {
 };
 
 const App: React.FC = () => {
+  const [studioName, setStudioName] = useState(DEFAULT_STUDIO_DETAILS.name);
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
   const [phone, setPhone] = useState(DEFAULT_STUDIO_DETAILS.phone);
   const [email, setEmail] = useState(DEFAULT_STUDIO_DETAILS.email);
@@ -249,6 +250,9 @@ const App: React.FC = () => {
     // Non-blocking fetch
     api.getSettings().then(settings => {
       if (settings?.studio_details) {
+        if (settings.studio_details.name) {
+          setStudioName(settings.studio_details.name);
+        }
         setAddress(settings.studio_details.address);
         setPhone(settings.studio_details.phone);
         setEmail(settings.studio_details.email);
@@ -414,7 +418,7 @@ const App: React.FC = () => {
             {/* Bottom Sub-bar */}
             <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
               <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-right">
-                <span>© 2026 {studio.name}. כל הזכויות שמורות.</span>
+                <span>© 2026 {studioName}. כל הזכויות שמורות.</span>
                 <span className="hidden sm:inline text-white/10">|</span>
                 <span>{businessName} ({registrationNumber})</span>
               </div>
