@@ -189,8 +189,8 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             if (editingApt) {
                 // Update existing quick sale
                 await api.updateAppointment(editingApt.id, {
-                    client_name: clientName || 'לקוח מזדמן',
-                    client_phone: clientPhone || '',
+                    client_name: clientName.trim() || 'לקוח מזדמן',
+                    client_phone: clientPhone.trim() || '',
                     service_id: primaryService?.id || cart[0].id,
                     service_name: primaryService?.name || cart[0].name,
                     cart_items: cartItemsForApt,
@@ -203,39 +203,39 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                 });
             } else {
                 // Create new quick sale
-                await api.updateAppointment(
-                    (await api.createAppointment({
-                        client_id: undefined,
-                        client_name: clientName || 'לקוח מזדמן',
-                        client_email: '',
-                        client_phone: clientPhone || '',
-                        service_id: primaryService?.id || cart[0].id,
-                        service_name: primaryService?.name || cart[0].name,
-                        start_time: now,
-                        end_time: now,
-                        status: 'completed' as const,
-                        notes: notesStr,
-                        coupon_code: couponCode || undefined,
-                        cart_items: cartItemsForApt,
-                        final_price: totalRevenue,
-                        total_cost: totalCost,
-                        total_profit: totalProfit
-                    })).id,
-                    {
-                        status: 'completed',
-                        cart_items: cartItemsForApt,
-                        final_price: totalRevenue,
-                        total_cost: totalCost,
-                        total_profit: totalProfit,
-                        coupon_code: couponCode || undefined
-                    }
-                );
+                const created = await api.createAppointment({
+                    client_id: undefined,
+                    client_name: clientName.trim() || 'לקוח מזדמן',
+                    client_email: undefined,
+                    client_phone: clientPhone.trim() || undefined,
+                    service_id: primaryService?.id || cart[0].id,
+                    service_name: primaryService?.name || cart[0].name,
+                    start_time: now,
+                    end_time: now,
+                    status: 'completed' as const,
+                    notes: notesStr,
+                    coupon_code: couponCode || undefined,
+                    cart_items: cartItemsForApt,
+                    final_price: totalRevenue,
+                    total_cost: totalCost,
+                    total_profit: totalProfit,
+                    is_quick_sale: true
+                });
+
+                await api.updateAppointment(created.id, {
+                    status: 'completed',
+                    cart_items: cartItemsForApt,
+                    final_price: totalRevenue,
+                    total_cost: totalCost,
+                    total_profit: totalProfit,
+                    coupon_code: couponCode || undefined
+                });
             }
 
             const aptDataForReceipt = {
                 id: editingApt ? editingApt.id : 'QUICK-SALE',
-                client_name: clientName || 'לקוח מזדמן',
-                client_phone: clientPhone || '',
+                client_name: clientName.trim() || 'לקוח מזדמן',
+                client_phone: clientPhone.trim() || '',
                 service_id: primaryService?.id || cart[0].id,
                 service_name: primaryService?.name || cart[0].name,
                 cart_items: cartItemsForApt,
@@ -247,9 +247,9 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
             setSavedApt(aptDataForReceipt);
             setDone(true);
             
-        } catch (err) {
+        } catch (err: any) {
             console.error('Quick Sale error:', err);
-            alert('אירעה שגיאה בשמירת המכירה');
+            alert(err?.message || 'אירעה שגיאה בשמירת המכירה');
         } finally {
             setIsSaving(false);
         }

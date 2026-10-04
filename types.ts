@@ -57,8 +57,8 @@ export interface Appointment {
   id: string;
   client_id?: string; // Foreign Key to Profile
   client_name: string;
-  client_email: string;
-  client_phone: string;
+  client_email?: string;
+  client_phone?: string;
   service_id: string;
   service_name?: string;
   service_price?: number;
@@ -77,10 +77,11 @@ export interface Appointment {
   ai_recommendation_text?: string;
   total_cost?: number;
   total_profit?: number;
-  cart_items?: { service_id: string; name: string; quantity: number; cost_price: number; final_price: number }[];
+  cart_items?: { service_id: string; name: string; quantity: number; cost_price: number; final_price: number; price?: number }[];
   anatomy_image_url?: string;
   anatomy_status?: 'pending' | 'approved' | 'rejected' | 'not_provided';
   anatomy_review_comment?: string;
+  is_quick_sale?: boolean;
 
   // --- פרטי הורה למתחת לגיל 16 ---
   is_under_16?: boolean;

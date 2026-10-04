@@ -23,27 +23,58 @@ let settingsPromise: Promise<StudioSettings> | null = null;
  * Validates mandatory client information, formats, and consent flags before DB insertion.
  */
 export const validateAndSanitizeAppointmentPayload = (appt: Partial<Appointment>): void => {
+  const isQuickSale = Boolean(
+    appt.is_quick_sale ||
+    (appt.notes && appt.notes.includes('מכירה מהירה')) ||
+    (appt.cart_items && appt.cart_items.length > 0 && appt.status === 'completed')
+  );
+
   // 1. Full name validation
   const name = (appt.client_name || '').trim();
-  if (!name || name.length < 2) {
-    throw new Error('שם לקוח לא תקין. יש להזין שם מלא בן 2 תווים לפחות.');
-  }
-  if (name.length > 100 || /[<>]/.test(name)) {
-    throw new Error('שם לקוח מכיל תווים לא מורשים.');
+  if (isQuickSale) {
+    if (name && (name.length > 100 || /[<>]/.test(name))) {
+      throw new Error('שם לקוח מכיל תווים לא מורשים.');
+    }
+  } else {
+    if (!name || name.length < 2) {
+      throw new Error('שם לקוח לא תקין. יש להזין שם מלא בן 2 תווים לפחות.');
+    }
+    if (name.length > 100 || /[<>]/.test(name)) {
+      throw new Error('שם לקוח מכיל תווים לא מורשים.');
+    }
   }
 
   // 2. Email format validation (RFC 5322 standard)
   const email = (appt.client_email || '').trim();
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (!email || !emailRegex.test(email)) {
-    throw new Error('כתובת דואר אלקטרוני לא תקינה. יש להזין כתובת דוא"ל חוקית.');
+  if (isQuickSale) {
+    // In Quick Sales, email is optional, but if provided, must be valid
+    if (email && !emailRegex.test(email)) {
+      throw new Error('כתובת דואר אלקטרוני לא תקינה. יש להזין כתובת דוא"ל חוקית.');
+    }
+  } else {
+    if (!email || !emailRegex.test(email)) {
+      throw new Error('כתובת דואר אלקטרוני לא תקינה. יש להזין כתובת דוא"ל חוקית.');
+    }
   }
 
   // 3. Israeli phone format validation
   const cleanPhone = (appt.client_phone || '').replace(/[\s-]/g, '');
   const phoneRegex = /^(?:(?:\+?972)|0)(?:[23489]|5[0-9]|7[0-9])\d{7}$/;
-  if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
-    throw new Error('מספר טלפון לא תקין. יש להזין מספר טלפון ישראלי תקין (9 או 10 ספרות).');
+  if (isQuickSale) {
+    // In Quick Sales, phone is optional, but if provided, must be valid
+    if (cleanPhone && !phoneRegex.test(cleanPhone)) {
+      throw new Error('מספר טלפון לא תקין. יש להזין מספר טלפון ישראלי תקין (9 או 10 ספרות).');
+    }
+  } else {
+    if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+      throw new Error('מספר טלפון לא תקין. יש להזין מספר טלפון ישראלי תקין (9 או 10 ספרות).');
+    }
+  }
+
+  // Quick Sales (POS register transactions) do not require online consent forms, signatures, or parent approval
+  if (isQuickSale) {
+    return;
   }
 
   // 4. Mandatory legal consent validation
@@ -391,6 +422,12 @@ export const api = {
   },
 
   createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
+    const isQuickSale = Boolean(
+      appt.is_quick_sale ||
+      (appt.notes && appt.notes.includes('מכירה מהירה')) ||
+      (appt.cart_items && appt.cart_items.length > 0 && appt.status === 'completed')
+    );
+
     // Validate payload and enforce consent & PII minimization
     validateAndSanitizeAppointmentPayload(appt);
 
@@ -409,9 +446,11 @@ export const api = {
       finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
     }
 
-    const consentTimestamp = appt.consent_timestamp || new Date().toISOString();
-    const marketingText = appt.marketing_opt_in ? 'אושר' : 'לא אושר';
-    finalNotes += `\n\n=== תיעוד הסכמות וציות חוקי (Phase 2) ===\n• תקנון ומדיניות פרטיות: אושרו ב-${new Date(consentTimestamp).toLocaleString('he-IL')}\n• הצהרת בריאות: אושרה ונחתמה דיגיטלית\n• אישור דיוור שיווקי: ${marketingText}`;
+    if (!isQuickSale) {
+      const consentTimestamp = appt.consent_timestamp || new Date().toISOString();
+      const marketingText = appt.marketing_opt_in ? 'אושר' : 'לא אושר';
+      finalNotes += `\n\n=== תיעוד הסכמות וציות חוקי (Phase 2) ===\n• תקנון ומדיניות פרטיות: אושרו ב-${new Date(consentTimestamp).toLocaleString('he-IL')}\n• הצהרת בריאות: אושרה ונחתמה דיגיטלית\n• אישור דיוור שיווקי: ${marketingText}`;
+    }
 
     // --- Transaction-like Logic for Coupon ---
     // In a real DB we'd use a transaction. Here we optimistically update settings.
@@ -449,12 +488,30 @@ export const api = {
 
     if (!dbClient) {
       // Mock fallback
-      return {
-        id: 'mock',
-        ...appt,
+      const mockAppt: Appointment = {
+        id: 'mock-' + Date.now(),
+        client_id: appt.client_id,
+        client_name: (appt.client_name || (isQuickSale ? 'לקוח מזדמן' : '')).trim(),
+        client_email: appt.client_email || '',
+        client_phone: appt.client_phone || '',
+        service_id: appt.service_id || 'quick-sale',
+        service_name: appt.service_name,
+        start_time: appt.start_time || new Date().toISOString(),
+        end_time: endTime,
+        status: appt.status || 'pending',
         notes: finalNotes,
-        end_time: endTime
-      } as Appointment;
+        signature: appt.signature,
+        created_at: new Date().toISOString(),
+        coupon_code: appt.coupon_code,
+        final_price: appt.final_price,
+        total_cost: appt.total_cost,
+        total_profit: appt.total_profit,
+        cart_items: appt.cart_items,
+        is_under_16: appt.is_under_16,
+        is_quick_sale: isQuickSale
+      };
+      MOCK_APPOINTMENTS.unshift(mockAppt);
+      return mockAppt;
     }
 
     // Strictly minimize PII: if not minor under 16, sanitize parent data to null
@@ -462,19 +519,25 @@ export const api = {
     const parentId = appt.is_under_16 ? (appt.parent_id || '').trim() : null;
     const parentPhone = appt.is_under_16 ? (appt.parent_phone || '').trim() : null;
 
+    const guestEmail = (appt.client_email || '').trim().toLowerCase();
+    const guestPhone = (appt.client_phone || '').trim();
+
     const payload = {
       client_id: appt.client_id,
       service_id: appt.service_id,
       start_time: appt.start_time,
       end_time: endTime,
-      guest_name: (appt.client_name || '').trim(),
-      guest_email: (appt.client_email || '').trim().toLowerCase(),
-      guest_phone: (appt.client_phone || '').trim(),
+      guest_name: (appt.client_name || (isQuickSale ? 'לקוח מזדמן' : '')).trim(),
+      guest_email: guestEmail || null,
+      guest_phone: guestPhone || null,
       notes: finalNotes,
       signature: appt.signature,
-      status: 'pending', // Default to pending
-      price: appt.final_price, // Ensure price is saved
-      final_price: appt.final_price,
+      status: appt.status || 'pending',
+      price: appt.final_price ?? appt.price ?? null,
+      final_price: appt.final_price ?? appt.price ?? null,
+      total_cost: appt.total_cost || 0,
+      total_profit: appt.total_profit || 0,
+      cart_items: appt.cart_items || null,
       ai_recommendation_text: appt.ai_recommendation_text,
       visual_plan: appt.visual_plan,
       anatomy_image_url: appt.anatomy_image_url,
@@ -501,16 +564,21 @@ export const api = {
       id: data.id,
       client_id: data.client_id,
       client_name: data.guest_name,
-      client_email: data.guest_email,
-      client_phone: data.guest_phone,
+      client_email: data.guest_email || '',
+      client_phone: data.guest_phone || '',
       service_id: data.service_id,
+      service_name: appt.service_name,
       start_time: data.start_time,
+      end_time: data.end_time,
       status: data.status as Appointment['status'],
       notes: data.notes,
       signature: data.signature,
       created_at: data.created_at,
       coupon_code: appt.coupon_code,
-      final_price: appt.final_price,
+      final_price: data.final_price !== null && data.final_price !== undefined ? Number(data.final_price) : appt.final_price,
+      total_cost: data.total_cost !== null && data.total_cost !== undefined ? Number(data.total_cost) : appt.total_cost,
+      total_profit: data.total_profit !== null && data.total_profit !== undefined ? Number(data.total_profit) : appt.total_profit,
+      cart_items: data.cart_items || appt.cart_items,
       is_under_16: data.is_under_16,
       parent_name: data.parent_name,
       parent_id: data.parent_id,

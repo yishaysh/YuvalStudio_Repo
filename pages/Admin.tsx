@@ -128,6 +128,7 @@ const sendWhatsapp = (apt: any, type: 'status_update' | 'reminder', settings?: S
         }
     }
 
+    if (!apt.client_phone) return;
     const phone = apt.client_phone.startsWith('0') ? `972${apt.client_phone.substring(1)}` : apt.client_phone;
     const cleanPhone = phone.replace(/\D/g, '');
 
