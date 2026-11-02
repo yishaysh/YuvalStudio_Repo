@@ -232,7 +232,7 @@ const JewelryPage: React.FC = () => {
         <div className="flex bg-brand-surface/50 p-1 rounded-full border border-white/10">
           <button
             onClick={() => setActiveTab('gallery')}
-            className={`min-h-[44px] px-8 py-2.5 rounded-full text-sm font-medium transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+            className={`min-h-[44px] px-8 py-2.5 rounded-full text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
               activeTab === 'gallery'
                 ? 'bg-brand-primary text-brand-dark shadow-lg'
                 : 'text-slate-400 hover:text-white'
@@ -242,7 +242,7 @@ const JewelryPage: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`min-h-[44px] px-8 py-2.5 rounded-full text-sm font-medium transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
+            className={`min-h-[44px] px-8 py-2.5 rounded-full text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
               activeTab === 'inventory'
                 ? 'bg-brand-primary text-brand-dark shadow-lg'
                 : 'text-slate-400 hover:text-white'
@@ -276,13 +276,13 @@ const JewelryPage: React.FC = () => {
                   <m.div
                     key={item.id || i}
                     variants={{
-                      hidden: { opacity: 0, y: 10 },
-                      visible: { opacity: 1, y: 0 }
+                      hidden: { opacity: 0, transform: "translateY(10px)" },
+                      visible: { opacity: 1, transform: "translateY(0px)" }
                     }}
-                    transition={{ duration: 0.4 }}
+                    transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
                     className="aspect-[4/5] rounded-xl overflow-hidden shadow-xl border border-white/5 cursor-zoom-in relative group will-change-transform"
                     onClick={() => { setDirection(1); setSelectedIndex(i); }}
-                    whileHover={{ y: -5 }}
+                    whileHover={{ transform: "translateY(-4px)" }}
                   >
                     {/* Wishlist Button Overlay */}
                     <button
@@ -312,8 +312,8 @@ const JewelryPage: React.FC = () => {
 
                     {/* Overlay - Centered "Get The Look" */}
                     {item.taggedServices?.length > 0 && (
-                      <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 flex items-center justify-center pointer-events-none">
-                        <div className="text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
+                      <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-emil-out z-10 flex items-center justify-center pointer-events-none">
+                        <div className="text-white transform scale-95 group-hover:scale-100 transition-transform duration-200 ease-emil-out bg-black/60 px-5 py-2.5 rounded-full border border-white/20 shadow-xl backdrop-blur-md">
                           <p className="font-serif text-sm md:text-base flex items-center gap-2 tracking-wide">
                             <Sparkles className="w-4 h-4 text-brand-primary" /> Get The Look
                           </p>
@@ -412,7 +412,7 @@ const JewelryPage: React.FC = () => {
               <button
                 onClick={() => setSelectedIndex(null)}
                 aria-label="סגור תצוגה מוגדלת"
-                className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-all border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="absolute top-4 right-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-[background-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.95] border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -422,14 +422,14 @@ const JewelryPage: React.FC = () => {
                 <button
                   onClick={handlePrev}
                   aria-label="לתמונה הקודמת"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-[background-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.95] border border-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
                 <button
                   onClick={handleNext}
                   aria-label="לתמונה הבאה"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-all border border-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 text-white/90 hover:text-white p-3 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-[background-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.95] border border-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>

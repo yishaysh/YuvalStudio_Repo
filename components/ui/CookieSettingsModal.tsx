@@ -49,7 +49,7 @@ const LuxuryToggleSwitch: React.FC<ToggleSwitchProps> = ({
         aria-label={label}
         disabled={isMandatory}
         onClick={isMandatory ? undefined : onToggle}
-        className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 ${
+        className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-[background-color,border-color,box-shadow,transform] duration-200 ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-primary/50 ${
           isMandatory
             ? 'bg-emerald-500/20 border border-emerald-500/40 cursor-not-allowed opacity-90'
             : isChecked
@@ -59,7 +59,7 @@ const LuxuryToggleSwitch: React.FC<ToggleSwitchProps> = ({
       >
         {/* Sliding Thumb Knob */}
         <span
-          className={`pointer-events-none flex items-center justify-center h-6 w-6 transform rounded-full shadow-lg transition-transform duration-300 ease-out ${
+          className={`pointer-events-none flex items-center justify-center h-6 w-6 transform rounded-full shadow-lg transition-transform duration-200 ease-emil-out ${
             isChecked
               ? 'translate-x-7 bg-brand-dark border border-brand-primary/40'
               : 'translate-x-0 bg-slate-300'
@@ -179,10 +179,10 @@ export const CookieSettingsModal: React.FC = () => {
         aria-labelledby="cookie-settings-title"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 20 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
+          initial={{ opacity: 0, transform: "scale(0.96) translateY(16px)" }}
+          animate={{ opacity: 1, transform: "scale(1) translateY(0px)" }}
+          exit={{ opacity: 0, transform: "scale(0.96) translateY(16px)" }}
+          transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
           className="relative w-full max-w-2xl bg-brand-surface/98 border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] text-right"
         >
           {/* Header */}
@@ -202,7 +202,7 @@ export const CookieSettingsModal: React.FC = () => {
             </div>
             <button
               onClick={closeSettingsModal}
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-[color,background-color,transform] duration-150 ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
               aria-label="סגירת חלון הגדרות עוגיות"
             >
               <X className="w-5 h-5" />
@@ -223,7 +223,7 @@ export const CookieSettingsModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSelectAll}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-medium transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-medium transition-[background-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-primary" />
                   <span>סמן הכל כפעיל</span>
@@ -231,7 +231,7 @@ export const CookieSettingsModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleDeselectAll}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-400 hover:text-white font-medium transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-400 hover:text-white font-medium transition-[background-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] flex items-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>השבת הכל (למעט חובה)</span>
@@ -249,7 +249,7 @@ export const CookieSettingsModal: React.FC = () => {
                 return (
                   <div
                     key={category.id}
-                    className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 border ${
+                    className={`p-4 sm:p-5 rounded-2xl transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-emil-out border ${
                       isChecked
                         ? 'bg-white/[0.04] border-white/15 shadow-sm'
                         : 'bg-white/[0.02] border-white/5 opacity-80 hover:opacity-100'
@@ -315,14 +315,14 @@ export const CookieSettingsModal: React.FC = () => {
               <button
                 type="button"
                 onClick={rejectAll}
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/15 text-white font-medium text-xs sm:text-sm transition-all text-center focus:ring-2 focus:ring-white/30"
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/15 text-white font-medium text-xs sm:text-sm transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] text-center focus:ring-2 focus:ring-white/30"
               >
                 דחה הכל
               </button>
               <button
                 type="button"
                 onClick={acceptAll}
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-brand-primary/40 bg-brand-primary/15 hover:bg-brand-primary/25 text-brand-primary font-medium text-xs sm:text-sm transition-all text-center focus:ring-2 focus:ring-brand-primary/40"
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-brand-primary/40 bg-brand-primary/15 hover:bg-brand-primary/25 text-brand-primary font-medium text-xs sm:text-sm transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] text-center focus:ring-2 focus:ring-brand-primary/40"
               >
                 קבל הכל
               </button>
@@ -332,14 +332,14 @@ export const CookieSettingsModal: React.FC = () => {
               <button
                 type="button"
                 onClick={closeSettingsModal}
-                className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white text-xs sm:text-sm transition-colors"
+                className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white text-xs sm:text-sm transition-[color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]"
               >
                 ביטול
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-brand-dark font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-brand-primary/20 flex items-center justify-center gap-2 focus:ring-2 focus:ring-brand-primary/50"
+                className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-brand-dark font-semibold text-xs sm:text-sm transition-[background-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] shadow-lg shadow-brand-primary/20 flex items-center justify-center gap-2 focus:ring-2 focus:ring-brand-primary/50"
               >
                 <Check className="w-4 h-4 stroke-[2.5]" />
                 <span>שמור העדפות</span>

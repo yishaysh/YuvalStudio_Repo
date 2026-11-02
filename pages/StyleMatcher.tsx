@@ -40,7 +40,7 @@ const SwipeCard = ({ card, active, onSwipe, zIndex, exitDirection }: any) => {
                 x: exitDirection === 'right' ? 500 : -500,
                 opacity: 0,
                 rotate: exitDirection === 'right' ? 20 : -20,
-                transition: { duration: 0.4, ease: "easeOut" }
+                transition: { duration: 0.25, ease: [0.23, 1, 0.32, 1] }
             }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             drag={active ? "x" : false}
@@ -167,13 +167,13 @@ const StyleMatcher: React.FC = () => {
                     </p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-bold text-lg hover:bg-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                        className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-bold text-lg hover:bg-white transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                     >
                         <RefreshCw className="w-5 h-5" /> נסו לרענן
                     </button>
                     <button
                         onClick={() => navigate('/')}
-                        className="mt-4 flex items-center justify-center w-full py-4 rounded-xl border border-white/10 text-slate-300 font-medium hover:bg-white/5 transition-all"
+                        className="mt-4 flex items-center justify-center w-full py-4 rounded-xl border border-white/10 text-slate-300 font-medium hover:bg-white/5 transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]"
                     >
                         חזרה לדף הבית
                     </button>
@@ -219,7 +219,7 @@ const StyleMatcher: React.FC = () => {
 
                             <button
                                 onClick={() => navigate('/booking', { state: { preSelectedServices: likedItems } })}
-                                className="block w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-medium hover:bg-white transition-all shadow-lg"
+                                className="block w-full py-4 rounded-xl bg-brand-primary text-brand-dark font-medium hover:bg-white transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] shadow-lg"
                             >
                                 קבע תור עכשיו
                             </button>
@@ -231,7 +231,7 @@ const StyleMatcher: React.FC = () => {
                             </p>
                             <button
                                 onClick={resetMatcher}
-                                className="flex items-center justify-center gap-2 w-full py-4 rounded-xl border border-brand-primary text-brand-primary font-medium hover:bg-brand-primary/10 transition-all"
+                                className="flex items-center justify-center gap-2 w-full py-4 rounded-xl border border-brand-primary text-brand-primary font-medium hover:bg-brand-primary/10 transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]"
                             >
                                 <RefreshCw className="w-5 h-5" /> נסה שוב
                             </button>
@@ -287,13 +287,13 @@ const StyleMatcher: React.FC = () => {
             <div className="flex flex-row-reverse gap-8 mt-10 w-full max-w-sm justify-center px-6" dir="ltr">
                 <button
                     onClick={() => handleSwipe('left')}
-                    className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-red-400 hover:bg-red-400/20 hover:text-red-300 transition-all shadow-lg shadow-black/50 border border-white/10 hover:scale-110 active:scale-95"
+                    className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-red-400 hover:bg-red-400/20 hover:text-red-300 transition-[transform,background-color] duration-[160ms] ease-emil-out hover:scale-105 active:scale-[0.95]"
                 >
                     <X className="w-8 h-8" />
                 </button>
                 <button
                     onClick={() => handleSwipe('right')}
-                    className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary hover:bg-brand-primary/30 transition-all shadow-lg shadow-black/50 border border-brand-primary/30 hover:scale-110 active:scale-95"
+                    className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary hover:bg-brand-primary/30 transition-[transform,background-color] duration-[160ms] ease-emil-out hover:scale-105 active:scale-[0.95]"
                 >
                     <Heart className="w-7 h-7 fill-current" />
                 </button>

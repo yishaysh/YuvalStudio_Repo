@@ -43,9 +43,9 @@ const Home: React.FC = () => {
 
         <div className="container mx-auto px-6 relative z-10 text-center">
           <m.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            initial={{ opacity: 0, transform: "translateY(20px)" }}
+            animate={{ opacity: 1, transform: "translateY(0px)" }}
+            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             className="will-change-transform"
           >
             <AnimatedLogo className="w-56 md:w-80 h-auto mx-auto mb-10 text-brand-primary drop-shadow-[0_0_15px_rgba(212,181,133,0.3)]" />
@@ -122,14 +122,14 @@ const Home: React.FC = () => {
           ].map((item, i) => (
             <m.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, transform: "translateY(16px)" }}
+              whileInView={{ opacity: 1, transform: "translateY(0px)" }}
               viewport={{ once: true, margin: "100px" }}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
+              transition={{ delay: i * 0.05, duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
               className="will-change-transform"
             >
               <Card className="h-full text-center hover:bg-brand-surface/80 transition-colors group border-transparent hover:border-brand-primary/20">
-                <div className="w-12 h-12 bg-brand-dark rounded-2xl flex items-center justify-center mx-auto mb-6 text-brand-primary group-hover:scale-110 transition-transform duration-500">
+                <div className="w-12 h-12 bg-brand-dark rounded-2xl flex items-center justify-center mx-auto mb-6 text-brand-primary group-hover:scale-105 transition-transform duration-[160ms] ease-emil-out">
                   <item.icon className="w-6 h-6" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-medium text-white mb-3">{item.title}</h3>

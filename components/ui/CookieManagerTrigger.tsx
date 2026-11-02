@@ -20,14 +20,14 @@ export const CookieManagerTrigger: React.FC = () => {
   return (
     <aside
       aria-label="ניהול עוגיות ופרטיות"
-      className={`fixed left-6 z-[9990] print:hidden transition-all duration-300 ${
+      className={`fixed left-6 z-[9990] print:hidden transition-[bottom] duration-200 ease-emil-out ${
         isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'
       }`}
     >
       <button
         type="button"
         onClick={openSettingsModal}
-        className="group relative w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-brand-surface/90 hover:bg-brand-surface border border-white/10 hover:border-brand-primary/40 text-slate-300 hover:text-brand-primary shadow-xl backdrop-blur-md flex items-center justify-center transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-brand-primary/30"
+        className="group relative w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-brand-surface/90 hover:bg-brand-surface border border-white/10 hover:border-brand-primary/40 text-slate-300 hover:text-brand-primary shadow-xl backdrop-blur-md flex items-center justify-center transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] hover:scale-[1.03] focus:outline-none focus:ring-4 focus:ring-brand-primary/30"
         aria-label="ניהול הגדרות עוגיות ופרטיות"
       >
         <Cookie className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />

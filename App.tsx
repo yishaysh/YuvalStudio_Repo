@@ -83,11 +83,11 @@ const Navbar = () => {
 
   return (
     <>
-      <nav aria-label="ניווט ראשי" className="fixed top-0 left-0 right-0 z-50 bg-brand-dark/80 backdrop-blur-lg border-b border-white/5 transition-all duration-300">
+      <nav aria-label="ניווט ראשי" className="fixed top-0 left-0 right-0 z-50 bg-brand-dark/80 backdrop-blur-lg border-b border-white/5 transition-colors duration-200 ease-emil-out">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="group flex items-center gap-3">
-            <StudioLogo className="h-10 w-auto text-brand-primary transition-all duration-300 group-hover:brightness-110 group-hover:drop-shadow-[0_0_8px_rgba(212,181,133,0.3)]" />
+            <StudioLogo className="h-10 w-auto text-brand-primary transition-[filter,color] duration-200 ease-emil-out group-hover:brightness-110 group-hover:drop-shadow-[0_0_8px_rgba(212,181,133,0.3)]" />
             <span className="text-xl font-serif text-white tracking-wide group-hover:text-brand-primary transition-colors">
               Yuval Studio
             </span>
@@ -104,7 +104,7 @@ const Navbar = () => {
               ].map((item) => (
                 <Link key={item.path} to={item.path} className="text-sm font-medium text-slate-400 hover:text-white transition-colors relative group">
                   {item.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-brand-primary transition-all duration-300 group-hover:w-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-full h-[1px] bg-brand-primary scale-x-0 origin-right transition-transform duration-200 ease-emil-out group-hover:scale-x-100"></span>
                 </Link>
               ))}
             </div>
@@ -113,7 +113,7 @@ const Navbar = () => {
 
             <Link
               to="/booking"
-              className="px-6 py-2.5 bg-brand-primary text-brand-dark font-medium rounded-full hover:bg-brand-primaryHover transition-all shadow-lg shadow-brand-primary/10"
+              className="px-6 py-2.5 bg-brand-primary text-brand-dark font-medium rounded-full hover:bg-brand-primaryHover transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] shadow-lg shadow-brand-primary/10"
             >
               הזמן תור
             </Link>
@@ -123,7 +123,7 @@ const Navbar = () => {
               <Link
                 to="/dashboard"
                 title="אזור אישי"
-                className="w-10 h-10 flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-all border border-brand-primary/20"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-brand-primary/20"
               >
                 <User className="w-4 h-4" />
               </Link>
@@ -131,7 +131,7 @@ const Navbar = () => {
               <button
                 onClick={() => setIsLoginOpen(true)}
                 title="התחברות לאזור אישי"
-                className="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]"
               >
                 <User className="w-4 h-4" />
               </button>
@@ -140,7 +140,7 @@ const Navbar = () => {
             <Link
               to="/admin"
               title="כניסת מנהל"
-              className="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:text-brand-primary hover:bg-white/5 transition-all"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:text-brand-primary hover:bg-white/5 transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]"
             >
               <Lock className="w-4 h-4" />
             </Link>
@@ -155,7 +155,7 @@ const Navbar = () => {
                 to="/dashboard"
                 title="אזור אישי"
                 aria-label="אזור אישי"
-                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-all border border-brand-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-brand-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <User className="w-5 h-5" />
               </Link>
@@ -164,7 +164,7 @@ const Navbar = () => {
                 onClick={() => setIsLoginOpen(true)}
                 title="התחברות לאזור אישי"
                 aria-label="התחברות לאזור אישי"
-                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
               >
                 <User className="w-5 h-5" />
               </button>
@@ -185,30 +185,46 @@ const Navbar = () => {
         <AnimatePresence>
           {isOpen && (
             <m.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              initial={{ opacity: 0, transform: "translateY(-16px)" }}
+              animate={{ opacity: 1, transform: "translateY(0px)" }}
+              exit={{ opacity: 0, transform: "translateY(-16px)" }}
+              transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.25 }}
               className="md:hidden bg-brand-dark/95 backdrop-blur-xl absolute top-20 left-0 right-0 border-b border-white/5 shadow-2xl h-[calc(100dvh-5rem)] overflow-y-auto pb-safe will-change-transform"
             >
               <div className="flex flex-col p-8 gap-8 items-center text-center pt-10">
-                <Link to="/" className="text-2xl font-serif text-white hover:text-brand-primary">דף הבית</Link>
-                <Link to="/booking" className="text-2xl font-serif text-white hover:text-brand-primary">הזמן תור</Link>
-                <Link to="/services" className="text-2xl font-serif text-white hover:text-brand-primary">שירותים ומחירים</Link>
-                <Link to="/jewelry" className="text-2xl font-serif text-white hover:text-brand-primary">גלריה ותכשיטים</Link>
-                <Link to="/aftercare" className="text-2xl font-serif text-white hover:text-brand-primary">הוראות טיפול</Link>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 0 }}>
+                  <Link to="/" className="text-2xl font-serif text-white hover:text-brand-primary transition-colors">דף הבית</Link>
+                </m.div>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 1 }}>
+                  <Link to="/booking" className="text-2xl font-serif text-white hover:text-brand-primary transition-colors">הזמן תור</Link>
+                </m.div>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 2 }}>
+                  <Link to="/services" className="text-2xl font-serif text-white hover:text-brand-primary transition-colors">שירותים ומחירים</Link>
+                </m.div>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 3 }}>
+                  <Link to="/jewelry" className="text-2xl font-serif text-white hover:text-brand-primary transition-colors">גלריה ותכשיטים</Link>
+                </m.div>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 4 }}>
+                  <Link to="/aftercare" className="text-2xl font-serif text-white hover:text-brand-primary transition-colors">הוראות טיפול</Link>
+                </m.div>
                 {showStyleMatcher && (
-                  <Link to="/style-matcher" className="text-2xl font-serif text-brand-primary hover:text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5" /> סטייל מאצ'ר
-                  </Link>
+                  <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 5 }}>
+                    <Link to="/style-matcher" className="text-2xl font-serif text-brand-primary hover:text-white flex items-center gap-2 transition-colors">
+                      <Sparkles className="w-5 h-5" /> סטייל מאצ'ר
+                    </Link>
+                  </m.div>
                 )}
                 <div className="w-12 h-[1px] bg-white/10 my-2"></div>
-                {user ? (
-                  <Link to="/dashboard" className="text-xl font-serif text-brand-primary">אזור אישי</Link>
-                ) : (
-                  <button onClick={() => { setIsOpen(false); setIsLoginOpen(true); }} className="text-xl font-serif text-slate-300">התחברות</button>
-                )}
-                <Link to="/admin" className="text-sm text-slate-500 hover:text-white border border-white/10 px-6 py-2 rounded-full">כניסת מנהל</Link>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 6 }}>
+                  {user ? (
+                    <Link to="/dashboard" className="text-xl font-serif text-brand-primary">אזור אישי</Link>
+                  ) : (
+                    <button onClick={() => { setIsOpen(false); setIsLoginOpen(true); }} className="text-xl font-serif text-slate-300 hover:text-white transition-colors">התחברות</button>
+                  )}
+                </m.div>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 7 }}>
+                  <Link to="/admin" className="text-sm text-slate-500 hover:text-white border border-white/10 px-6 py-2 rounded-full transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]">כניסת מנהל</Link>
+                </m.div>
               </div>
             </m.div>
           )}
@@ -452,7 +468,7 @@ const App: React.FC = () => {
                       href={instagramUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-all border border-white/10"
+                      className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-white/10"
                       aria-label="עמוד האינסטגרם של יובל סטודיו"
                     >
                       <Instagram className="w-4 h-4" />

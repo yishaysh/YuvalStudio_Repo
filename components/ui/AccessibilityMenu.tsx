@@ -26,14 +26,14 @@ export const AccessibilityMenu = () => {
     };
 
     return (
-        <div className={`fixed right-6 z-[9999] print:hidden transition-all duration-300 ${
+        <div className={`fixed right-6 z-[9999] print:hidden transition-[bottom] duration-200 ease-emil-out ${
             isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'
         }`}>
             {/* Main Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-brand-primary/50 ${
-                    isOpen ? 'bg-brand-surface border border-white/10 text-white' : 'bg-brand-primary text-brand-dark hover:scale-105'
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-primary/50 ${
+                    isOpen ? 'bg-brand-surface border border-white/10 text-white' : 'bg-brand-primary text-brand-dark hover:scale-[1.03]'
                 }`}
                 aria-label="תפריט נגישות"
                 aria-expanded={isOpen}
@@ -45,10 +45,10 @@ export const AccessibilityMenu = () => {
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ opacity: 0, transform: "scale(0.95) translateY(12px)" }}
+                        animate={{ opacity: 1, transform: "scale(1) translateY(0px)" }}
+                        exit={{ opacity: 0, transform: "scale(0.95) translateY(12px)" }}
+                        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
                         className="absolute bottom-16 right-0 w-80 bg-brand-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-bottom-right"
                     >
                         {/* Header */}

@@ -431,8 +431,9 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                             {done ? (
                                 <motion.div
                                     key="done"
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
+                                    initial={{ transform: "scale(0.8)", opacity: 0 }}
+                                    animate={{ transform: "scale(1)", opacity: 1 }}
+                                    transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
                                     className="grid grid-cols-2 gap-3 w-full"
                                 >
                                     <Button onClick={() => setShowReceipt(true)} variant="primary" className="flex items-center justify-center gap-2 py-3">
@@ -485,7 +486,7 @@ export const QuickSaleModal: React.FC<QuickSaleModalProps> = ({
                                 onClick={(e) => e.stopPropagation()}
                             />
                             <button 
-                                className="absolute -top-12 right-0 p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all pointer-events-auto"
+                                className="absolute -top-12 right-0 p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-[background-color,color,transform] duration-150 ease-emil-out active:scale-[0.95] pointer-events-auto"
                                 onClick={() => setEnlargedImage(null)}
                             >
                                 <X className="w-5 h-5" />

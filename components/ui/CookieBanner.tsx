@@ -20,10 +20,10 @@ export const CookieBanner: React.FC = () => {
       <motion.section
         role="region"
         aria-label="הודעת קובצי עוגיות ופרטיות"
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        initial={{ opacity: 0, transform: "translateY(100%)" }}
+        animate={{ opacity: 1, transform: "translateY(0%)" }}
+        exit={{ opacity: 0, transform: "translateY(100%)" }}
+        transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.3 }}
         className="fixed bottom-0 left-0 right-0 z-[10001] p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-brand-surface/98 backdrop-blur-2xl border-t border-brand-primary/20 shadow-[0_-10px_35px_rgba(0,0,0,0.6)] text-right"
       >
         <div className="container mx-auto max-w-6xl">
@@ -59,7 +59,7 @@ export const CookieBanner: React.FC = () => {
               <button
                 type="button"
                 onClick={openSettingsModal}
-                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2 focus:ring-2 focus:ring-brand-primary/40"
+                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] flex items-center justify-center gap-2 focus:ring-2 focus:ring-brand-primary/40"
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 <span>התאמה אישית</span>
@@ -69,7 +69,7 @@ export const CookieBanner: React.FC = () => {
               <button
                 type="button"
                 onClick={rejectAll}
-                className="px-5 py-3 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm focus:ring-2 focus:ring-white/30"
+                className="px-5 py-3 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] flex items-center justify-center gap-2 shadow-sm focus:ring-2 focus:ring-white/30"
               >
                 <X className="w-4 h-4" />
                 <span>דחה הכל</span>
@@ -79,7 +79,7 @@ export const CookieBanner: React.FC = () => {
               <button
                 type="button"
                 onClick={acceptAll}
-                className="px-6 py-3 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-brand-dark text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-brand-primary/15 flex items-center justify-center gap-2 focus:ring-2 focus:ring-brand-primary/50"
+                className="px-6 py-3 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-brand-dark text-xs sm:text-sm font-semibold transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] shadow-lg shadow-brand-primary/15 flex items-center justify-center gap-2 focus:ring-2 focus:ring-brand-primary/50"
               >
                 <Check className="w-4 h-4" />
                 <span>קבל הכל</span>

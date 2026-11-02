@@ -124,9 +124,11 @@ export const AftercareAssistant: React.FC<AftercareAssistantProps> = ({ appointm
         <Card className={`mb-8 border ${phase.borderColor} ${phase.bgColor} relative overflow-hidden`}>
             <div className="absolute top-0 left-0 right-0 h-1 bg-white/5">
                 <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min((daysSince / 60) * 100, 100)}%` }}
-                    className={`h-full ${phase.color.replace('text-', 'bg-')}`}
+                    style={{ transformOrigin: 'right' }}
+                    initial={{ transform: 'scaleX(0)' }}
+                    animate={{ transform: `scaleX(${Math.min(daysSince / 60, 1)})` }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                    className={`h-full w-full ${phase.color.replace('text-', 'bg-')}`}
                 />
             </div>
 

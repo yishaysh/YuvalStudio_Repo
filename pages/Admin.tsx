@@ -30,9 +30,10 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
 
     return (
         <m.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={{ opacity: 0, transform: "translateY(50px) scale(0.9)" }}
+            animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+            exit={{ opacity: 0, transform: "translateY(20px) scale(0.9)" }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
             className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl backdrop-blur-md border ${type === 'success'
                 ? 'bg-emerald-500/90 text-white border-emerald-400/50'
                 : 'bg-red-500/90 text-white border-red-400/50'
@@ -40,7 +41,7 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
         >
             {type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             <span className="font-medium text-sm">{message}</span>
-            <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors">
+            <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors duration-150 ease-out active:scale-[0.95]">
                 <X className="w-4 h-4" />
             </button>
         </m.div>
@@ -486,7 +487,7 @@ const EditTimeModal = ({ apt, isOpen, onClose, onRefresh, settings }: any) => {
                                     <button
                                         key={slot.time}
                                         onClick={() => setSelectedTime(slot.time)}
-                                        className={`py-2 px-1 rounded-lg text-sm border transition-all
+                                        className={`py-2 px-1 rounded-lg text-sm border transition-[background-color,border-color,color] duration-150 ease-out active:scale-[0.98]
                                             ${selectedTime === slot.time
                                                 ? 'bg-brand-primary border-brand-primary text-brand-dark shadow-[0_0_15px_rgba(212,181,133,0.3)]'
                                                 : isCurrentApptTime
@@ -864,7 +865,7 @@ const AppointmentsList = ({
                                             <div className="flex items-center gap-3">
                                                 <div
                                                     onClick={() => onViewProfile && onViewProfile(apt)}
-                                                    className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-brand-primary/50 transition-all flex-shrink-0"
+                                                    className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 ring-brand-primary/50 transition-[box-shadow,transform] duration-150 ease-out active:scale-[0.97] flex-shrink-0"
                                                 >
                                                     {apt.client_avatar_url ? (
                                                         <img src={apt.client_avatar_url} alt={apt.client_name} className="w-full h-full object-cover" />
@@ -943,7 +944,7 @@ const AppointmentsList = ({
                                                 </div>
 
                                                 {/* Price Breakdown Tooltip */}
-                                                <div className="absolute lg:top-full bottom-full lg:bottom-auto right-1/2 translate-x-1/2 mb-2 lg:mb-0 lg:mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-3 pointer-events-none text-right">
+                                                <div className="absolute lg:top-full bottom-full lg:bottom-auto right-1/2 translate-x-1/2 mb-2 lg:mb-0 lg:mt-2 w-48 bg-brand-surface border border-white/10 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-[opacity,visibility] duration-150 ease-out p-3 pointer-events-none text-right">
                                                     <div className="text-xs space-y-2">
                                                         <div className="flex justify-between text-slate-400 border-b border-white/5 pb-1">
                                                             <span>טיפולים:</span>
@@ -1257,7 +1258,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                 {items.map((item) => {
                     const inStock = item.in_stock !== false;
                     return (
-                        <div key={item.id} className={`relative group p-4 rounded-xl border transition-all flex items-center gap-4 ${inStock ? 'bg-brand-surface/30 border-white/5' : 'bg-red-500/5 border-red-500/20 opacity-75'}`}>
+                        <div key={item.id} className={`relative group p-4 rounded-xl border transition-[background-color,border-color,opacity] duration-150 ease-out flex items-center gap-4 ${inStock ? 'bg-brand-surface/30 border-white/5' : 'bg-red-500/5 border-red-500/20 opacity-75'}`}>
 
                             {/* Action Buttons Overlay */}
                             <div className="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -1292,7 +1293,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                                             checked={inStock}
                                             onChange={() => toggleStock(item.id)}
                                         />
-                                        <div className={`w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${inStock ? 'peer-checked:bg-emerald-500' : 'peer-checked:bg-slate-700'}`}></div>
+                                        <div className={`w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform after:duration-150 after:ease-emil-out ${inStock ? 'peer-checked:bg-emerald-500' : 'peer-checked:bg-slate-700'}`}></div>
                                     </label>
                                 </div>
                             </div>
@@ -1328,7 +1329,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                                 <img src={formData.image_url} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
                             )}
                             <div className="flex-1">
-                                <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-white/10 rounded-xl hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-all cursor-pointer bg-brand-dark/30 group">
+                                <label className="flex items-center justify-center gap-2 w-full p-4 border-2 border-dashed border-white/10 rounded-xl hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-[background-color,border-color] duration-150 ease-out cursor-pointer active:scale-[0.98] bg-brand-dark/30 group">
                                     {isUploading ? (
                                         <Loader2 className="w-5 h-5 text-brand-primary animate-spin" />
                                     ) : (
@@ -1357,7 +1358,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                                 checked={formData.in_stock}
                                 onChange={() => setFormData({ ...formData, in_stock: !formData.in_stock })}
                             />
-                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-emerald-500"></div>
                         </label>
                         <span className="text-sm text-slate-400">זמין במלאי</span>
                     </div>
@@ -1503,7 +1504,7 @@ const CouponsTab = ({ settings, onUpdate }: any) => {
                                 <span className={`text-xs ${coupon.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>{coupon.isActive ? 'פעיל' : 'לא פעיל'}</span>
                                 <div className="relative inline-flex items-center">
                                     <input type="checkbox" className="sr-only peer" checked={coupon.isActive} onChange={() => updateImmediate(coupon.id, 'isActive', !coupon.isActive)} />
-                                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-emerald-500"></div>
                                 </div>
                             </label>
                         </div>
@@ -2160,7 +2161,7 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {services.map((service: Service) => (
-                    <Card key={service.id} className="relative group hover:border-brand-primary/30 transition-all">
+                    <Card key={service.id} className="relative group hover:border-brand-primary/30 transition-[border-color,box-shadow] duration-200 ease-emil-out">
                         <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <button onClick={() => openModal(service)} className="p-2 bg-brand-surface rounded-full text-brand-primary hover:bg-brand-primary hover:text-brand-dark"><Edit2 className="w-4 h-4" /></button>
                             <button onClick={() => onDeleteService(service.id)} className="p-2 bg-brand-surface rounded-full text-red-400 hover:bg-red-500 hover:text-white"><Trash2 className="w-4 h-4" /></button>
@@ -2207,7 +2208,7 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
                                     <img src={formData.image_url} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
                                 )}
                                 <div className="flex-1">
-                                    <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-all cursor-pointer bg-brand-dark/30 group">
+                                    <label className="flex items-center justify-center gap-2 w-full p-3 border-2 border-dashed border-white/20 rounded-xl hover:border-brand-primary/50 hover:bg-brand-primary/5 transition-[background-color,border-color] duration-150 ease-out cursor-pointer active:scale-[0.98] bg-brand-dark/30 group">
                                         {isUploading ? (
                                             <span className="text-brand-primary">מעלה...</span>
                                         ) : (
@@ -2396,14 +2397,14 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                         const dayConfig = localSettings.working_hours[dayKey] || { isOpen: false, ranges: [] };
 
                         return (
-                            <div key={dayKey} className={`p-4 rounded-xl border transition-all ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
+                            <div key={dayKey} className={`p-4 rounded-xl border transition-[background-color,border-color,opacity] duration-150 ease-out ${dayConfig.isOpen ? 'bg-white/5 border-white/10' : 'bg-transparent border-white/5 opacity-60'}`}>
                                 <div className="grid grid-cols-[1fr_auto] md:grid-cols-[100px_60px_1fr] gap-x-4 gap-y-4 items-center md:items-start">
                                     <div className="font-medium text-white md:pt-2">{dayName}</div>
 
                                     <div className="md:pt-1">
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" className="sr-only peer" checked={dayConfig.isOpen} onChange={() => toggleDay(dayKey)} />
-                                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+                                            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-brand-primary"></div>
                                         </label>
                                     </div>
 
@@ -2554,7 +2555,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                 onUpdate({ ...localSettings, enable_ai: newVal }, true);
                             }}
                         />
-                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
+                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
                     </label>
                 </div>
             </Card>
@@ -2581,7 +2582,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                 onUpdate({ ...localSettings, enable_gallery: newVal }, true);
                             }}
                         />
-                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
+                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
                     </label>
                 </div>
             </Card>
@@ -2608,7 +2609,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                 onUpdate({ ...localSettings, enable_style_matcher: newVal }, true);
                             }}
                         />
-                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
+                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
                     </label>
                 </div>
             </Card>
@@ -2635,7 +2636,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                 onUpdate({ ...localSettings, show_pain_level: newVal }, true);
                             }}
                         />
-                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
+                        <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-transform after:duration-150 after:ease-emil-out peer-checked:bg-brand-primary shadow-lg shadow-brand-primary/20"></div>
                     </label>
                 </div>
             </Card>
@@ -2749,7 +2750,7 @@ const GalleryTaggingModal = ({ isOpen, onClose, services, currentTags, onSave, i
                                 <div
                                     key={service.id}
                                     onClick={() => toggleService(service.id)}
-                                    className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                    className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-[background-color,border-color] duration-150 ease-out active:scale-[0.98] ${isSelected ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-slate-600'}`}>
@@ -2803,14 +2804,14 @@ const GalleryTab = ({ gallery, onDelete, onUpload, onUpdateTags, services }: any
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <button
                                 onClick={() => setTaggingItem(item)}
-                                className="p-2 bg-brand-primary/20 text-brand-primary rounded-full hover:bg-brand-primary hover:text-brand-dark transition-all"
+                                className="p-2 bg-brand-primary/20 text-brand-primary rounded-full hover:bg-brand-primary hover:text-brand-dark transition-colors duration-150 ease-out active:scale-[0.95]"
                                 title="תייג מוצרים"
                             >
                                 <Tag className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={() => onDelete(item.id)}
-                                className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-all"
+                                className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors duration-150 ease-out active:scale-[0.95]"
                                 title="מחק תמונה"
                             >
                                 <Trash2 className="w-5 h-5" />
@@ -3268,7 +3269,7 @@ const Admin: React.FC = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => { setActiveTab(tab.id); if (tab.id !== 'appointments') setFilterId(null); }}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out active:scale-[0.98] whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-primary text-brand-dark shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                 >
                                     <tab.icon className="w-4 h-4" />
                                     <span>{tab.label}</span>
@@ -3279,7 +3280,7 @@ const Admin: React.FC = () => {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    <m.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <m.div key={activeTab} initial={{ opacity: 0, transform: "translateY(8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} exit={{ opacity: 0, transform: "translateY(-8px)" }} transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}>
                         {activeTab === 'dashboard' && <DashboardTab stats={stats} appointments={appointments} onViewAppointment={(id: string) => { setFilterId(id); setActiveTab('appointments'); }} settings={settings} onUpdateSettings={handleUpdateSettings} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} onEditRequest={handleEditQuickSale} onDeleteRequest={handleDeleteAppointment} />}
                         {activeTab === 'calendar' && <CalendarTab appointments={appointments} onStatusUpdate={handleStatusUpdate} onCancelRequest={(apt: Appointment) => setModalData({ isOpen: true, type: 'cancel', item: apt })} studioAddress={settings.studio_details?.address} onDownloadPdf={handleDownloadPdf} services={services} onSyncToCalendar={handleSyncToCalendar} onViewVisualPlan={handleViewVisualPlan} onCompleteCheckout={setCheckoutApt} onEditRequest={handleEditQuickSale} onDeleteRequest={handleDeleteAppointment} />}
                         {activeTab === 'appointments' && (
@@ -3315,7 +3316,7 @@ const Admin: React.FC = () => {
                 {/* Quick Sale floating button */}
                 <button
                     onClick={() => setQuickSaleOpen(true)}
-                    className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-brand-primary text-brand-dark font-bold px-5 py-3 rounded-2xl shadow-2xl shadow-brand-primary/30 hover:shadow-brand-primary/50 hover:scale-105 active:scale-95 transition-all text-sm"
+                    className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-brand-primary text-brand-dark font-bold px-5 py-3 rounded-2xl shadow-2xl shadow-brand-primary/30 hover:shadow-brand-primary/50 hover:scale-105 active:scale-[0.97] transition-[background-color,box-shadow,transform] duration-150 ease-emil-out text-sm"
                 >
                     <Zap className="w-4 h-4" />
                     קופה מהירה

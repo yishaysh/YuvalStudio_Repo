@@ -91,8 +91,9 @@ const TimelineNode = ({ appointment, isFuture, studioDetails, onViewReceipt }: {
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, transform: "translateX(16px)" }}
+            animate={{ opacity: 1, transform: "translateX(0px)" }}
+            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
             className="relative"
         >
             {/* Timeline Dot */}
@@ -101,7 +102,7 @@ const TimelineNode = ({ appointment, isFuture, studioDetails, onViewReceipt }: {
             />
 
             <Card
-                className={`transition-all duration-300 cursor-pointer overflow-hidden group
+                className={`transition-[background-color,border-color,box-shadow] duration-200 ease-emil-out cursor-pointer overflow-hidden group
                     ${isFuture
                         ? 'bg-brand-surface/80 border-brand-primary/30 hover:border-brand-primary/60 hover:shadow-[0_0_30px_rgba(212,181,133,0.1)]'
                         : 'bg-white/5 border-white/5 hover:bg-white/10'
@@ -138,6 +139,7 @@ const TimelineNode = ({ appointment, isFuture, studioDetails, onViewReceipt }: {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
                             className="bg-black/20 border-t border-white/5"
                         >
                             <div className="p-5 space-y-4 text-sm text-slate-300">

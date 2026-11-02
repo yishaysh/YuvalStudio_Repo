@@ -267,7 +267,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                     <Button 
                         onClick={handleDownload} 
                         disabled={isExporting}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                        className="bg-white/5 hover:bg-white/10 border border-white/10 text-white flex items-center justify-center gap-2 py-3 rounded-xl transition-[background-color,border-color,color] duration-150 ease-emil-out active:scale-[0.97]"
                     >
                         <Download className="w-4 h-4" />
                         {isExporting ? 'מייצר...' : 'שמור תמונה'}

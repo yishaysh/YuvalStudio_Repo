@@ -65,7 +65,7 @@ const ServiceCard = React.memo(({ service, isSelected, onClick, priority = false
     return (
         <div
             onClick={onClick}
-            className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-200 group h-32 ${isSelected ? 'border-brand-primary bg-brand-primary/10 shadow-[0_0_15px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}
+            className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 ease-emil-out group h-32 ${isSelected ? 'border-brand-primary bg-brand-primary/10 shadow-[0_0_15px_rgba(212,181,133,0.1)]' : 'border-white/5 bg-brand-surface/50 hover:border-brand-primary/30'}`}
         >
             <div className="flex h-full">
                 <div className="w-32 shrink-0 relative overflow-hidden bg-brand-dark/50">
@@ -930,7 +930,7 @@ const Booking: React.FC = () => {
                                     onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}
                                     aria-expanded={isMobileSummaryOpen}
                                     aria-label="פתח או סגור סיכום ביניים לתור"
-                                    className="w-full flex items-center justify-between p-4 bg-brand-surface/90 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-all active:scale-[0.98] relative z-20"
+                                    className="w-full flex items-center justify-between p-4 bg-brand-surface/90 backdrop-blur-md border border-white/10 rounded-xl shadow-lg transition-[background-color,border-color,box-shadow,transform] duration-150 ease-emil-out active:scale-[0.98] relative z-20"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
@@ -987,7 +987,7 @@ const Booking: React.FC = () => {
 
                         <AnimatePresence mode="wait" initial={false}>
                             {step === BookingStep.SELECT_SERVICE && (
-                                <m.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                                <m.div key="step1" initial={{ opacity: 0, transform: "translateY(10px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} exit={{ opacity: 0, transform: "translateY(-10px)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="space-y-6">
                                     {/* Booking Disclaimer */}
                                     <div className="bg-brand-primary/10 border border-brand-primary/30 p-4 rounded-xl flex items-start gap-4">
                                         <Info className="w-6 h-6 text-brand-primary shrink-0 mt-0.5" />
@@ -998,7 +998,7 @@ const Booking: React.FC = () => {
                                             </p>
                                             <button 
                                                 onClick={() => navigate('/jewelry', { state: { activeTab: 'inventory' } })}
-                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded-lg text-xs font-medium hover:bg-brand-primary hover:text-brand-dark transition-all"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded-lg text-xs font-medium hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-150 ease-emil-out active:scale-[0.97]"
                                             >
                                                 <Sparkles className="w-3 h-3" />
                                                 קחי אותי לגלריה
@@ -1040,7 +1040,7 @@ const Booking: React.FC = () => {
                                     )}
                                     <div className="flex gap-3 overflow-x-auto pb-2">
                                         {categories.map(cat => (
-                                            <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`min-h-[44px] px-6 py-2.5 rounded-full text-sm transition-all whitespace-nowrap border flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium shadow-md' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
+                                            <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`min-h-[44px] px-6 py-2.5 rounded-full text-sm transition-[background-color,border-color,color] duration-150 ease-out active:scale-[0.98] whitespace-nowrap border flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${activeCategory === cat.id ? 'bg-white text-brand-dark border-white font-medium shadow-md' : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'}`}>{cat.label}</button>
                                         ))}
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1059,7 +1059,7 @@ const Booking: React.FC = () => {
                             )}
 
                             {step === BookingStep.AI_STYLIST && (
-                                <m.div key="ai" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                <m.div key="ai" initial={{ opacity: 0, transform: "translateX(20px)" }} animate={{ opacity: 1, transform: "translateX(0px)" }} exit={{ opacity: 0, transform: "translateX(-20px)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="space-y-6">
                                     <Card className="bg-brand-surface/50 border-brand-primary/20 p-8 text-center relative overflow-hidden group">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 blur-3xl -mr-16 -mt-16 group-hover:bg-brand-primary/20 transition-colors"></div>
 
@@ -1067,7 +1067,7 @@ const Booking: React.FC = () => {
                                             <div className="py-12 flex flex-col items-center">
                                                 <div
                                                     onClick={() => cameraInputRef.current?.click()}
-                                                    className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30 cursor-pointer hover:bg-brand-primary/20 transition-all hover:scale-105 active:scale-95"
+                                                    className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary mb-6 ring-1 ring-brand-primary/30 cursor-pointer hover:bg-brand-primary/20 transition-[background-color,transform] duration-200 ease-emil-out hover:scale-105 active:scale-[0.97]"
                                                     title="צלם תמונה"
                                                 >
                                                     <Camera className="w-10 h-10" />
@@ -1233,7 +1233,7 @@ const Booking: React.FC = () => {
                             )}
 
                             {step === BookingStep.SELECT_DATE && (
-                                <m.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                                <m.div key="step2" initial={{ opacity: 0, transform: "translateX(20px)" }} animate={{ opacity: 1, transform: "translateX(0px)" }} exit={{ opacity: 0, transform: "translateX(-20px)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="space-y-8">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-4">
                                             <button onClick={() => datePickerRef.current?.showPicker()} className="text-white font-medium flex items-center gap-2 hover:text-brand-primary transition-colors">
@@ -1266,7 +1266,7 @@ const Booking: React.FC = () => {
                                             {calendarDays.map((date, i) => {
                                                 const isSelected = selectedDate?.toDateString() === date.toDateString();
                                                 return (
-                                                    <button key={i} onClick={() => { setSelectedDate(date); }} className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-all shrink-0 ${isSelected ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'}`}>
+                                                    <button key={i} onClick={() => { setSelectedDate(date); }} className={`flex flex-col items-center justify-center min-w-[70px] h-20 rounded-xl border transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] shrink-0 ${isSelected ? 'bg-white text-brand-dark border-white scale-105 shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:border-brand-primary/50 hover:text-white'}`}>
                                                         <span className="text-xs">{date.toLocaleDateString('he-IL', { weekday: 'short' })}</span>
                                                         <span className="text-xl font-bold font-serif">{date.getDate()}</span>
                                                     </button>
@@ -1285,7 +1285,7 @@ const Booking: React.FC = () => {
                                                 {availableSlots.length > 0 ? availableSlots.map((slot, i) => {
                                                     const valid = isSlotValid(i);
                                                     return (
-                                                        <button key={i} disabled={!valid} onClick={() => setSelectedSlot(selectedSlot === slot.time ? null : slot.time)} className={`min-h-[44px] py-2 px-3 rounded-lg text-sm border flex items-center justify-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}>
+                                                        <button key={i} disabled={!valid} onClick={() => setSelectedSlot(selectedSlot === slot.time ? null : slot.time)} className={`min-h-[44px] py-2 px-3 rounded-lg text-sm border flex items-center justify-center transition-[background-color,border-color,color] duration-150 ease-out active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${selectedSlot === slot.time ? 'bg-brand-primary text-brand-dark border-brand-primary font-bold shadow-[0_0_15px_rgba(212,181,133,0.4)]' : valid ? 'bg-white/5 border-white/10 text-white hover:border-brand-primary/50' : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed decoration-slate-700 opacity-50'}`}>
                                                             {slot.time}
                                                         </button>
                                                     )
@@ -1299,7 +1299,7 @@ const Booking: React.FC = () => {
                             )}
 
                             {step === BookingStep.DETAILS && (
-                                <m.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                <m.div key="step3" initial={{ opacity: 0, transform: "translateX(20px)" }} animate={{ opacity: 1, transform: "translateX(0px)" }} exit={{ opacity: 0, transform: "translateX(-20px)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="space-y-6">
                                     {!user && (
                                         <div className="bg-gradient-to-r from-brand-primary/20 to-transparent border border-brand-primary/30 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden">
                                             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
@@ -1348,14 +1348,14 @@ const Booking: React.FC = () => {
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="text-sm font-medium text-slate-400 ms-1">הערות נוספות</label>
-                                            <textarea className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-all placeholder:text-slate-600 min-h-[100px]" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+                                            <textarea className="bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-5 py-3 rounded-xl outline-none transition-[border-color,box-shadow,color] duration-150 ease-out placeholder:text-slate-600 min-h-[100px]" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
                                         </div>
                                     </Card>
                                 </m.div>
                             )}
 
                             {step === BookingStep.CONSENT && (
-                                <m.div key="consent" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                <m.div key="consent" initial={{ opacity: 0, transform: "translateX(20px)" }} animate={{ opacity: 1, transform: "translateX(0px)" }} exit={{ opacity: 0, transform: "translateX(-20px)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="space-y-6">
                                     <Card className="bg-white/5 border-none p-6">
                                         <div className="flex items-center gap-2 text-brand-primary mb-2">
                                             <Camera className="w-5 h-5" />
@@ -1555,7 +1555,7 @@ const Booking: React.FC = () => {
                             )}
 
                             {step === BookingStep.CONFIRMATION && (
-                                <m.div key="step6" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
+                                <m.div key="step6" initial={{ opacity: 0, transform: "scale(0.9)" }} animate={{ opacity: 1, transform: "scale(1)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="text-center py-12">
                                     <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                                         <Check className="w-10 h-10" />
                                     </div>
@@ -1611,7 +1611,7 @@ const Booking: React.FC = () => {
 
             <AnimatePresence>
                 {showBottomBar && (
-                    <m.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]">
+                    <m.div initial={{ opacity: 0, transform: "translateY(100%)" }} animate={{ opacity: 1, transform: "translateY(0%)" }} exit={{ opacity: 0, transform: "translateY(100%)" }} transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} className="fixed bottom-0 left-0 right-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 z-50 flex justify-center shadow-[0_-5px_30px_rgba(0,0,0,0.5)]">
                         <div className="container max-w-4xl flex items-center gap-4 w-full">
                             {step > 1 && (
                                 <button onClick={handlePrevStep} className="min-w-[44px] min-h-[44px] px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
