@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הסטודיו של יובל - שדרוג תנועה ומהירות v2.3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #D4B585;
+            --brand-primary-hover: #c19f6e;
+            --brand-dark: #0F172A;
+            --brand-surface: #1E293B;
+            --brand-surface-subtle: rgba(255, 255, 255, 0.03);
+            --brand-border: rgba(212, 181, 133, 0.2);
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Heebo', system-ui, -apple-system, sans-serif;
+            background-color: var(--brand-dark);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 30px 16px;
+            display: flex;
+            justify-content: center;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(212, 181, 133, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(212, 181, 133, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 840px;
+            width: 100%;
+            background-color: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(212, 181, 133, 0.18) 0%, rgba(15, 23, 42, 0.4) 100%);
+            padding: 48px 36px 36px;
+            text-align: center;
+            border-bottom: 1px solid var(--brand-border);
+            position: relative;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--brand-primary);
+            color: var(--brand-dark);
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 15px rgba(212, 181, 133, 0.3);
+        }
+
+        .header h1 {
+            color: #FFFFFF;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2.6rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .header h1 span {
+            color: var(--brand-primary);
+            font-style: italic;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.15rem;
+            max-width: 580px;
+            margin: 0 auto;
+            font-weight: 300;
+        }
+
+        .intro-box {
+            margin: 32px 36px 0;
+            padding: 20px 24px;
+            background: rgba(212, 181, 133, 0.08);
+            border: 1px solid rgba(212, 181, 133, 0.25);
+            border-radius: 18px;
+            font-size: 1.05rem;
+            color: #E2E8F0;
+        }
+
+        .content {
+            padding: 36px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 22px;
+        }
+
+        .card {
+            background: var(--brand-surface-subtle);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 24px;
+            transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(212, 181, 133, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .icon-bubble {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(212, 181, 133, 0.12);
+            color: var(--brand-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 1px solid rgba(212, 181, 133, 0.2);
+            flex-shrink: 0;
+        }
+
+        .card h2 {
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .benefit-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.1);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 36px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 16px 20px;
+            text-align: right;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.95rem;
+        }
+
+        .comparison-table th {
+            background: rgba(212, 181, 133, 0.1);
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .cta-section {
+            text-align: center;
+            padding: 16px 36px 36px;
+        }
+
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--brand-primary);
+            color: var(--brand-dark);
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 16px 36px;
+            border-radius: 999px;
+            text-decoration: none;
+            transition: transform 0.16s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.16s;
+            box-shadow: 0 8px 25px rgba(212, 181, 133, 0.3);
+        }
+
+        .cta-btn:hover {
+            background: var(--brand-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(212, 181, 133, 0.45);
+        }
+
+        .cta-btn:active {
+            transform: scale(0.97);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        @media (max-width: 640px) {
+            .header { padding: 36px 20px; }
+            .header h1 { font-size: 2rem; }
+            .content { padding: 24px 18px; }
+            .intro-box { margin: 20px 18px 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <span class="badge">✨ שדרוג חוויית משתמש ומגע</span>
+        <h1>הסטודיו של <span>יובל</span></h1>
+        <p>מדריך פשוט וברור לשיפורים החדשים באתר שלך</p>
+    </div>
+
+    <div class="intro-box">
+        <strong>היי יובל! 👋</strong><br>
+        האתר שלך שודרג כדי לתת ללקוחות תחושה יוקרתית, חלקה וממכרת בכל נגיעה במסך. לקחנו את כל מה שעבד והפכנו אותו למהיר פי כמה, בלי שום עומס על הטלפונים של הלקוחות. הנה מה שתרגישי מהיום:
+    </div>
+
+    <div class="content">
+        <div class="grid">
+
+            <!-- Card 1 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-bubble">📱</div>
+                    <h2>1. כל כפתור מגיב למגע אמיתי (כמו באייפון)</h2>
+                </div>
+                <p>
+                    בכל פעם שאת או לקוחה לוחצות על כפתור — כמו "הזמן תור", בחירת שירות, או אישור בקופה — הכפתור "שוקע" קלות בעדינות פנימה וקופץ בחזרה מיד.
+                </p>
+                <div class="benefit-tag">✓ תחושת מגע אמיתית ויוקרתית</div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-bubble">⚡</div>
+                    <h2>2. הכל מגיב במהירות שיא — אפס המתנה</h2>
+                </div>
+                <p>
+                    קיצרנו את זמני המעבר בחצי. דפים, מודאלים והודעות נפתחים ונסגרים תוך רבע שנייה בצורה חדה ונעימה, בלי שהאתר "יתמהמה" או ירגיש כבד.
+                </p>
+                <div class="benefit-tag">✓ חוויית גלישה קלילה ומיידית</div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-bubble">✨</div>
+                    <h2>3. קו מוזהב חלק בראש האתר</h2>
+                </div>
+                <p>
+                    כשעוברים עם העכבר על פריטי התפריט ("שירותים", "גלריה", "הוראות טיפול"), הקו המוזהב מתמתח מימין לשמאל בצורה אלגנטית ומדויקת, בלי לקפוץ ובלי לגמגם.
+                </p>
+                <div class="benefit-tag">✓ אלגנטיות בוטיקית וזורמת</div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-bubble">🍔</div>
+                    <h2>4. תפריט מובייל שנפתח בזה אחר זה</h2>
+                </div>
+                <p>
+                    בטלפונים ניידים, פתיחת תפריט ההמבורגר כבר לא מופיעה בבת אחת כגוש אטום, אלא כל שורה נכנסת בקצב מדורג, נעים וקליל של מאיות השנייה.
+                </p>
+                <div class="benefit-tag">✓ מראה מודרני ברמת אפליקציה</div>
+            </div>
+
+            <!-- Card 5 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-bubble">📅</div>
+                    <h2>5. קביעת תורים זריזה ללא מאמץ</h2>
+                </div>
+                <p>
+                    מעבר בין ימים שונים בלוח השנה ובחירת שעות פנויות קורים מיד וללא שום שיהוי. הלקוחות יכולים לדפדף במהירות בין ימים בלי שהעמוד יקרטע.
+                </p>
+                <div class="benefit-tag">✓ סגירת תורים בקלות ובנוחות</div>
+            </div>
+
+            <!-- Card 6 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-bubble">🔋</div>
+                    <h2>6. שומר על סוללת הטלפון ולא מחמם את המכשיר</h2>
+                </div>
+                <p>
+                    העברנו את כל העיבוד הגרפי לכרטיס המסך (GPU) של המכשיר. האתר צורך הרבה פחות משאבים, כך שהטלפון של הלקוחה נשאר קריר והסוללה לא מתרוקנת.
+                </p>
+                <div class="benefit-tag">✓ ביצועים נקיים וידידותיים</div>
+            </div>
+
+        </div>
+
+        <!-- Before / After Simple Table -->
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>איפה באתר?</th>
+                    <th>איך זה הרגיש קודם?</th>
+                    <th>איך זה מרגיש מעכשיו?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>לחיצה על כפתורים</strong></td>
+                    <td>לחיצה שטוחה ללא תגובה תחושתית</td>
+                    <td>תגובת שקיעה קפיצית ונעימה (פידבק מגע)</td>
+                </tr>
+                <tr>
+                    <td><strong>פתיחת חלונות ותפריטים</strong></td>
+                    <td>אנימציה ארוכה שנמשכה מעל חצי שנייה</td>
+                    <td>פתיחה חדה ומדויקת בתוך 0.25 שניות</td>
+                </tr>
+                <tr>
+                    <td><strong>תפריט בנייד</strong></td>
+                    <td>כל הקישורים מופיעים ביחד במכה אחת</td>
+                    <td>כניסה מדורגת ואלגנטית שורה אחר שורה</td>
+                </tr>
+                <tr>
+                    <td><strong>דפדוף בתאריכים בהזמנת תור</strong></td>
+                    <td>שיהוי קל בכל לחיצה על תאריך או שעה</td>
+                    <td>תגובה מיידית בטיסה ללא עיכובים</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <div class="cta-section">
+        <a href="https://yuval-studio-repo.vercel.app/" target="_blank" class="cta-btn">
+            🚀 כניסה לאתר הסטודיו ובדיקה בעצמך
+        </a>
+    </div>
+
+    <div class="footer">
+        הסטודיו של יובל &bull; מעוצב ומפותח בסטנדרטים הגבוהים ביותר &bull; 2026
+    </div>
+</div>
+
+</body>
+</html>
