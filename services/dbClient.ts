@@ -6,7 +6,7 @@ const databaseUrl =
   (import.meta as any).env?.DATABASE_URL ||
   '';
 
-const sql = databaseUrl ? neon(databaseUrl) : null;
+const sql = databaseUrl ? neon(databaseUrl, { disableWarningInBrowsers: true }) : null;
 
 async function runSql(queryText: string, params: any[] = []): Promise<any[]> {
   if (!databaseUrl || !sql) {

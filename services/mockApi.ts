@@ -1133,8 +1133,14 @@ export const api = {
     try {
       if (dbClient) {
         const { data, error } = await dbClient.from('jewelry_orders').select('*').order('created_at', { ascending: false });
-        if (!error && Array.isArray(data) && data.length > 0) {
-          return data;
+        if (!error && Array.isArray(data)) {
+          const parsed = data.map((order: any) => ({
+            ...order,
+            total_price: Number(order.total_price) || 0,
+            shipping_cost: Number(order.shipping_cost) || 0,
+            items: typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])
+          }));
+          if (parsed.length > 0) return parsed;
         }
       }
     } catch (e) {
@@ -1157,7 +1163,9 @@ export const api = {
     const orderNumber = `YV-${randomSuffix}`;
     const newOrder: JewelryOrder = {
       ...orderData,
-      id: 'ord_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+      id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        ? crypto.randomUUID()
+        : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0'),
       order_number: orderNumber,
       status: 'pending',
       created_at: new Date().toISOString()

@@ -293,3 +293,24 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
+-- 7. Create jewelry_orders table if not exists
+CREATE TABLE IF NOT EXISTS public.jewelry_orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_number text UNIQUE NOT NULL,
+  client_name text NOT NULL,
+  client_phone text NOT NULL,
+  client_email text,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  total_price decimal(10,2) NOT NULL,
+  delivery_method text NOT NULL DEFAULT 'pickup' CHECK (delivery_method IN ('pickup', 'delivery')),
+  shipping_address text,
+  shipping_cost decimal(10,2) NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'delivered', 'cancelled')),
+  notes text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_jewelry_orders_created_at ON public.jewelry_orders (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_jewelry_orders_status ON public.jewelry_orders (status);
