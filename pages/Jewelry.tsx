@@ -14,6 +14,7 @@ const m = motion as any;
 
 const JewelryPage: React.FC = () => {
   const { user } = useAuth();
+  const { addToCart, openQuickBuy, justAddedItemId, openCart } = useJewelryCart();
   const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
