@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yuval Studio - מדריך פיצ'ר הזמנות תכשיטים וניהול בסטודיו</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #D4B585;
+            --brand-primary-hover: #c19f6e;
+            --brand-dark: #0F172A;
+            --brand-surface: #1E293B;
+            --brand-surface-subtle: rgba(255, 255, 255, 0.03);
+            --brand-border: rgba(212, 181, 133, 0.25);
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
+            --emerald: #10B981;
+            --blue: #3B82F6;
+            --amber: #F59E0B;
+            --red: #EF4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Heebo', system-ui, -apple-system, sans-serif;
+            background-color: var(--brand-dark);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 40px 16px;
+            display: flex;
+            justify-content: center;
+            background-image: 
+                radial-gradient(circle at 10% 15%, rgba(212, 181, 133, 0.1) 0%, transparent 45%),
+                radial-gradient(circle at 90% 85%, rgba(59, 130, 246, 0.06) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 880px;
+            width: 100%;
+            background-color: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 32px;
+            overflow: hidden;
+            box-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.65);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, rgba(212, 181, 133, 0.2) 0%, rgba(15, 23, 42, 0.6) 100%);
+            padding: 56px 40px 40px;
+            text-align: center;
+            border-bottom: 1px solid var(--brand-border);
+            position: relative;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--brand-primary);
+            color: var(--brand-dark);
+            padding: 8px 20px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 18px rgba(212, 181, 133, 0.35);
+        }
+
+        .header h1 {
+            color: #FFFFFF;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .header h1 span {
+            color: var(--brand-primary);
+            font-style: italic;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            max-width: 620px;
+            margin: 0 auto;
+            font-weight: 300;
+        }
+
+        /* Intro message for Yuval */
+        .intro-banner {
+            margin: 32px 36px 0;
+            padding: 24px 28px;
+            background: rgba(212, 181, 133, 0.08);
+            border: 1px solid var(--brand-border);
+            border-radius: 20px;
+            font-size: 1.05rem;
+            color: #E2E8F0;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .intro-banner .icon {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        /* Main Content */
+        .content {
+            padding: 40px 36px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            margin-bottom: 22px;
+            font-family: 'Playfair Display', Georgia, serif;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 12px;
+        }
+
+        .section-title span.number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: rgba(212, 181, 133, 0.15);
+            color: var(--brand-primary);
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 800;
+            border: 1px solid rgba(212, 181, 133, 0.3);
+        }
+
+        /* Journey Flow Grid */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .step-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 20px;
+            padding: 24px;
+            position: relative;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(212, 181, 133, 0.4);
+        }
+
+        .step-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .step-card h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #FFFFFF;
+        }
+
+        .step-card p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Live Admin Mockup */
+        .admin-mockup {
+            background: #0B1120;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            overflow: hidden;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .mockup-bar {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .mockup-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mockup-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .mockup-body {
+            padding: 28px;
+        }
+
+        /* KPI Row */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-box {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: right;
+        }
+
+        .kpi-box.pending {
+            border-color: rgba(245, 158, 11, 0.3);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .kpi-box.revenue {
+            border-color: rgba(212, 181, 133, 0.3);
+            background: rgba(212, 181, 133, 0.05);
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .kpi-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'Playfair Display', Georgia, serif;
+            color: #FFFFFF;
+        }
+
+        .kpi-box.pending .kpi-val { color: var(--amber); }
+        .kpi-box.revenue .kpi-val { color: var(--brand-primary); }
+
+        /* Order Card Mockup */
+        .mock-order-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(212, 181, 133, 0.25);
+            border-radius: 20px;
+            padding: 22px;
+            position: relative;
+        }
+
+        .mock-order-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 16px;
+        }
+
+        .order-id {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--brand-primary);
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .status-pill.pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-pill.confirmed {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--blue);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .status-pill.delivered {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .mock-client-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .client-name {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        .client-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Action Buttons */
+        .actions-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn-whatsapp {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-whatsapp:hover {
+            background: #10B981;
+            color: #FFFFFF;
+        }
+
+        .btn-call {
+            background: rgba(255, 255, 255, 0.05);
+            color: #E2E8F0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Items Preview */
+        .mock-items-box {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+
+        .mock-item-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .mock-item-row:last-child {
+            border-bottom: none;
+        }
+
+        .status-changer-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .status-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #CBD5E1;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .status-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+
+        /* Tips for Yuval */
+        .tips-section {
+            background: linear-gradient(135deg, rgba(212, 181, 133, 0.08) 0%, rgba(30, 41, 59, 0.5) 100%);
+            border: 1px solid var(--brand-border);
+            border-radius: 24px;
+            padding: 28px;
+            margin-top: 30px;
+        }
+
+        .tips-list {
+            list-style: none;
+            display: grid;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .tips-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.95rem;
+            color: #E2E8F0;
+        }
+
+        .tips-list li .bullet {
+            color: var(--brand-primary);
+            font-size: 1.1rem;
+            line-height: 1.4;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 20px 40px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        @media (max-width: 640px) {
+            .header { padding: 40px 20px 30px; }
+            .header h1 { font-size: 2rem; }
+            .content { padding: 24px 20px; }
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .mock-client-details { flex-direction: column; gap: 12px; }
+            .actions-group { width: 100%; justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="badge">✨ פיצ'ר חדש באתר • רכישת תכשיטים אונליין</div>
+            <h1>התכשיטים של יובל <span>עכשיו למכירה ישירה</span></h1>
+            <p>מדריך מפורט עבור יובל: איך הלקוחות מבצעים הזמנות מהאתר, ואיך את רואה ומטפלת בהן בקלות ובמהירות מלוח הבקרה שלך</p>
+        </header>
+
+        <!-- Intro -->
+        <div class="intro-banner">
+            <span class="icon">💎</span>
+            <div>
+                <strong>היי יובל!</strong> מעכשיו הלקוחות שמבקרים באתר לא צריכים רק להסתכל על הגלריה – יש להם כפתור ישיר להזמנת עגילים ותכשיטים שנמצאים במלאי! הם יכולים להזמין פריט בודד בקליק, או למלא שקית קניות ולבחור בין איסוף מהסטודיו למשלוח עד הבית. כל הזמנה שולחת לך הודעת וואטסאפ מוכנה ונשמרת ישירות בלוח הבקרה שלך.
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Section 1: Customer Journey -->
+            <section>
+                <h2 class="section-title">
+                    <span class="number">1</span>
+                    איך הלקוח קונה תכשיט באתר? (3 שלבים פשוטים)
+                </h2>
+                
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <span class="step-badge">שלב א'</span>
+                        <h3>בחירת תכשיט בקטלוג</h3>
+                        <p>הלקוח נכנס לעמוד התכשיטים ורואה תגיות מחיר ומלאי. יש לו שתי אפשרויות קלות: ללחוץ <strong>"רכישה מהירה ⚡"</strong> להזמנה מידית, או <strong>"+ לסל 🛍️"</strong> כדי לבחור עוד פריטים.</p>
+                    </div>
+
+                    <div class="step-card">
+                        <span class="step-badge">שלב ב'</span>
+                        <h3>שקית קניות צפה (Cart)</h3>
+                        <p>נפתחת מגירה מעוצבת בצד המסך. הלקוח רואה את סך ההזמנה, בוחר בין <strong>איסוף עצמי חינם מהסטודיו</strong> לבין <strong>משלוח מהיר עד הבית (תוספת ₪30)</strong>, וממלא שם, טלפון וכתובת.</p>
+                    </div>
+
+                    <div class="step-card">
+                        <span class="step-badge">שלב ג'</span>
+                        <h3>שליחה ישירה לוואטסאפ שלך</h3>
+                        <p>בלחיצה אחת, נפתחת ללקוח הודעת וואטסאפ מעוצבת מראש ישירות אליך (למספר <strong>054-7513343</strong>) עם כל פירוט ההזמנה. במקביל, ההזמנה נרשמת אוטומטית במערכת הסטודיו!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: How Yuval Sees and Manages Orders -->
+            <section>
+                <h2 class="section-title">
+                    <span class="number">2</span>
+                    איך יובל רואה ומטפלת בהזמנות? (בלוח הבקרה)
+                </h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 1rem;">
+                    בלוח הבקרה של הסטודיו (כניסת מנהל <code>/admin</code>), נוספה לשונית חדשה לגמרי: <strong>"הזמנות תכשיטים 💎"</strong>. הנה הדמיה מדויקת של איך זה נראה ואיך את פועלת:
+                </p>
+
+                <!-- Admin Mockup -->
+                <div class="admin-mockup">
+                    <div class="mockup-bar">
+                        <div class="mockup-dots">
+                            <span class="mockup-dot"></span>
+                            <span class="mockup-dot"></span>
+                            <span class="mockup-dot"></span>
+                        </div>
+                        <span>ממשק ניהול יובל סטודיו • לשונית הזמנות תכשיטים</span>
+                        <span>תצוגה חיה 🟢</span>
+                    </div>
+
+                    <div class="mockup-body">
+                        <!-- KPI Row -->
+                        <div class="kpi-row">
+                            <div class="kpi-box">
+                                <div class="kpi-label">סה"כ הזמנות</div>
+                                <div class="kpi-val">12</div>
+                            </div>
+                            <div class="kpi-box pending">
+                                <div class="kpi-label">ממתינות לטיפול</div>
+                                <div class="kpi-val">3</div>
+                            </div>
+                            <div class="kpi-box">
+                                <div class="kpi-label">בהכנה / אושרו</div>
+                                <div class="kpi-val">5</div>
+                            </div>
+                            <div class="kpi-box revenue">
+                                <div class="kpi-label">הכנסות מאושרות</div>
+                                <div class="kpi-val">₪2,840</div>
+                            </div>
+                        </div>
+
+                        <!-- Mock Order Item -->
+                        <div class="mock-order-card">
+                            <div class="mock-order-header">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="order-id">#YV-8492</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">היום, 10:15</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="status-pill pending">⏳ ממתין לטיפול</span>
+                                    <span style="font-size: 0.8rem; color: #CBD5E1; background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 8px;">🚚 משלוח (₪30)</span>
+                                </div>
+                            </div>
+
+                            <div class="mock-client-details">
+                                <div>
+                                    <h4 class="client-name">נועה כהן</h4>
+                                    <div class="client-info">
+                                        📱 052-4567890 • 📍 דיזנגוף 142, תל אביב (דירה 4)
+                                    </div>
+                                    <div style="margin-top: 6px; font-size: 0.8rem; color: #FCD34D; background: rgba(245, 158, 11, 0.1); padding: 4px 10px; border-radius: 8px; display: inline-block;">
+                                        💬 הערת לקוח: "אשמח לעטיפת מתנה אם אפשר, תודה!"
+                                    </div>
+                                </div>
+
+                                <div class="actions-group">
+                                    <button class="btn-action btn-whatsapp" title="לחיצה תפתח הודעה ישירה עם פרטי ההזמנה">
+                                        💬 הודעת וואטסאפ
+                                    </button>
+                                    <button class="btn-action btn-call" title="חיוג ישיר">
+                                        📞 חייג
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Ordered Items List -->
+                            <div class="mock-items-box">
+                                <div class="mock-item-row">
+                                    <span>Classic Gold Hoop (חישוק זהב 14K) • <strong>כמות: 1</strong></span>
+                                    <span style="font-family: 'Playfair Display', serif; font-weight: 700; color: var(--brand-primary);">₪180</span>
+                                </div>
+                                <div class="mock-item-row">
+                                    <span>Diamond Solitaire (נקודת יהלום) • <strong>כמות: 1</strong></span>
+                                    <span style="font-family: 'Playfair Display', serif; font-weight: 700; color: var(--brand-primary);">₪250</span>
+                                </div>
+                                <div class="mock-item-row" style="padding-top: 10px; margin-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1); color: var(--text-main); font-weight: 700;">
+                                    <span>סה"כ כולל משלוח עד הבית:</span>
+                                    <span style="color: var(--brand-primary); font-size: 1.05rem; font-family: 'Playfair Display', serif;">₪460</span>
+                                </div>
+                            </div>
+
+                            <!-- Status Changer Bar -->
+                            <div class="status-changer-bar">
+                                <span>שנה סטטוס להזמנה:</span>
+                                <button class="status-btn active">ממתין</button>
+                                <button class="status-btn">אושר / בהכנה</button>
+                                <button class="status-btn">נמסר ✅</button>
+                                <button class="status-btn" style="color: var(--red);">בוטל</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Actionable Features for Yuval -->
+            <section>
+                <h2 class="section-title">
+                    <span class="number">3</span>
+                    היתרונות והפעולות המהירות שיש ליובל בידיים
+                </h2>
+
+                <div class="steps-grid" style="margin-bottom: 20px;">
+                    <div class="step-card">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">📲</div>
+                        <h3>כפתור וואטסאפ חכם לכל לקוח</h3>
+                        <p>בלחיצה אחת על <strong>"הודעת וואטסאפ"</strong>, נפתח חלון צ'אט עם הודעה מוכנה: "היי נועה! כאן יובל מהסטודיו, ההזמנה שלך (#YV-8492) אושרה ונמצאת בהכנה!". חוסך לך זמן הקלדה.</p>
+                    </div>
+
+                    <div class="step-card">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">📊</div>
+                        <h3>סינון וחיפוש מתקדם</h3>
+                        <p>תוכלי לסנן את ההזמנות בקליק: לראות רק מה שממתין לטיפול, מה שכבר אושר, או לחפש לקוח לפי שם, מספר טלפון או דגם התכשיט.</p>
+                    </div>
+
+                    <div class="step-card">
+                        <div style="font-size: 1.6rem; margin-bottom: 8px;">🔄</div>
+                        <h3>שליטה מלאה במלאי</h3>
+                        <p>בלשונית "מלאי" הקיימת, ברגע שאת מסמנת פריט כ"לא במלאי", הוא אוטומטית מוצג באתר כלא זמין והכפתורים לקנייה נחסמים, כך שאין סיכון לטעות.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 4: Tips for Daily Work -->
+            <div class="tips-section">
+                <h3 style="color: #FFFFFF; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>💡</span> טיפים מומלצים לעבודה יומיומית חלקה
+                </h3>
+                <ul class="tips-list">
+                    <li>
+                        <span class="bullet">✔</span>
+                        <div><strong>אישור תשלום:</strong> כשההזמנה מגיעה בוואטסאפ, את יכולה לשלוח ללקוח לינק לתשלום (ביט / פייבוקס / אשראי) או לקבל תשלום במקום באיסוף מהסטודיו.</div>
+                    </li>
+                    <li>
+                        <span class="bullet">✔</span>
+                        <div><strong>עדכון סטטוס בלוח הבקרה:</strong> לאחר שאישרת מול הלקוח את ההזמנה, לחצי על כפתור <strong>"אושר"</strong> בלוח הבקרה – ככה הלוח שלך תמיד יישאר מסודר ומדויק.</div>
+                    </li>
+                    <li>
+                        <span class="bullet">✔</span>
+                        <div><strong>סיום ומסירה:</strong> כשהמשלוח יצא או כשהלקוח הגיע לקחת את התכשיטים, סמני <strong>"נמסר"</strong>. ההזמנה תעבור לסטטיסטיקת המכירות המאושרות שלך!</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            סטודיו יובל לפירסינג ותכשיטים • Yuval Studio © 2026 • מדריך פנימי למנהלת הסטודיו
+        </footer>
+    </div>
+</body>
+</html>
