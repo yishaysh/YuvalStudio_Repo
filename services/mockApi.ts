@@ -1,6 +1,6 @@
 
 import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
-import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
+import { Appointment, Service, StudioSettings, Coupon, Expense, JewelryOrder, JewelryOrderItem } from '../types';
 import { dbClient } from './dbClient';
 
 export interface TimeSlot {
@@ -1126,5 +1126,99 @@ export const api = {
 
     console.log("Fetched Last Checkin:", data.last_aftercare_checkin);
     return data.last_aftercare_checkin;
+  },
+
+  // --- Jewelry Orders ---
+  getJewelryOrders: async (): Promise<JewelryOrder[]> => {
+    try {
+      if (dbClient) {
+        const { data, error } = await dbClient.from('jewelry_orders').select('*').order('created_at', { ascending: false });
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('DB jewelry_orders read failed, falling back to localStorage', e);
+    }
+
+    try {
+      const stored = localStorage.getItem('yuval_jewelry_orders');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Failed to read orders from localStorage', e);
+    }
+    return [];
+  },
+
+  createJewelryOrder: async (orderData: Omit<JewelryOrder, 'id' | 'created_at' | 'order_number' | 'status'>): Promise<JewelryOrder> => {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `YV-${randomSuffix}`;
+    const newOrder: JewelryOrder = {
+      ...orderData,
+      id: 'ord_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+      order_number: orderNumber,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      if (dbClient) {
+        await dbClient.from('jewelry_orders').insert([newOrder]);
+      }
+    } catch (e) {
+      console.warn('Could not insert order into DB table, saving to localStorage', e);
+    }
+
+    try {
+      const current = await api.getJewelryOrders();
+      const updated = [newOrder, ...current.filter(o => o.id !== newOrder.id)];
+      localStorage.setItem('yuval_jewelry_orders', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save order to localStorage', e);
+    }
+
+    return newOrder;
+  },
+
+  updateJewelryOrderStatus: async (orderId: string, status: JewelryOrder['status']): Promise<boolean> => {
+    try {
+      if (dbClient) {
+        await dbClient.from('jewelry_orders').update({ status }).eq('id', orderId);
+      }
+    } catch (e) {
+      console.warn('DB update failed, updating locally', e);
+    }
+
+    try {
+      const current = await api.getJewelryOrders();
+      const updated = current.map(o => o.id === orderId ? { ...o, status } : o);
+      localStorage.setItem('yuval_jewelry_orders', JSON.stringify(updated));
+      return true;
+    } catch (e) {
+      console.error('Failed to update order status in localStorage', e);
+      return false;
+    }
+  },
+
+  deleteJewelryOrder: async (orderId: string): Promise<boolean> => {
+    try {
+      if (dbClient) {
+        await dbClient.from('jewelry_orders').delete().eq('id', orderId);
+      }
+    } catch (e) {
+      console.warn('DB delete failed, deleting locally', e);
+    }
+
+    try {
+      const current = await api.getJewelryOrders();
+      const updated = current.filter(o => o.id !== orderId);
+      localStorage.setItem('yuval_jewelry_orders', JSON.stringify(updated));
+      return true;
+    } catch (e) {
+      console.error('Failed to delete order from localStorage', e);
+      return false;
+    }
   }
 };

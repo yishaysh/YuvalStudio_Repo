@@ -135,3 +135,43 @@ export const notifyAdmin = async (
     });
   }
 };
+
+
+export interface JewelryOrderNotificationPayload {
+  orderNumber: string;
+  clientName: string;
+  clientPhone: string;
+  totalPrice: number;
+  deliveryMethod: string;
+  items: { name: string; quantity: number; price: number }[];
+  address?: string;
+  notes?: string;
+}
+
+const formatJewelryOrderMessage = (payload: JewelryOrderNotificationPayload): string => {
+  const itemsList = payload.items.map(i => `• ${i.name} (כמות: ${i.quantity}) - ₪${i.price * i.quantity}`).join('\n');
+  return (
+    `💎 *הזמנת תכשיט חדשה מהאתר!* (#${payload.orderNumber})\n\n` +
+    `👤 *לקוחה:* ${payload.clientName}\n` +
+    `📞 *טלפון:* ${payload.clientPhone}\n` +
+    `📦 *אספקה:* ${payload.deliveryMethod}\n` +
+    (payload.address ? `📍 *כתובת:* ${payload.address}\n` : '') +
+    `💰 *סה"כ לתשלום:* ₪${payload.totalPrice}\n\n` +
+    `🛍️ *פירוט הפריטים:*\n${itemsList}` +
+    (payload.notes ? `\n\n📝 *הערות:* ${payload.notes}` : '')
+  );
+};
+
+export const notifyJewelryOrder = async (
+  settings: StudioSettings,
+  payload: JewelryOrderNotificationPayload
+): Promise<void> => {
+  if (
+    settings.enable_telegram_notifications &&
+    settings.telegram_bot_token &&
+    settings.telegram_chat_id
+  ) {
+    const text = formatJewelryOrderMessage(payload);
+    await sendTelegram(settings.telegram_bot_token, settings.telegram_chat_id, text);
+  }
+};

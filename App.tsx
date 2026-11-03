@@ -2,7 +2,7 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Instagram, Facebook, MapPin, Lock, User, Sparkles } from 'lucide-react';
+import { Menu, X, Instagram, Facebook, MapPin, Lock, User, Sparkles, ShoppingBag } from 'lucide-react';
 import { api } from './services/mockApi';
 import { DEFAULT_STUDIO_DETAILS } from './constants';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -14,6 +14,10 @@ import { CookieConsentProvider, useCookieConsent } from './contexts/CookieConsen
 import { CookieBanner } from './components/ui/CookieBanner';
 import { CookieSettingsModal } from './components/ui/CookieSettingsModal';
 import { CookieManagerTrigger } from './components/ui/CookieManagerTrigger';
+import { JewelryCartProvider, useJewelryCart } from './contexts/JewelryCartContext';
+import { JewelryCartDrawer } from './components/jewelry/JewelryCartDrawer';
+import { QuickBuyModal } from './components/jewelry/QuickBuyModal';
+import { FloatingCartButton } from './components/jewelry/FloatingCartButton';
 
 // Lazy Load Pages - Must use explicit string literals for static analysis
 const Home = lazy(() => import('./pages/Home'));
@@ -70,6 +74,7 @@ const Navbar = () => {
   const [showStyleMatcher, setShowStyleMatcher] = React.useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const { openCart, totalCount } = useJewelryCart();
 
   useEffect(() => {
     setIsOpen(false);
@@ -118,6 +123,21 @@ const Navbar = () => {
               הזמן תור
             </Link>
 
+            
+            {/* Desktop Cart Button */}
+            <button
+              onClick={openCart}
+              title="סל תכשיטים"
+              aria-label="סל תכשיטים"
+              className="relative w-10 h-10 flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-brand-primary/20"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              {totalCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-brand-primary text-brand-dark font-bold text-[11px] flex items-center justify-center shadow-lg">
+                  {totalCount}
+                </span>
+              )}
+            </button>
             {/* Admin / User Area */}
             {user ? (
               <Link
@@ -149,6 +169,21 @@ const Navbar = () => {
           {/* Mobile Toggle */}
           {/* Mobile Toggle & User Icon */}
           <div className="md:hidden flex items-center gap-2">
+            {/* Mobile Cart Button */}
+            <button
+              onClick={openCart}
+              title="סל תכשיטים"
+              aria-label="סל תכשיטים"
+              className="relative w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-brand-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              {totalCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-brand-primary text-brand-dark font-bold text-[11px] flex items-center justify-center shadow-lg">
+                  {totalCount}
+                </span>
+              )}
+            </button>
+
             {/* User Icon (Mobile) */}
             {user ? (
               <Link
@@ -207,6 +242,15 @@ const Navbar = () => {
                 <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 4 }}>
                   <Link to="/aftercare" className="text-2xl font-serif text-white hover:text-brand-primary transition-colors">הוראות טיפול</Link>
                 </m.div>
+                <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 4 }}>
+                  <button 
+                    onClick={() => { setIsOpen(false); openCart(); }}
+                    className="text-2xl font-serif text-brand-primary hover:text-white flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <ShoppingBag className="w-6 h-6" /> שקית תכשיטים {totalCount > 0 ? `(${totalCount})` : ''}
+                  </button>
+                </m.div>
+
                 {showStyleMatcher && (
                   <m.div initial={{ opacity: 0, transform: "translateY(-8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.2, delay: 0.04 * 5 }}>
                     <Link to="/style-matcher" className="text-2xl font-serif text-brand-primary hover:text-white flex items-center gap-2 transition-colors">
@@ -321,6 +365,7 @@ const App: React.FC = () => {
       <CookieConsentProvider>
         <AuthProvider>
           <Router>
+          <JewelryCartProvider>
             {/* Accessible Skip Link for Keyboard & Screen Reader Users */}
             <a
               href="#main-content"
@@ -505,6 +550,10 @@ const App: React.FC = () => {
             </div>
           </div>
         </footer>
+            <JewelryCartDrawer />
+            <QuickBuyModal />
+            <FloatingCartButton />
+          </JewelryCartProvider>
       </Router>
     </AuthProvider>
     </CookieConsentProvider>

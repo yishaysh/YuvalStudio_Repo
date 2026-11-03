@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { api } from '../services/mockApi';
-import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle, Heart } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Tag, ShoppingBag, Sparkles, Calendar, CheckCircle2, Circle, Heart, Zap, Plus, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Service } from '../types';
+import { Service, JewelryItem } from '../types';
+import { JEWELRY_CATALOG } from '../constants';
+import { useJewelryCart } from '../contexts/JewelryCartContext';
 import { SmartImage } from '../components/SmartImage';
 
 const m = motion as any;
@@ -75,16 +77,17 @@ const JewelryPage: React.FC = () => {
     try {
       const settings = await api.getSettings();
       // @ts-ignore
-      if (settings.inventory_items && Array.isArray(settings.inventory_items)) {
+      if (settings.inventory_items && Array.isArray(settings.inventory_items) && settings.inventory_items.length > 0) {
         // @ts-ignore
         const items = settings.inventory_items.filter(item => item.price > 0);
-        setJewelryCatalog(items);
+        setJewelryCatalog(items.length > 0 ? items : JEWELRY_CATALOG);
       } else {
         // Fallback to constants if needed
-        setJewelryCatalog([]);
+        setJewelryCatalog(JEWELRY_CATALOG);
       }
     } catch (e) {
       console.error("Failed to load settings for inventory", e);
+      setJewelryCatalog(JEWELRY_CATALOG);
     }
   };
 
@@ -353,37 +356,134 @@ const JewelryPage: React.FC = () => {
           )
         ) : (
           /* Inventory View */
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {jewelryCatalog.length > 0 ? (
-              jewelryCatalog.map((item, idx) => (
-                <div key={idx} className="bg-brand-surface/50 border border-white/5 rounded-xl overflow-hidden flex flex-col group hover:border-brand-primary/30 transition-colors">
-                  <div className="aspect-square w-full relative overflow-hidden bg-brand-dark/50">
-                    <SmartImage
-                      src={item.image_url}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="p-4 flex-1 flex flex-col">
-                    <div className="mb-2">
-                      <p className="text-[10px] text-brand-primary/80 uppercase tracking-widest leading-none mb-1">{item.category}</p>
-                      <h3 className="text-white font-medium text-sm md:text-base leading-tight">{item.name}</h3>
-                    </div>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed flex-1">{item.description}</p>
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-brand-primary font-serif font-bold">₪{item.price}</span>
-                      {item.in_stock === false && (
-                         <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded">חסר במלאי</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-20 bg-white/5 rounded-2xl border border-white/10">
-                <p className="text-slate-400 text-lg">אין מוצרים במלאי כרגע.</p>
+          <div className="space-y-6">
+            {/* Delivery Info Banner */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-brand-surface/60 border border-brand-primary/20 rounded-2xl px-5 py-3.5 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-brand-primary shrink-0" />
+                <span>
+                  <strong>רכישת תכשיטים אונליין:</strong> משלוח מהיר עד הבית (₪30) או איסוף חינם מהסטודיו | טיטניום ASTM F-136 וזהב 14K
+                </span>
               </div>
-            )}
+              <button
+                onClick={openCart}
+                className="text-brand-primary hover:text-white font-medium flex items-center gap-1.5 transition-colors underline underline-offset-4"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                צפייה בסל הקניות
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {jewelryCatalog.length > 0 ? (
+                jewelryCatalog.map((item, idx) => {
+                  const normalizedItem: JewelryItem = {
+                    id: item.id || `jewelry_${idx}`,
+                    name: item.name,
+                    price: Number(item.price) || 0,
+                    image_url: item.image_url || '',
+                    category: item.category || 'עגיל',
+                    description: item.description || '',
+                    in_stock: item.in_stock !== false,
+                    allowed_locations: item.allowed_locations || []
+                  };
+
+                  const isJustAdded = justAddedItemId === normalizedItem.id;
+                  const isOutOfStock = normalizedItem.in_stock === false;
+
+                  return (
+                    <div 
+                      key={normalizedItem.id || idx} 
+                      className="bg-brand-surface/50 border border-white/5 rounded-2xl overflow-hidden flex flex-col group hover:border-brand-primary/30 transition-colors duration-150 shadow-lg relative"
+                    >
+                      {/* Image Preview */}
+                      <div className="aspect-square w-full relative overflow-hidden bg-brand-dark/50">
+                        <SmartImage
+                          src={normalizedItem.image_url}
+                          alt={normalizedItem.name}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        {isOutOfStock && (
+                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
+                            <span className="text-xs bg-red-500/80 text-white font-medium px-3 py-1 rounded-full shadow-lg">
+                              אזל מהמלאי
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Content */}
+                      <div className="p-4 flex-1 flex flex-col">
+                        <div className="mb-2">
+                          <p className="text-[10px] text-brand-primary/90 font-medium uppercase tracking-widest leading-none mb-1">
+                            {normalizedItem.category}
+                          </p>
+                          <h3 className="text-white font-serif font-medium text-sm md:text-base leading-tight">
+                            {normalizedItem.name}
+                          </h3>
+                        </div>
+
+                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed flex-1">
+                          {normalizedItem.description}
+                        </p>
+
+                        <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
+                          <span className="text-brand-primary font-serif font-bold text-base md:text-lg">
+                            ₪{normalizedItem.price}
+                          </span>
+                          {!isOutOfStock && (
+                            <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              במלאי
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Order Buttons */}
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => openQuickBuy(normalizedItem)}
+                            disabled={isOutOfStock}
+                            className="w-full py-2 px-2 rounded-xl bg-brand-primary text-brand-dark font-bold text-xs flex items-center justify-center gap-1 hover:bg-brand-primaryHover transition-[background-color,transform] duration-150 ease-out active:scale-[0.97] shadow-md shadow-brand-primary/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="רכישה מהירה מיידית"
+                          >
+                            <Zap className="w-3.5 h-3.5 fill-current" />
+                            רכישה מהירה
+                          </button>
+
+                          <button
+                            onClick={() => addToCart(normalizedItem)}
+                            disabled={isOutOfStock}
+                            className={`w-full py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 border transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+                              isJustAdded
+                                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                : 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10 hover:text-white'
+                            }`}
+                            title="הוספה לסל הקניות"
+                          >
+                            {isJustAdded ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                נוסף!
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-3.5 h-3.5" />
+                                לסל
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center py-20 bg-white/5 rounded-2xl border border-white/10">
+                  <p className="text-slate-400 text-lg">אין מוצרים במלאי כרגע.</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

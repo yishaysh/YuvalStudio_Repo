@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Calendar, Settings, Image as ImageIcon, Ticket,
     Search, Filter, X, Check, Trash2, Edit2, Plus, LogOut, Save,
     ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
-    Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload, PieChart, TrendingUp, TrendingDown, Bell, Zap, ToggleLeft, ToggleRight
+    Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload, PieChart, TrendingUp, TrendingDown, Bell, Zap, ToggleLeft, ToggleRight, ShoppingBag
 } from 'lucide-react';
 import { api, TimeSlot } from '../services/mockApi';
 import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
@@ -18,6 +18,7 @@ import { calendarService } from '../services/calendarService';
 import CheckoutModal from '../components/dashboard/CheckoutModal';
 import { QuickSaleModal } from '../components/dashboard/QuickSaleModal';
 import { ReceiptModal } from '../components/dashboard/ReceiptModal';
+import { JewelryOrdersTab } from '../components/dashboard/JewelryOrdersTab';
 
 const m = motion as any;
 
@@ -3258,6 +3259,7 @@ const Admin: React.FC = () => {
                                 { id: 'dashboard', icon: Activity, label: 'ראשי' },
                                 { id: 'calendar', icon: Calendar, label: 'יומן' },
                                 { id: 'appointments', icon: Filter, label: 'ניהול תורים' },
+                                { id: 'orders', icon: ShoppingBag, label: 'הזמנות תכשיטים 💎' },
                                 { id: 'services', icon: Edit2, label: 'שירותים' },
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
                                 { id: 'inventory', icon: Box, label: 'מלאי' },
@@ -3303,6 +3305,7 @@ const Admin: React.FC = () => {
                                 onCompleteCheckout={setCheckoutApt}
                             />
                         )}
+                        {activeTab === 'orders' && <JewelryOrdersTab />}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
                         {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} onUpdateTags={handleUpdateGalleryTags} />}
                         {activeTab === 'inventory' && <InventoryTab settings={settings} onUpdate={handleUpdateSettings} />}

@@ -229,4 +229,31 @@ export interface CookieCategoryMeta {
   purpose: string;
   isMandatory: boolean;
   examples: string[];
-}
+}
+
+
+// --- Jewelry E-Commerce & Direct Order Flow ---
+export interface JewelryOrderItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image_url?: string;
+  category?: string;
+}
+
+export interface JewelryOrder {
+  id: string;
+  order_number: string;
+  client_name: string;
+  client_phone: string;
+  client_email?: string;
+  items: JewelryOrderItem[];
+  total_price: number;
+  delivery_method: 'pickup' | 'delivery';
+  shipping_address?: string;
+  shipping_cost: number;
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  notes?: string;
+  created_at: string;
+}
