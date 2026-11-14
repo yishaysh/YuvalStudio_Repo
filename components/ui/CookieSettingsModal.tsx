@@ -4,13 +4,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, Cookie, ShieldCheck, BarChart3, Megaphone, Sliders, Check, Lock, 
+import {
+  X, Cookie, ShieldCheck, BarChart3, Megaphone, Sliders, Check, Lock,
   Sparkles, CheckCircle2, RotateCcw
 } from 'lucide-react';
 import { useCookieConsent } from '../../contexts/CookieConsentContext';
 import { COOKIE_CATEGORIES_META } from '../../services/cookieConsent';
 import { CookieCategory } from '../../types';
+import { useDialogA11y } from '../../hooks/useDialogA11y';
 
 interface ToggleSwitchProps {
   isChecked: boolean;
@@ -29,13 +30,12 @@ const LuxuryToggleSwitch: React.FC<ToggleSwitchProps> = ({
     <div className="flex items-center gap-2.5 shrink-0 select-none">
       {/* State Text Label */}
       <span
-        className={`text-xs font-semibold tracking-wide whitespace-nowrap min-w-[36px] text-center transition-colors ${
-          isMandatory
-            ? 'text-emerald-400'
-            : isChecked
+        className={`text-xs font-semibold tracking-wide whitespace-nowrap min-w-[36px] text-center transition-colors ${isMandatory
+          ? 'text-emerald-400'
+          : isChecked
             ? 'text-brand-primary'
             : 'text-slate-500'
-        }`}
+          }`}
       >
         {isMandatory ? 'חובה' : isChecked ? 'פעיל' : 'כבוי'}
       </span>
@@ -49,21 +49,19 @@ const LuxuryToggleSwitch: React.FC<ToggleSwitchProps> = ({
         aria-label={label}
         disabled={isMandatory}
         onClick={isMandatory ? undefined : onToggle}
-        className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-[background-color,border-color,box-shadow,transform] duration-200 ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-primary/50 ${
-          isMandatory
-            ? 'bg-emerald-500/20 border border-emerald-500/40 cursor-not-allowed opacity-90'
-            : isChecked
+        className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-[background-color,border-color,box-shadow,transform] duration-200 ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-brand-primary/50 ${isMandatory
+          ? 'bg-emerald-500/20 border border-emerald-500/40 cursor-not-allowed opacity-90'
+          : isChecked
             ? 'bg-gradient-to-r from-brand-primary via-[#dfbe7f] to-[#eed297] shadow-[0_0_16px_rgba(212,181,133,0.4)] border border-brand-primary/60'
             : 'bg-white/10 hover:bg-white/20 border border-white/20'
-        }`}
+          }`}
       >
         {/* Sliding Thumb Knob */}
         <span
-          className={`pointer-events-none flex items-center justify-center h-6 w-6 transform rounded-full shadow-lg transition-transform duration-200 ease-emil-out ${
-            isChecked
-              ? 'translate-x-7 bg-brand-dark border border-brand-primary/40'
-              : 'translate-x-0 bg-slate-300'
-          }`}
+          className={`pointer-events-none flex items-center justify-center h-6 w-6 transform rounded-full shadow-lg transition-transform duration-200 ease-emil-out ${isChecked
+            ? 'translate-x-7 bg-brand-dark border border-brand-primary/40'
+            : 'translate-x-0 bg-slate-300'
+            }`}
         >
           {isMandatory ? (
             <Lock className="w-3.5 h-3.5 text-emerald-400" />
@@ -79,13 +77,13 @@ const LuxuryToggleSwitch: React.FC<ToggleSwitchProps> = ({
 };
 
 export const CookieSettingsModal: React.FC = () => {
-  const { 
-    preferences, 
-    isSettingsModalOpen, 
-    closeSettingsModal, 
-    savePreferences, 
-    acceptAll, 
-    rejectAll 
+  const {
+    preferences,
+    isSettingsModalOpen,
+    closeSettingsModal,
+    savePreferences,
+    acceptAll,
+    rejectAll
   } = useCookieConsent();
 
   // Local state for interactive choices within the modal
@@ -105,6 +103,11 @@ export const CookieSettingsModal: React.FC = () => {
       });
     }
   }, [isSettingsModalOpen, preferences]);
+
+  const dialogRef = useDialogA11y({
+    isOpen: isSettingsModalOpen,
+    onClose: closeSettingsModal,
+  });
 
   if (!isSettingsModalOpen) {
     return null;
@@ -174,16 +177,18 @@ export const CookieSettingsModal: React.FC = () => {
     <AnimatePresence>
       <div
         className="fixed inset-0 z-[10005] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-md"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cookie-settings-title"
       >
         <motion.div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cookie-settings-title"
+          tabIndex={-1}
           initial={{ opacity: 0, transform: "scale(0.96) translateY(16px)" }}
           animate={{ opacity: 1, transform: "scale(1) translateY(0px)" }}
           exit={{ opacity: 0, transform: "scale(0.96) translateY(16px)" }}
           transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-          className="relative w-full max-w-2xl bg-brand-surface/98 border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] text-right"
+          className="relative w-full max-w-2xl bg-brand-surface/98 border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] text-right focus:outline-none"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/10 bg-brand-dark/70 shrink-0">
@@ -249,11 +254,10 @@ export const CookieSettingsModal: React.FC = () => {
                 return (
                   <div
                     key={category.id}
-                    className={`p-4 sm:p-5 rounded-2xl transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-emil-out border ${
-                      isChecked
-                        ? 'bg-white/[0.04] border-white/15 shadow-sm'
-                        : 'bg-white/[0.02] border-white/5 opacity-80 hover:opacity-100'
-                    }`}
+                    className={`p-4 sm:p-5 rounded-2xl transition-[background-color,border-color,opacity,box-shadow] duration-200 ease-emil-out border ${isChecked
+                      ? 'bg-white/[0.04] border-white/15 shadow-sm'
+                      : 'bg-white/[0.02] border-white/5 opacity-80 hover:opacity-100'
+                      }`}
                   >
                     {/* Header Row: Icon, Title, Badge, and Switch */}
                     <div className="flex items-center justify-between gap-4">

@@ -2,13 +2,15 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Instagram, Facebook, MapPin, Lock, User, Sparkles, ShoppingBag } from 'lucide-react';
+import { Menu, X, Instagram, MapPin, Lock, User, Sparkles, ShoppingBag, Clock } from 'lucide-react';
 import { api } from './services/mockApi';
-import { DEFAULT_STUDIO_DETAILS } from './constants';
+import { getStudioWhatsAppPhone } from './services/notifications';
+import { DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS } from './constants';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { LoginModal } from './components/LoginModal';
 import { NavigationModal } from './components/ui';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { AccessibilityMenu } from './components/ui/AccessibilityMenu';
 import { CookieConsentProvider, useCookieConsent } from './contexts/CookieConsentContext';
 import { CookieBanner } from './components/ui/CookieBanner';
@@ -18,6 +20,9 @@ import { JewelryCartProvider, useJewelryCart } from './contexts/JewelryCartConte
 import { JewelryCartDrawer } from './components/jewelry/JewelryCartDrawer';
 import { QuickBuyModal } from './components/jewelry/QuickBuyModal';
 import { FloatingCartButton } from './components/jewelry/FloatingCartButton';
+import { APP_RELEASE_VERSION } from './shared/release';
+import { sanitizeExternalUrl } from './shared/validation';
+import { formatMinutesToHHMM, isStudioCompletelyClosed, parseTimeEndpointToMinutes, type WorkingHoursMap } from './shared/availability';
 
 // Lazy Load Pages - Must use explicit string literals for static analysis
 const Home = lazy(() => import('./pages/Home'));
@@ -81,9 +86,12 @@ const Navbar = () => {
   }, [location]);
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      setShowStyleMatcher(settings.enable_style_matcher === true);
-    });
+    api
+      .getBootstrap()
+      .then((boot) => {
+        setShowStyleMatcher(boot.settings.enable_style_matcher === true);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -323,6 +331,43 @@ const FooterCookieButton: React.FC<{ className?: string; label?: string }> = ({
   );
 };
 
+const HEBREW_DAY_LABELS: Record<string, string> = {
+  sunday: 'ראשון',
+  monday: 'שני',
+  tuesday: 'שלישי',
+  wednesday: 'רביעי',
+  thursday: 'חמישי',
+  friday: 'שישי',
+  saturday: 'שבת',
+};
+
+function getFooterHoursLines(workingHours: WorkingHoursMap): string[] {
+  if (isStudioCompletelyClosed(workingHours)) {
+    return ['קבלת קהל בתיאום תור מראש דרך האתר'];
+  }
+  const ordered = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const lines: string[] = [];
+  for (const key of ordered) {
+    const cfg = workingHours[key];
+    if (cfg?.isOpen && Array.isArray(cfg.ranges) && cfg.ranges.length > 0) {
+      const rangeStr = cfg.ranges
+        .map((r: { start: number | string; end: number | string }) => {
+          const s = parseTimeEndpointToMinutes(r.start);
+          const e = parseTimeEndpointToMinutes(r.end);
+          return s !== null && e !== null
+            ? `${formatMinutesToHHMM(s)}–${formatMinutesToHHMM(e)}`
+            : null;
+        })
+        .filter(Boolean)
+        .join(', ');
+      if (rangeStr) {
+        lines.push(`${HEBREW_DAY_LABELS[key] || key}: ${rangeStr}`);
+      }
+    }
+  }
+  return lines.length > 0 ? lines : ['קבלת קהל בתיאום תור מראש דרך האתר'];
+}
+
 const App: React.FC = () => {
   const [studioName, setStudioName] = useState(DEFAULT_STUDIO_DETAILS.name);
   const [address, setAddress] = useState(DEFAULT_STUDIO_DETAILS.address);
@@ -332,33 +377,56 @@ const App: React.FC = () => {
   const [coordinates, setCoordinates] = useState(DEFAULT_STUDIO_DETAILS.coordinates);
   const [businessName, setBusinessName] = useState(DEFAULT_STUDIO_DETAILS.business_name || 'יובל שבלב - סטודיו לפירסינג ותכשיטים');
   const [registrationNumber, setRegistrationNumber] = useState(DEFAULT_STUDIO_DETAILS.registration_number || 'ע.מ 318854291');
+  const [workingHours, setWorkingHours] = useState<WorkingHoursMap>(DEFAULT_WORKING_HOURS);
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   useEffect(() => {
-    // Non-blocking fetch
-    api.getSettings().then(settings => {
-      if (settings?.studio_details) {
-        if (settings.studio_details.name) {
-          setStudioName(settings.studio_details.name);
+    // Single sanitized public bootstrap request
+    api
+      .getBootstrap()
+      .then((boot) => {
+        const settings = boot.settings;
+        if (settings?.working_hours) {
+          setWorkingHours(settings.working_hours);
         }
-        setAddress(settings.studio_details.address);
-        setPhone(settings.studio_details.phone);
-        setEmail(settings.studio_details.email);
-        if (settings.studio_details.instagram_url) {
-          setInstagramUrl(settings.studio_details.instagram_url);
+        if (settings?.studio_details) {
+          if (settings.studio_details.name) {
+            setStudioName(settings.studio_details.name);
+          }
+          if (settings.studio_details.address) {
+            setAddress(settings.studio_details.address);
+          }
+          if (settings.studio_details.phone) {
+            setPhone(settings.studio_details.phone);
+          }
+          if (settings.studio_details.email) {
+            setEmail(settings.studio_details.email);
+          }
+          if (settings.studio_details.instagram_url) {
+            setInstagramUrl(
+              sanitizeExternalUrl(
+                settings.studio_details.instagram_url,
+                DEFAULT_STUDIO_DETAILS.instagram_url
+              )
+            );
+          }
+          if (settings.studio_details.coordinates) {
+            setCoordinates(settings.studio_details.coordinates);
+          }
+          if (settings.studio_details.business_name) {
+            setBusinessName(settings.studio_details.business_name);
+          }
+          if (settings.studio_details.registration_number) {
+            setRegistrationNumber(settings.studio_details.registration_number);
+          }
         }
-        if (settings.studio_details.coordinates) {
-          setCoordinates(settings.studio_details.coordinates);
-        }
-        if (settings.studio_details.business_name) {
-          setBusinessName(settings.studio_details.business_name);
-        }
-        if (settings.studio_details.registration_number) {
-          setRegistrationNumber(settings.studio_details.registration_number);
-        }
-      }
-    });
+      })
+      .catch(() => {});
   }, []);
+
+  const safeInstagramHref = sanitizeExternalUrl(instagramUrl, DEFAULT_STUDIO_DETAILS.instagram_url);
+  const waPhone = getStudioWhatsAppPhone(phone);
+  const footerHoursLines = getFooterHoursLines(workingHours);
 
   return (
     <AccessibilityProvider>
@@ -399,9 +467,30 @@ const App: React.FC = () => {
               <Route path="/jewelry" element={<JewelryPage />} />
               <Route path="/aftercare" element={<AftercarePage />} />
               <Route path="/style-matcher" element={<StyleMatcherPage />} />
-              <Route path="/dashboard" element={<PersonalArea />} />
-              <Route path="/dashboard/gallery" element={<UserGallery />} />
-              <Route path="/dashboard/settings" element={<UserSettings />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <PersonalArea />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/gallery"
+                element={
+                  <ProtectedRoute>
+                    <UserGallery />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/settings"
+                element={
+                  <ProtectedRoute>
+                    <UserSettings />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/admin" element={<Admin />} />
               <Route path="/accessibility-statement" element={<AccessibilityStatement />} />
               <Route path="/terms" element={<TermsOfService />} />
@@ -496,28 +585,52 @@ const App: React.FC = () => {
                     </div>
                   </li>
                   <li>
+                    <span className="text-slate-400">טלפון: </span>
                     <a href={`tel:${phone}`} className="hover:text-white transition-colors">
-                      טלפון / וואטסאפ: {phone}
+                      <bdi dir="ltr">{phone}</bdi>
                     </a>
+                    {waPhone && (
+                      <>
+                        {' '}•{' '}
+                        <a
+                          href={`https://wa.me/${waPhone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-400 hover:underline"
+                        >
+                          WhatsApp
+                        </a>
+                      </>
+                    )}
                   </li>
                   <li>
                     <a href={`mailto:${email}`} className="hover:text-white transition-colors">
-                      דוא&quot;ל: {email}
+                      דוא&quot;ל: <bdi dir="ltr">{email}</bdi>
                     </a>
+                  </li>
+                  <li className="flex items-start gap-2 pt-1 text-xs text-slate-400">
+                    <Clock className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      {footerHoursLines.map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))}
+                    </div>
                   </li>
                 </ul>
                 <div className="pt-2">
                   <h5 className="text-xs text-slate-400 mb-2">עקבו אחרי הסטודיו</h5>
                   <div className="flex gap-3">
-                    <a
-                      href={instagramUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-white/10"
-                      aria-label="עמוד האינסטגרם של יובל סטודיו"
-                    >
-                      <Instagram className="w-4 h-4" />
-                    </a>
+                    {safeInstagramHref && (
+                      <a
+                        href={safeInstagramHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-brand-primary hover:text-brand-dark transition-[background-color,border-color,color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] border border-white/10"
+                        aria-label="עמוד האינסטגרם של יובל סטודיו"
+                      >
+                        <Instagram className="w-4 h-4" />
+                      </a>
+                    )}
                   </div>
                 </div>
                 <NavigationModal
@@ -535,6 +648,8 @@ const App: React.FC = () => {
                 <span>© 2026 {studioName}. כל הזכויות שמורות.</span>
                 <span className="hidden sm:inline text-white/10">|</span>
                 <span>{businessName} ({registrationNumber})</span>
+                <span className="hidden sm:inline text-white/10">|</span>
+                <span className="text-slate-500">גרסה {APP_RELEASE_VERSION}</span>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <Link to="/terms" className="hover:text-slate-300 transition-colors">תקנון</Link>

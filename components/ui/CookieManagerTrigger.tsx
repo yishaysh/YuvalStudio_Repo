@@ -20,8 +20,8 @@ export const CookieManagerTrigger: React.FC = () => {
   return (
     <aside
       aria-label="ניהול עוגיות ופרטיות"
-      className={`fixed left-6 z-[9990] print:hidden transition-[bottom] duration-200 ease-emil-out ${
-        isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'
+      className={`fixed left-4 sm:left-6 z-[9990] print:hidden transition-[bottom] duration-200 ease-emil-out ${
+        isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.25rem+env(safe-area-inset-bottom))] sm:bottom-6'
       }`}
     >
       <button

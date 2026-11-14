@@ -4,28 +4,32 @@ import { ArrowRight, ShieldCheck, Accessibility, CheckCircle2, Phone, Mail, MapP
 import { Card } from '../components/ui';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { api } from '../services/mockApi';
+import { getStudioWhatsAppPhone } from '../services/notifications';
+import { LEGAL_DRAFT_NOTICE, LEGAL_REVISION_DATE_HE } from '../shared/release';
 
 export const AccessibilityStatement: React.FC = () => {
   const navigate = useNavigate();
   const [studio, setStudio] = useState(DEFAULT_STUDIO_DETAILS);
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      if (settings?.studio_details) {
-        setStudio(prev => ({ ...prev, ...settings.studio_details }));
+    api.getBootstrap().then(boot => {
+      if (boot?.settings?.studio_details) {
+        setStudio(prev => ({ ...prev, ...boot.settings.studio_details }));
       }
-    });
+    }).catch(() => {});
   }, []);
 
   const coordinatorName = studio.accessibility_coordinator_name || 'יובל שבלב';
   const coordinatorPhone = studio.accessibility_coordinator_phone || studio.phone;
   const coordinatorEmail = studio.accessibility_coordinator_email || studio.email;
+  const waPhone = getStudioWhatsAppPhone(coordinatorPhone);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-brand-dark">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Back navigation */}
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           aria-label="חזרה לעמוד הקודם"
@@ -48,8 +52,9 @@ export const AccessibilityStatement: React.FC = () => {
                 הצהרת הנגישות של אתר האינטרנט והסטודיו הפיזי של {studio.name} ({studio.business_name || 'יובל שבלב - סטודיו לפירסינג ותכשיטים'}, {studio.registration_number || 'ע.מ 318854291'}).
               </p>
               <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">
-                עדכון אחרון: {new Date().toLocaleDateString('he-IL')} | עמידה בתקן ת&quot;י 5568 רמה AA
+                עדכון אחרון: {LEGAL_REVISION_DATE_HE} | שאיפה לעמידה בתקן ת&quot;י 5568 רמה AA
               </div>
+              <p className="text-[11px] text-amber-300/80 max-w-xl mx-auto">{LEGAL_DRAFT_NOTICE}</p>
             </header>
 
             <div className="space-y-8 text-slate-300 leading-relaxed text-right text-base">
@@ -162,10 +167,25 @@ export const AccessibilityStatement: React.FC = () => {
                 <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
                   <ul className="space-y-2 text-slate-300">
                     <li><strong>רכז/ת הנגישות בסטודיו:</strong> {coordinatorName}</li>
-                    <li className="flex items-center gap-2">
+                    <li className="flex items-center gap-2 flex-wrap">
                       <Phone className="w-4 h-4 text-brand-primary" />
-                      <span>טלפון / וואטסאפ:</span>
-                      <a href={`tel:${coordinatorPhone}`} className="text-brand-primary hover:underline">{coordinatorPhone}</a>
+                      <span>טלפון:</span>
+                      <a href={`tel:${coordinatorPhone}`} className="text-brand-primary hover:underline">
+                        <bdi dir="ltr">{coordinatorPhone}</bdi>
+                      </a>
+                      {waPhone && (
+                        <>
+                          <span>•</span>
+                          <a
+                            href={`https://wa.me/${waPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 hover:underline"
+                          >
+                            WhatsApp
+                          </a>
+                        </>
+                      )}
                     </li>
                     <li className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-brand-primary" />

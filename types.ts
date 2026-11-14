@@ -6,9 +6,11 @@ export interface Service {
   duration_minutes: number;
   category: 'Ear' | 'Face' | 'Body' | 'Jewelry';
   image_url: string;
-  pain_level: number; // 1-10
+  pain_level: number; // 1-10 (0 = unspecified)
+  healing_time?: string;
   cost_price?: number;
   stock_quantity?: number;
+  is_active?: boolean;
 }
 
 export interface Profile {
@@ -97,6 +99,11 @@ export interface Appointment {
   privacy_accepted?: boolean;
   marketing_opt_in?: boolean;
   consent_timestamp?: string;
+
+  // --- Idempotency & Notification Audit ---
+  idempotency_key?: string;
+  notification_status?: 'sent' | 'partial' | 'failed' | 'pending' | 'skipped';
+  notification_error?: string;
 }
 
 export interface CustomerReview {
@@ -119,15 +126,22 @@ export interface Expense {
   created_at?: string;
 }
 
-// שאר ה-Interfaces נשארים ללא שינוי, אבל הוספתי תמיכה ב-in_stock לתכשיטים במידה ותצטרך
-export interface JewelryItem extends Service {
+export interface JewelryItem extends Omit<Service, 'duration_minutes' | 'pain_level'> {
+  duration_minutes?: number;
+  pain_level?: number;
   in_stock?: boolean;
+  material?: string;
+  gauge?: string;
+  diameter?: string;
+  allowed_locations?: string[];
 }
 
 export interface DayAvailability {
   date: Date;
   isAvailable: boolean;
   slots: string[];
+  status?: 'open' | 'closed_day' | 'fully_booked' | 'outside_horizon' | 'studio_all_closed' | 'error';
+  message?: string;
 }
 
 export interface TimeRange {
@@ -146,6 +160,13 @@ export interface StudioDetails {
   address: string;
   email: string;
   instagram_url?: string;
+  hours_text?: string;
+  booking_horizon_days?: number;
+  shipping_fee?: number;
+  free_shipping_threshold?: number;
+  shipping_eta?: string;
+  studio_story_title?: string;
+  studio_story_body?: string;
   coordinates?: {
     lat: number;
     lng: number;
@@ -171,6 +192,7 @@ export interface Coupon {
   isActive: boolean;
   maxUses?: number;
   usedCount?: number;
+  expiry_date?: string;
 }
 
 export interface StudioSettings {
@@ -185,6 +207,7 @@ export interface StudioSettings {
   enable_gallery?: boolean;
   enable_style_matcher?: boolean;
   show_pain_level?: boolean;
+  enable_ar?: boolean;
   whatsapp_templates?: Record<string, string>;
   inventory_items?: any[];
   // --- Notification Settings ---
@@ -197,6 +220,22 @@ export interface StudioSettings {
   emailjs_public_key?: string;
   notification_email?: string;
   enable_calendar_sync?: boolean;
+  booking_horizon_days?: number;
+  shipping_fee?: number;
+  free_shipping_threshold?: number;
+  shipping_eta?: string;
+}
+
+export interface WaitlistRequest {
+  id: string;
+  client_name: string;
+  client_phone: string;
+  client_email?: string;
+  preferred_date?: string;
+  service_ids: string[];
+  notes?: string;
+  status: 'pending' | 'contacted' | 'resolved';
+  created_at: string;
 }
 
 export enum BookingStep {
@@ -235,6 +274,7 @@ export interface CookieCategoryMeta {
 // --- Jewelry E-Commerce & Direct Order Flow ---
 export interface JewelryOrderItem {
   id: string;
+  product_id?: string;
   name: string;
   price: number;
   quantity: number;
@@ -256,4 +296,7 @@ export interface JewelryOrder {
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
   notes?: string;
   created_at: string;
+  idempotency_key?: string;
+  notification_status?: 'sent' | 'partial' | 'failed' | 'pending' | 'skipped';
+  notification_error?: string;
 }

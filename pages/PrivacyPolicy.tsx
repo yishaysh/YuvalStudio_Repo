@@ -5,6 +5,7 @@ import { Card } from '../components/ui';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { api } from '../services/mockApi';
 import { useCookieConsent } from '../contexts/CookieConsentContext';
+import { LEGAL_DRAFT_NOTICE, LEGAL_REVISION_DATE_HE } from '../shared/release';
 
 export const PrivacyPolicy: React.FC = () => {
   const navigate = useNavigate();
@@ -12,11 +13,11 @@ export const PrivacyPolicy: React.FC = () => {
   const { openSettingsModal } = useCookieConsent();
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      if (settings?.studio_details) {
-        setStudio(prev => ({ ...prev, ...settings.studio_details }));
+    api.getBootstrap().then(boot => {
+      if (boot?.settings?.studio_details) {
+        setStudio(prev => ({ ...prev, ...boot.settings.studio_details }));
       }
-    });
+    }).catch(() => {});
   }, []);
 
   return (
@@ -24,6 +25,7 @@ export const PrivacyPolicy: React.FC = () => {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Back navigation */}
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           aria-label="חזרה לעמוד הקודם"
@@ -46,8 +48,9 @@ export const PrivacyPolicy: React.FC = () => {
                 הגנה על פרטיותך, שקיפות מלאה ועמידה מחמירה בחוק הגנת הפרטיות הישראלי (התשמ&quot;א-1981, לרבות תיקון 13) ועקרונות צמצום מידע.
               </p>
               <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">
-                עדכון אחרון: {new Date().toLocaleDateString('he-IL')}
+                עדכון אחרון: {LEGAL_REVISION_DATE_HE}
               </div>
+              <p className="text-[11px] text-amber-300/80 max-w-xl mx-auto">{LEGAL_DRAFT_NOTICE}</p>
             </header>
 
             <div className="space-y-8 text-slate-300 leading-relaxed text-right text-base">

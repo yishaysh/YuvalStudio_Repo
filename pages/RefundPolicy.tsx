@@ -4,24 +4,29 @@ import { ArrowRight, RotateCcw, Calendar, Gem, AlertTriangle, ShieldCheck } from
 import { Card } from '../components/ui';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { api } from '../services/mockApi';
+import { getStudioWhatsAppPhone } from '../services/notifications';
+import { LEGAL_DRAFT_NOTICE, LEGAL_REVISION_DATE_HE } from '../shared/release';
 
 export const RefundPolicy: React.FC = () => {
   const navigate = useNavigate();
   const [studio, setStudio] = useState(DEFAULT_STUDIO_DETAILS);
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      if (settings?.studio_details) {
-        setStudio(prev => ({ ...prev, ...settings.studio_details }));
+    api.getBootstrap().then(boot => {
+      if (boot?.settings?.studio_details) {
+        setStudio(prev => ({ ...prev, ...boot.settings.studio_details }));
       }
-    });
+    }).catch(() => {});
   }, []);
+
+  const waPhone = getStudioWhatsAppPhone(studio.phone);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-brand-dark">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Back navigation */}
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           aria-label="חזרה לעמוד הקודם"
@@ -44,8 +49,9 @@ export const RefundPolicy: React.FC = () => {
                 בהתאם להוראות חוק הגנת הצרכן, התשמ&quot;א-1981 ותקנות הגנת הצרכן (ביטול עסקה), התשע&quot;א-2010.
               </p>
               <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">
-                עדכון אחרון: {new Date().toLocaleDateString('he-IL')}
+                עדכון אחרון: {LEGAL_REVISION_DATE_HE}
               </div>
+              <p className="text-[11px] text-amber-300/80 max-w-xl mx-auto">{LEGAL_DRAFT_NOTICE}</p>
             </header>
 
             <div className="space-y-8 text-slate-300 leading-relaxed text-right text-base">
@@ -83,7 +89,7 @@ export const RefundPolicy: React.FC = () => {
                     <strong className="text-slate-200">הודעה מוקדמת של 24 שעות ומעלה:</strong> לפנים משורת הדין, אנו מאפשרים לכל לקוח/ה לשנות מועד תור או לדחותו ללא כל עלות, ובלבד שההודעה נמסרה לפחות 24 שעות לפני מועד התור המקורי.
                   </li>
                   <li>
-                    <strong className="text-slate-200">ביטול בפחות מ-24 שעות או אי-הופעה (No-Show):</strong> לקוח שלא יופיע לתור במועדו ולא מסר הודעה מוקדמת של 24 שעות לפחות, יחויב בדמי מקדמה/טיפול כחוק, שכן השעה נשמרה עבורו במיוחד ונמנע מתן שירות ללקוחות אחרים.
+                    <strong className="text-slate-200">ביטול בהתראה קצרה או אי-הופעה:</strong> זכויות הביטול לפי חוק הגנת הצרכן גוברות בכל מקרה שבו החוק חל. במקרים שבהם לא נמסרה הודעת ביטול במועד או בביטול בפחות מ-24 שעות שלא לפי תנאי הזכאות בחוק, עשוי להיגבות תשלום על מקדמה או שיבוץ התור בהתאם לתקנות.
                   </li>
                 </ul>
               </section>
@@ -149,7 +155,25 @@ export const RefundPolicy: React.FC = () => {
                 <h2 className="text-xl font-bold text-brand-primary">6. דרכי מתן הודעת ביטול והתקשרות</h2>
                 <p>הודעת ביטול עסקה או בקשת החלפה ניתנת למסירה באחת מהדרכים הבאות:</p>
                 <ul className="space-y-2 text-slate-300">
-                  <li><strong>וואטסאפ / טלפון מהיר:</strong> <a href={`tel:${studio.phone}`} className="text-brand-primary hover:underline">{studio.phone}</a></li>
+                  <li>
+                    <strong>טלפון:</strong>{' '}
+                    <a href={`tel:${studio.phone}`} className="text-brand-primary hover:underline">
+                      <bdi dir="ltr">{studio.phone}</bdi>
+                    </a>
+                    {waPhone && (
+                      <>
+                        {' '}•{' '}
+                        <a
+                          href={`https://wa.me/${waPhone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-400 hover:underline"
+                        >
+                          WhatsApp
+                        </a>
+                      </>
+                    )}
+                  </li>
                   <li><strong>דואר אלקטרוני:</strong> <a href={`mailto:${studio.email}`} className="text-brand-primary hover:underline">{studio.email}</a></li>
                   <li><strong>מסירה אישית בסטודיו:</strong> {studio.address} (בתיאום מראש)</li>
                   <li><strong>שם העסק:</strong> {studio.business_name || studio.name} (מספר ע.מ {studio.registration_number || '318854291'})</li>

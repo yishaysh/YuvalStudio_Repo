@@ -4,24 +4,29 @@ import { ArrowRight, FileText, ShieldAlert, HeartPulse, Scale, CheckCircle2 } fr
 import { Card } from '../components/ui';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { api } from '../services/mockApi';
+import { getStudioWhatsAppPhone } from '../services/notifications';
+import { LEGAL_DRAFT_NOTICE, LEGAL_REVISION_DATE_HE } from '../shared/release';
 
 export const TermsOfService: React.FC = () => {
   const navigate = useNavigate();
   const [studio, setStudio] = useState(DEFAULT_STUDIO_DETAILS);
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      if (settings?.studio_details) {
-        setStudio(prev => ({ ...prev, ...settings.studio_details }));
+    api.getBootstrap().then(boot => {
+      if (boot?.settings?.studio_details) {
+        setStudio(prev => ({ ...prev, ...boot.settings.studio_details }));
       }
-    });
+    }).catch(() => {});
   }, []);
+
+  const waPhone = getStudioWhatsAppPhone(studio.phone);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-brand-dark">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Back navigation */}
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           aria-label="חזרה לעמוד הקודם"
@@ -44,8 +49,9 @@ export const TermsOfService: React.FC = () => {
                 תקנון שימוש באתר האינטרנט, תיאום תורים, וקבלת שירותים בסטודיו {studio.name} ({studio.business_name || 'יובל שבלב - סטודיו לפירסינג ותכשיטים'}, {studio.registration_number || 'ע.מ 318854291'}).
               </p>
               <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">
-                עדכון אחרון: {new Date().toLocaleDateString('he-IL')}
+                עדכון אחרון: {LEGAL_REVISION_DATE_HE}
               </div>
+              <p className="text-[11px] text-amber-300/80 max-w-xl mx-auto">{LEGAL_DRAFT_NOTICE}</p>
             </header>
 
             <div className="space-y-8 text-slate-300 leading-relaxed text-right text-base">
@@ -127,7 +133,7 @@ export const TermsOfService: React.FC = () => {
                     <strong className="text-slate-200">איחורים:</strong> איחור של מעל 10 דקות ממועד התור עלול להביא לקיצור הטיפול או לביטולו, וזאת על מנת שלא לפגוע בלקוחות הבאים.
                   </li>
                   <li>
-                    <strong className="text-slate-200">מדיניות ביטול תור:</strong> ניתן לבטל או לשנות מועד תור עד 24 שעות לפני המועד שנקבע ללא עלות. ביטול בהודעה קצרה מ-24 שעות או אי-הופעה לתור (No-Show) יגרור חיוב מלא או חלקי בהתאם לתקנות הגנת הצרכן (ביטול עסקה), כמפורט במדיניות ההחזרים והביטולים של הסטודיו.
+                    <strong className="text-slate-200">מדיניות ביטול ושינוי מועד:</strong> שינוי מועד תור בהתראה של לפחות 24 שעות מראש הינו ללא עלות. ביטול עסקת שירות כפוף להוראות חוק הגנת הצרכן ותקנות ביטול עסקה (בתוך 14 יום ולפחות שני ימי עסקים שאינם ימי מנוחה לפני המועד, בכפוף לדמי ביטול של עד 5% או 100 ₪ לפי הנמוך), כמפורט במדיניות הביטולים וההחזרים.
                   </li>
                 </ul>
               </section>
@@ -203,7 +209,25 @@ export const TermsOfService: React.FC = () => {
                   <li><strong>שם העסק:</strong> {studio.business_name || studio.name}</li>
                   <li><strong>מספר עוסק / ח.פ:</strong> {studio.registration_number || 'ע.מ 318854291'}</li>
                   <li><strong>כתובת הסטודיו:</strong> {studio.address}</li>
-                  <li><strong>טלפון / וואטסאפ:</strong> <a href={`tel:${studio.phone}`} className="text-brand-primary hover:underline">{studio.phone}</a></li>
+                  <li>
+                    <strong>טלפון:</strong>{' '}
+                    <a href={`tel:${studio.phone}`} className="text-brand-primary hover:underline">
+                      <bdi dir="ltr">{studio.phone}</bdi>
+                    </a>
+                    {waPhone && (
+                      <>
+                        {' '}•{' '}
+                        <a
+                          href={`https://wa.me/${waPhone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-400 hover:underline"
+                        >
+                          WhatsApp
+                        </a>
+                      </>
+                    )}
+                  </li>
                   <li><strong>דואר אלקטרוני:</strong> <a href={`mailto:${studio.email}`} className="text-brand-primary hover:underline">{studio.email}</a></li>
                 </ul>
               </section>

@@ -3,6 +3,8 @@ import html2canvas from 'html2canvas';
 import { Download, Share2, Printer, Check } from 'lucide-react';
 import { Modal, Button } from '../ui';
 import { DEFAULT_STUDIO_DETAILS, JEWELRY_CATALOG, SERVICES } from '../../constants';
+import { formatILS } from '../../shared/money';
+import { extractInstagramHandle } from '../../shared/validation';
 import { Appointment, StudioDetails } from '../../types';
 
 const StudioLogo = ({ className }: { className?: string }) => (
@@ -225,10 +227,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                                 <div className="flex-1 pr-3">
                                     <div className="text-slate-200">{item.name}</div>
                                     {item.quantity > 1 && (
-                                        <div className="text-[10px] text-slate-500 font-serif mt-0.5">{item.quantity} x ₪{item.price.toFixed(2)}</div>
+                                        <div className="text-[10px] text-slate-500 font-serif mt-0.5">{item.quantity} x <bdi dir="ltr">{formatILS(item.price)}</bdi></div>
                                     )}
                                 </div>
-                                <div className="font-serif text-white shrink-0 mt-0.5">₪{(item.price * item.quantity).toFixed(2)}</div>
+                                <div className="font-serif text-white shrink-0 mt-0.5"><bdi dir="ltr">{formatILS(item.price * item.quantity)}</bdi></div>
                             </div>
                         ))}
                     </div>
@@ -238,12 +240,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                         {discountStr > 0 && (
                             <div className="flex justify-between text-sm text-brand-primary/80">
                                 <span>הנחות שיושמו:</span>
-                                <span className="font-serif">-₪{discountStr.toFixed(2)}</span>
+                                <span className="font-serif"><bdi dir="ltr">-{formatILS(discountStr)}</bdi></span>
                             </div>
                         )}
                         <div className="flex justify-between items-end pt-1">
                             <span className="text-sm font-bold text-slate-300">סה״כ שולם:</span>
-                            <span className="text-2xl font-serif text-brand-primary font-bold">₪{totalToPay.toFixed(2)}</span>
+                            <span className="text-2xl font-serif text-brand-primary font-bold"><bdi dir="ltr">{formatILS(totalToPay)}</bdi></span>
                         </div>
                     </div>
 
@@ -252,13 +254,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                         <p className="font-serif italic text-sm text-brand-primary/80 mb-3">תודה שבחרת בנו 💫</p>
                         <p>{details.address}</p>
                         <p>{details.phone}</p>
-                        {details.instagram_url && <p>Instagram: @{(() => {
-                            const match = details.instagram_url.match(/instagram\.com\/([^/?#]+)/i);
-                            if (match && match[1] && !['stories', 'p', 'reel', 'explore'].includes(match[1])) {
-                                return match[1];
-                            }
-                            return 'yuval_studio';
-                        })()}</p>}
+                        {details.instagram_url && <p>Instagram: @{extractInstagramHandle(details.instagram_url)}</p>}
                     </div>
                 </div>
 

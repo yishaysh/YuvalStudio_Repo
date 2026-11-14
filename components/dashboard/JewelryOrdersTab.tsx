@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { JewelryOrder } from '../../types';
 import { api } from '../../services/mockApi';
+import { agorotToShekels, formatILS, multiplyAgorot, parsePriceToAgorot } from '../../shared/money';
 import { DEFAULT_STUDIO_DETAILS } from '../../constants';
 
 const m = motion as any;
@@ -76,7 +77,19 @@ export const JewelryOrdersTab: React.FC = () => {
       statusText = 'קיבלנו את ההזמנה שלך ואנחנו מעבדים אותה ברגעים אלו! 💎';
     }
 
-    const itemsSummary = order.items.map(item => `• ${item.name} (כמות: ${item.quantity}) - ₪${item.price * item.quantity}`).join('\n');
+    const itemsSummary = order.items
+      .map(item => {
+        const lineTotal = agorotToShekels(multiplyAgorot(parsePriceToAgorot(item.price, 0), item.quantity));
+        return `• ${item.name} (כמות: ${item.quantity}) - ${formatILS(lineTotal)}`;
+      })
+      .join('\n');
+
+    const shippingLabel =
+      order.delivery_method === 'delivery'
+        ? order.shipping_cost === 0
+          ? '(משלוח חינם)'
+          : `(כולל משלוח ${formatILS(order.shipping_cost)})`
+        : '(איסוף עצמי)';
 
     const msg = `היי ${order.client_name}! כאן יובל מ-Yuval Studio 💎
 לגבי הזמנת התכשיטים שלך (מספר הזמנה #${order.order_number}):
@@ -86,7 +99,7 @@ ${statusText}
 פירוט הפריטים:
 ${itemsSummary}
 
-סה"כ לתשלום: ₪${order.total_price} ${order.delivery_method === 'delivery' ? '(כולל משלוח ₪30)' : '(איסוף עצמי)'}
+סה"כ לתשלום: ${formatILS(order.total_price)} ${shippingLabel}
 
 לכל שאלה או התייעצות, אני כאן בשבילך! ✨`;
 

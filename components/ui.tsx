@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, HTMLMotionProps, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, Navigation, Check, ShieldCheck } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 const m = motion as any;
 
@@ -130,17 +131,7 @@ interface ModalProps {
 }
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon, className = '' }) => {
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
+  const dialogRef = useDialogA11y({ isOpen, onClose });
   const modalId = `modal-title-${title.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
@@ -148,9 +139,6 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       {isOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={modalId}
         >
           {/* Backdrop */}
           <m.div
@@ -163,16 +151,22 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
           {/* Modal Content */}
           <m.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalId}
+            tabIndex={-1}
             initial={{ opacity: 0, transform: 'scale(0.95) translateY(20px)' }}
             animate={{ opacity: 1, transform: 'scale(1) translateY(0px)' }}
             exit={{ opacity: 0, transform: 'scale(0.95) translateY(20px)' }}
             transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.3 }}
-            className={`w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl relative z-10 max-h-[90vh] flex flex-col overflow-hidden ${className}`}
+            className={`w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl relative z-10 max-h-[90vh] flex flex-col overflow-hidden focus:outline-none ${className}`}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
               <h3 id={modalId} className="text-xl font-serif text-white">{title}</h3>
               <button
+                type="button"
                 onClick={onClose}
                 aria-label="סגור חלון"
                 className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
@@ -256,6 +250,7 @@ interface NavigationModalProps {
 // ... (keep existing interfaces)
 
 export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClose, address, coordinates }) => {
+  const navDialogRef = useDialogA11y({ isOpen, onClose });
   const encodedAddress = encodeURIComponent(address);
 
   const handleNavigation = (app: 'waze' | 'google') => {
@@ -298,15 +293,22 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
             className="fixed inset-0 bg-brand-dark/80 backdrop-blur-sm z-[9999]"
           />
           <m.div
+            ref={navDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nav-modal-title"
+            tabIndex={-1}
             initial={{ opacity: 0, transform: 'translate(-50%, -50%) scale(0.95)' }}
             animate={{ opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}
             exit={{ opacity: 0, transform: 'translate(-50%, -50%) scale(0.95)' }}
             transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.25 }}
-            className="fixed top-1/2 left-1/2 w-[90%] max-w-sm bg-brand-surface border border-white/10 rounded-2xl shadow-2xl z-[10000] p-6 text-center origin-center"
+            className="fixed top-1/2 left-1/2 w-[90%] max-w-sm bg-brand-surface border border-white/10 rounded-2xl shadow-2xl z-[10000] p-6 text-center origin-center focus:outline-none"
           >
             <button
+              type="button"
               onClick={onClose}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+              aria-label="סגור חלון ניווט"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1.5 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
             >
               <X className="w-5 h-5" />
             </button>
@@ -315,7 +317,7 @@ export const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClos
               <Navigation className="w-8 h-8" />
             </div>
 
-            <h3 className="text-xl font-serif text-white mb-2">בחר אפליקציית ניווט</h3>
+            <h3 id="nav-modal-title" className="text-xl font-serif text-white mb-2">בחר אפליקציית ניווט</h3>
             <p className="text-slate-400 text-sm mb-6">כיצד תרצה לנווט לסטודיו?</p>
 
             <div className="grid grid-cols-2 gap-4">

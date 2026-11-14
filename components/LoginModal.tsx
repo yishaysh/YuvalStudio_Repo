@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from './ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -14,25 +15,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const { signInWithGoogle } = useAuth();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
-
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isOpen) {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
+    const [loginError, setLoginError] = useState<string | null>(null);
+    const dialogRef = useDialogA11y({ isOpen, onClose });
 
     const handleGoogleLogin = async () => {
         setIsLoading(true);
+        setLoginError(null);
         try {
             await signInWithGoogle();
             onClose();
             navigate('/dashboard');
-        } catch (error) {
+        } catch (error: any) {
             console.error("Login Failed:", error);
+            setLoginError(error?.message || 'ההתחברות נכשלה או בוטלה. נסי שוב.');
         } finally {
             setIsLoading(false);
         }
@@ -55,14 +50,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
                     {/* Modal */}
                     <motion.div
+                        ref={dialogRef}
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="login-modal-title"
+                        tabIndex={-1}
                         initial={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
                         animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
                         exit={{ opacity: 0, transform: "translateY(20px) scale(0.95)" }}
                         transition={{ ease: [0.23, 1, 0.32, 1], duration: 0.3 }}
-                        className="relative w-full max-w-md bg-zinc-900/90 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-md bg-zinc-900/90 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden focus:outline-none"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* "Void" Decoration */}
@@ -86,6 +83,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                             </div>
 
                             <div className="space-y-4">
+                                {loginError && (
+                                    <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 text-right">
+                                        {loginError}
+                                    </div>
+                                )}
                                 <Button
                                     onClick={handleGoogleLogin}
                                     isLoading={isLoading}

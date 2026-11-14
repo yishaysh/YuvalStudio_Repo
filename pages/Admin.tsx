@@ -6,8 +6,12 @@ import {
     ChevronRight, ChevronLeft, Loader2, Clock, Activity, DollarSign,
     Users, Info, ArrowUpDown, Send, FileText, Tag, Lock, CalendarPlus, RefreshCw, AlertCircle, CheckCircle2, Wand2, Sparkles, Box, AlertTriangle, Upload, PieChart, TrendingUp, TrendingDown, Bell, Zap, ToggleLeft, ToggleRight, ShoppingBag
 } from 'lucide-react';
-import { api, TimeSlot } from '../services/mockApi';
-import { Appointment, Service, StudioSettings, Coupon, Expense } from '../types';
+import { api, ApiError, TimeSlot } from '../services/mockApi';
+import { useAuth } from '../contexts/AuthContext';
+import { formatMinutesToHHMM, parseTimeEndpointToMinutes, DEFAULT_BOOKING_HORIZON_DAYS } from '../shared/availability';
+import { formatILS } from '../shared/money';
+import { AUTHORITATIVE_SHIPPING_POLICY } from '../shared/shipping';
+import { Appointment, Service, StudioSettings, Coupon, Expense, WaitlistRequest } from '../types';
 import { Button, Card, Input, Modal, ConfirmationModal, SectionHeading } from '../components/ui';
 // @ts-ignore
 import { jsPDF } from 'jspdf';
@@ -149,11 +153,8 @@ const UserProfileModal = ({ user, isOpen, onClose, appointments }: any) => {
         const fetchProfile = async () => {
             if (user?.client_id && isOpen) {
                 try {
-                    const { dbClient } = await import('../services/dbClient');
-                    if (dbClient) {
-                        const { data } = await dbClient.from('profiles').select('*').eq('id', user.client_id).maybeSingle();
-                        if (data) setFullProfile(data);
-                    }
+                    const data = await api.getAdminProfile(user.client_id);
+                    if (data) setFullProfile(data);
                 } catch (e) {
                     console.error('Failed to load profile', e);
                 }
@@ -391,12 +392,13 @@ const EditTimeModal = ({ apt, isOpen, onClose, onRefresh, settings }: any) => {
     useEffect(() => {
         if (selectedDate && isOpen) {
             setIsLoadingSlots(true);
-            api.getAvailability(selectedDate).then(slots => {
+            const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+            api.getAvailability(dateKey, Number(durationStr) || 30).then(slots => {
                 setAvailableSlots(slots);
                 setIsLoadingSlots(false);
             });
         }
-    }, [selectedDate, isOpen]);
+    }, [selectedDate, isOpen, durationStr]);
 
     // Validation for enough slots (copied conceptually from Booking.tsx)
     const isSlotValid = useCallback((startIndex: number, durationMins: number) => {
@@ -423,7 +425,7 @@ const EditTimeModal = ({ apt, isOpen, onClose, onRefresh, settings }: any) => {
             const newStart = new Date(selectedDate);
             newStart.setHours(hours, minutes, 0, 0);
 
-            const success = await api.updateAppointmentTime(apt.id, newStart, Number(durationStr));
+            const success = await api.updateAppointmentTime(apt.id, newStart.toISOString(), Number(durationStr));
             if (success) {
                 if (onRefresh) onRefresh();
                 onClose();
@@ -1162,7 +1164,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
     const [items, setItems] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
-    const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true });
+    const [formData, setFormData] = useState({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true, material: '', gauge: '', diameter: '' });
     const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
@@ -1217,7 +1219,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
         onUpdate({ ...settings, inventory_items: newItems }, true);
         setIsModalOpen(false);
         setEditingItem(null);
-        setFormData({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true });
+        setFormData({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true, material: '', gauge: '', diameter: '' });
     };
 
     const handleDelete = (id: string) => {
@@ -1240,7 +1242,7 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
             setFormData(item);
         } else {
             setEditingItem(null);
-            setFormData({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true });
+            setFormData({ name: '', category: 'Ear', price: 0, cost_price: 0, stock_quantity: 0, image_url: '', in_stock: true, material: '', gauge: '', diameter: '' });
         }
         setIsModalOpen(true);
     };
@@ -1310,6 +1312,11 @@ const InventoryTab = ({ settings, onUpdate }: any) => {
                         <Input label="מחיר (₪)" type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
                         <Input label="עלות (₪)" type="number" value={formData.cost_price || 0} onChange={e => setFormData({ ...formData, cost_price: Number(e.target.value) })} />
                         <Input label="מלאי זמין" type="number" value={formData.stock_quantity || 0} onChange={e => setFormData({ ...formData, stock_quantity: Number(e.target.value) })} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <Input label="חומר (אופציונלי)" value={(formData as any).material || ''} onChange={e => setFormData({ ...formData, material: e.target.value } as any)} placeholder="טיטניום / זהב 14K" />
+                        <Input label="עובי / Gauge" value={(formData as any).gauge || ''} onChange={e => setFormData({ ...formData, gauge: e.target.value } as any)} placeholder="1.2mm / 16G" />
+                        <Input label="קוטר / אורך" value={(formData as any).diameter || ''} onChange={e => setFormData({ ...formData, diameter: e.target.value } as any)} placeholder="8mm" />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-400 block mb-2">קטגוריה</label>
@@ -2184,6 +2191,7 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
                 <div className="space-y-4">
                     <Input label="שם השירות" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                     <Input label="תיאור" value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+                    <Input label="טווח החלמה מאומת (אופציונלי, מוצג ללקוחות)" value={formData.healing_time || ''} onChange={e => setFormData({ ...formData, healing_time: e.target.value })} placeholder="לדוגמה: כ-6 עד 12 חודשים" />
                     <div className="grid grid-cols-2 gap-4">
                         <Input label="מחיר (₪)" type="number" value={formData.price || ''} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
                         <Input label="משך (דקות)" type="number" value={formData.duration_minutes || ''} onChange={e => setFormData({ ...formData, duration_minutes: Number(e.target.value) })} />
@@ -2231,11 +2239,13 @@ const ServicesTab = ({ services, onAddService, onUpdateService, onDeleteService 
                         </div>
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-slate-400 block mb-2">רמת כאב ({formData.pain_level})</label>
+                        <label className="text-sm font-medium text-slate-400 block mb-2">
+                            רמת כאב ({formData.pain_level ? `${formData.pain_level}/10` : 'לא צוינה'})
+                        </label>
                         <input
-                            type="range" min="1" max="10"
+                            type="range" min="0" max="10"
                             className="w-full accent-brand-primary"
-                            value={formData.pain_level}
+                            value={formData.pain_level ?? 0}
                             onChange={e => setFormData({ ...formData, pain_level: Number(e.target.value) })}
                         />
                     </div>
@@ -2362,8 +2372,79 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                         value={localSettings.studio_details.instagram_url || ''}
                         onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, instagram_url: e.target.value } })}
                         onBlur={handleSilentSave}
-                        placeholder="https://instagram.com/..."
+                        placeholder="https://www.instagram.com/yuval_studio"
                     />
+                    <Input
+                        label="שעות פעילות לתצוגה בפוטר (אופציונלי)"
+                        value={localSettings.studio_details.hours_text || ''}
+                        onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, hours_text: e.target.value } })}
+                        onBlur={handleSilentSave}
+                        placeholder="לדוגמה: א'-ה' 10:00–19:00 | בתיאום תור מראש"
+                    />
+                    <Input
+                        label="טווח ימים פתוח להזמנות (Horizon Days)"
+                        type="number"
+                        value={localSettings.studio_details.booking_horizon_days ?? DEFAULT_BOOKING_HORIZON_DAYS}
+                        onChange={e => setLocalSettings({
+                            ...localSettings,
+                            booking_horizon_days: Number(e.target.value),
+                            studio_details: { ...localSettings.studio_details, booking_horizon_days: Number(e.target.value) }
+                        })}
+                        onBlur={handleSilentSave}
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
+                    <Input
+                        label="דמי משלוח רגילים (₪)"
+                        type="number"
+                        value={localSettings.studio_details.shipping_fee ?? AUTHORITATIVE_SHIPPING_POLICY.deliveryFeeShekels}
+                        onChange={e => setLocalSettings({
+                            ...localSettings,
+                            shipping_fee: Number(e.target.value),
+                            studio_details: { ...localSettings.studio_details, shipping_fee: Number(e.target.value) }
+                        })}
+                        onBlur={handleSilentSave}
+                    />
+                    <Input
+                        label="סף משלוח חינם (₪)"
+                        type="number"
+                        value={localSettings.studio_details.free_shipping_threshold ?? AUTHORITATIVE_SHIPPING_POLICY.freeShippingThresholdShekels}
+                        onChange={e => setLocalSettings({
+                            ...localSettings,
+                            free_shipping_threshold: Number(e.target.value),
+                            studio_details: { ...localSettings.studio_details, free_shipping_threshold: Number(e.target.value) }
+                        })}
+                        onBlur={handleSilentSave}
+                    />
+                    <Input
+                        label="זמן משלוח משוער"
+                        value={localSettings.studio_details.shipping_eta || AUTHORITATIVE_SHIPPING_POLICY.estimatedDeliveryTime}
+                        onChange={e => setLocalSettings({
+                            ...localSettings,
+                            shipping_eta: e.target.value,
+                            studio_details: { ...localSettings.studio_details, shipping_eta: e.target.value }
+                        })}
+                        onBlur={handleSilentSave}
+                    />
+                </div>
+                <div className="grid grid-cols-1 gap-4 mt-6 pt-6 border-t border-white/10">
+                    <Input
+                        label="כותרת אודות הסטודיו (מוצגת בדף הבית אם הוגדרה)"
+                        value={localSettings.studio_details.studio_story_title || ''}
+                        onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, studio_story_title: e.target.value } })}
+                        onBlur={handleSilentSave}
+                        placeholder="אופציונלי — השאירי ריק אם אינך רוצה להציג מקטע סיפור"
+                    />
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1.5">טקסט אודות / הסיפור של הסטודיו</label>
+                        <textarea
+                            className="w-full bg-brand-dark/50 border border-white/10 rounded-xl p-3 text-white text-sm focus:border-brand-primary outline-none min-h-[90px]"
+                            value={localSettings.studio_details.studio_story_body || ''}
+                            onChange={e => setLocalSettings({ ...localSettings, studio_details: { ...localSettings.studio_details, studio_story_body: e.target.value } })}
+                            onBlur={handleSilentSave}
+                            placeholder="כתבי כאן במילים שלך על הניסיון, הסטנדרטים והגישה שלך..."
+                        />
+                    </div>
                 </div>
             </Card>
 
@@ -2417,7 +2498,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                                         <div className="flex-1 flex items-center justify-center gap-2 bg-brand-dark/50 p-2 rounded-lg border border-white/10">
                                                             <select
                                                                 className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
-                                                                value={typeof range.start === 'number' ? `${range.start.toString().padStart(2, '0')}:00` : range.start}
+                                                                value={formatMinutesToHHMM(parseTimeEndpointToMinutes(range.start) ?? 540)}
                                                                 onChange={e => updateRange(dayKey, rIdx, 'start', e.target.value)}
                                                             >
                                                                 {Array.from({ length: 48 }).map((_, i) => {
@@ -2430,7 +2511,7 @@ const SettingsTab = ({ settings, onUpdate }: any) => {
                                                             <span className="text-slate-500">-</span>
                                                             <select
                                                                 className="bg-transparent text-white text-sm outline-none text-center appearance-none cursor-pointer w-full"
-                                                                value={typeof range.end === 'number' ? `${range.end.toString().padStart(2, '0')}:00` : range.end}
+                                                                value={formatMinutesToHHMM(parseTimeEndpointToMinutes(range.end) ?? 1020)}
                                                                 onChange={e => updateRange(dayKey, rIdx, 'end', e.target.value)}
                                                             >
                                                                 {Array.from({ length: 48 }).map((_, i) => {
@@ -2801,26 +2882,34 @@ const GalleryTab = ({ gallery, onDelete, onUpload, onUpdateTags, services }: any
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {gallery.map((item: any) => (
                     <div key={item.id} className="relative aspect-square group rounded-lg overflow-hidden border border-white/10 bg-brand-dark/30">
-                        <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <img src={item.image_url} alt="תמונת גלריה" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <button
+                                type="button"
                                 onClick={() => setTaggingItem(item)}
                                 className="p-2 bg-brand-primary/20 text-brand-primary rounded-full hover:bg-brand-primary hover:text-brand-dark transition-colors duration-150 ease-out active:scale-[0.95]"
                                 title="תייג מוצרים"
+                                aria-label="תייג שירותים לתמונה"
                             >
                                 <Tag className="w-5 h-5" />
                             </button>
                             <button
+                                type="button"
                                 onClick={() => onDelete(item.id)}
                                 className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors duration-150 ease-out active:scale-[0.95]"
                                 title="מחק תמונה"
+                                aria-label="מחק תמונה מהגלריה"
                             >
                                 <Trash2 className="w-5 h-5" />
                             </button>
                         </div>
-                        {item.taggedServices?.length > 0 && (
+                        {item.taggedServices?.length > 0 ? (
                             <div className="absolute top-2 right-2 px-2 py-0.5 bg-brand-primary/90 text-brand-dark text-[10px] rounded-full font-bold shadow-lg">
                                 {item.taggedServices.length} תיוגים
+                            </div>
+                        ) : (
+                            <div className="absolute top-2 right-2 px-2 py-0.5 bg-amber-500/90 text-black text-[10px] rounded-full font-bold shadow-lg">
+                                ללא תיוג
                             </div>
                         )}
                     </div>
@@ -2887,11 +2976,14 @@ const NotificationsTab = ({ settings, onUpdate }: { settings: StudioSettings; on
             <div className="flex items-center justify-between mb-2">
                 <div>
                     <h2 className="text-xl font-serif text-white">הגדרות התראות</h2>
-                    <p className="text-sm text-slate-400 mt-0.5">קבל עדכון כשלקוחה קובעת תור חדש</p>
+                    <p className="text-sm text-slate-400 mt-0.5">שליחת עדכונים מצד השרת כשלקוחה קובעת תור או מזמינה תכשיט</p>
                 </div>
                 <Button onClick={handleSave} variant="primary" className="flex items-center gap-2">
                     {saved ? <><Check className="w-4 h-4" /> נשמר!</> : <><Save className="w-4 h-4" /> שמור הגדרות</>}
                 </Button>
+            </div>
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 leading-relaxed">
+                <strong>המלצת אבטחה:</strong> שליחת ההתראות מתבצעת בצד השרת ואינה נחשפת בדפדפן. מומלץ להגדיר את מפתחות ההתראות בהגדרות הסביבה המאובטחות של השרת ב-Vercel כך שלא יישמרו כלל בטבלת ההגדרות.
             </div>
 
             {/* Telegram */}
@@ -2967,17 +3059,66 @@ const NotificationsTab = ({ settings, onUpdate }: { settings: StudioSettings; on
 };
 
 
+const WaitlistTab = ({ entries }: { entries: WaitlistRequest[] }) => {
+    return (
+        <Card>
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <SectionHeading title="רשימת המתנה לתורים" />
+                    <p className="text-xs text-slate-400 mt-1">פניות מלקוחות שלא מצאו שעה פנויה או שהיומן היה סגור</p>
+                </div>
+                <span className="text-xs bg-brand-primary/15 text-brand-primary px-3 py-1.5 rounded-full font-semibold">
+                    {entries.length} פניות
+                </span>
+            </div>
+            {entries.length === 0 ? (
+                <p className="text-slate-400 text-sm py-8 text-center">אין כרגע בקשות ברשימת ההמתנה.</p>
+            ) : (
+                <div className="space-y-3">
+                    {entries.map((entry) => {
+                        const cleanPhone = (entry.client_phone || '').replace(/\D/g, '');
+                        const waPhone = cleanPhone.startsWith('0') ? `972${cleanPhone.slice(1)}` : cleanPhone;
+                        const replyText = encodeURIComponent(`היי ${entry.client_name}! כאן יובל מהסטודיו לגבי פנייתך ברשימת ההמתנה`);
+                        return (
+                            <div key={entry.id} className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <div className="font-medium text-white">{entry.client_name} <span className="text-xs text-slate-400 font-mono" dir="ltr">{entry.client_phone}</span></div>
+                                    <div className="text-xs text-slate-300">
+                                        {(entry as any).service_names || 'טיפול כללי'}
+                                        {entry.preferred_date ? ` • תאריך מועדף: ${entry.preferred_date}` : ''}
+                                    </div>
+                                    {entry.notes && <p className="text-xs text-slate-400">{entry.notes}</p>}
+                                    <div className="text-[11px] text-slate-500">נשלח ב-{new Date(entry.created_at).toLocaleString('he-IL')}</div>
+                                </div>
+                                <a
+                                    href={`https://wa.me/${waPhone}?text=${replyText}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-white text-xs font-medium text-center shrink-0 transition-colors"
+                                >
+                                    חזרה בוואטסאפ
+                                </a>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </Card>
+    );
+};
+
 const Admin: React.FC = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [password, setPassword] = useState('');
+    const { user, profile, isAdmin, loading: authLoading, signInWithGoogle, signOut } = useAuth();
     const [loginError, setLoginError] = useState('');
+    const [isSigningIn, setIsSigningIn] = useState(false);
     const [activeTab, setActiveTab] = useState('dashboard');
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [services, setServices] = useState<Service[]>([]);
     const [gallery, setGallery] = useState<any[]>([]);
     const [settings, setSettings] = useState<StudioSettings | null>(null);
+    const [waitlist, setWaitlist] = useState<WaitlistRequest[]>([]);
     const [stats, setStats] = useState({ revenue: 0, appointments: 0, pending: 0 });
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
 
     // Toast Notification State
@@ -3002,28 +3143,32 @@ const Admin: React.FC = () => {
 
     const fetchData = useCallback(async (silent = false) => {
         if (!silent) setIsLoading(true);
-        const [appts, srvs, stgs, sts, gall] = await Promise.all([
-            api.getAppointments(),
-            api.getServices(),
-            api.getSettings(),
-            api.getMonthlyStats(),
-            api.getGallery()
-        ]);
-        setAppointments(appts);
-        setServices(srvs);
-        setSettings(stgs);
-        setStats(sts);
-        setGallery(gall.items);
-        if (!silent) setIsLoading(false);
+        try {
+            const boot = await api.getAdminBootstrap();
+            setAppointments(boot.appointments);
+            setServices(boot.services);
+            setSettings(boot.settings);
+            setStats(boot.stats);
+            setGallery(boot.gallery.items);
+            setWaitlist(boot.waitlist || []);
+            setLoginError('');
+        } catch (err: any) {
+            if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+                setLoginError(err.message || 'נדרשת הזדהות כמנהל מערכת');
+            } else {
+                showNotification(err?.message || 'שגיאה בטעינת נתוני המערכת', 'error');
+            }
+        } finally {
+            if (!silent) setIsLoading(false);
+        }
     }, []);
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (user && isAdmin) {
             fetchData();
-            // Init Google Calendar Client
             calendarService.initClient();
         }
-    }, [isAuthenticated, fetchData]);
+    }, [user, isAdmin, fetchData]);
 
     const handleSyncToCalendar = async (apt: Appointment) => {
         try {
@@ -3059,13 +3204,15 @@ const Admin: React.FC = () => {
         showNotification(`סנכרון הסתיים. הצלחות: ${successCount}, כישלונות: ${failCount}`, failCount > 0 ? 'error' : 'success');
     };
 
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoginError(''); // Clear previous error
-        if (password === '2007') {
-            setIsAuthenticated(true);
-        } else {
-            setLoginError('סיסמה שגויה'); // Set error message
+    const handleGoogleAdminLogin = async () => {
+        setLoginError('');
+        setIsSigningIn(true);
+        try {
+            await signInWithGoogle({ requireAdmin: true });
+        } catch (err: any) {
+            setLoginError(err?.message || 'לא ניתן להשלים כניסת מנהל באמצעות Google');
+        } finally {
+            setIsSigningIn(false);
         }
     };
 
@@ -3206,30 +3353,49 @@ const Admin: React.FC = () => {
         }
     };
 
-    if (!isAuthenticated) {
+    if (authLoading) {
+        return <div className="min-h-screen flex items-center justify-center text-brand-primary"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+    }
+
+    if (!user || !isAdmin) {
         return (
             <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
-                <Card className="w-full max-w-md p-8 border-brand-primary/20">
-                    <div className="text-center mb-8">
+                <Card className="w-full max-w-md p-8 border-brand-primary/20 space-y-6 text-center">
+                    <div>
                         <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-primary">
                             <Lock className="w-8 h-8" />
                         </div>
-                        <h1 className="text-2xl font-serif text-white">כניסת מנהל</h1>
+                        <h1 className="text-2xl font-serif text-white mb-2">כניסת מנהלת מאובטחת</h1>
+                        <p className="text-slate-400 text-sm">
+                            הגישה ללוח הבקרה מאומתת בצד השרת דרך חשבון ה-Google המורשה של הסטודיו בלבד.
+                        </p>
                     </div>
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <Input
-                            label="סיסמה"
-                            type="password"
-                            value={password}
-                            onChange={(e) => { setPassword(e.target.value); setLoginError(''); }}
-                            autoFocus
-                            className={`text-center tracking-widest text-lg ${loginError ? 'border-red-500/50 focus:border-red-500' : ''}`}
-                        />
-                        {loginError && (
-                            <p className="text-red-400 text-sm text-center -mt-4">{loginError}</p>
-                        )}
-                        <Button type="submit" className="w-full">התחבר</Button>
-                    </form>
+
+                    {user && !isAdmin && (
+                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-300 space-y-3">
+                            <p>החשבון המחובר (<bdi dir="ltr">{profile?.email || user.email}</bdi>) אינו מוגדר כמנהל במערכת.</p>
+                            <button
+                                type="button"
+                                onClick={signOut}
+                                className="text-xs underline text-slate-300 hover:text-white"
+                            >
+                                התנתקי מחשבון זה
+                            </button>
+                        </div>
+                    )}
+
+                    {loginError && (
+                        <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">{loginError}</p>
+                    )}
+
+                    <Button
+                        type="button"
+                        onClick={handleGoogleAdminLogin}
+                        isLoading={isSigningIn}
+                        className="w-full"
+                    >
+                        כניסה עם חשבון Google המורשה
+                    </Button>
                 </Card>
             </div>
         );
@@ -3247,9 +3413,14 @@ const Admin: React.FC = () => {
 
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex flex-col gap-6 mb-10">
-                    <div>
-                        <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
-                        <p className="text-slate-400 text-sm">ניהול סטודיו חכם</p>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl font-serif text-white mb-1">לוח בקרה</h1>
+                            <p className="text-slate-400 text-sm">מחובר כמנהל: <bdi dir="ltr">{profile?.email || user?.email}</bdi></p>
+                        </div>
+                        <Button type="button" variant="outline" onClick={signOut} className="flex items-center gap-2 text-xs">
+                            <LogOut className="w-4 h-4" /> התנתקות
+                        </Button>
                     </div>
 
                     {/* Fixed Tabs Row */}
@@ -3259,6 +3430,7 @@ const Admin: React.FC = () => {
                                 { id: 'dashboard', icon: Activity, label: 'ראשי' },
                                 { id: 'calendar', icon: Calendar, label: 'יומן' },
                                 { id: 'appointments', icon: Filter, label: 'ניהול תורים' },
+                                { id: 'waitlist', icon: Users, label: `רשימת המתנה (${waitlist.length})` },
                                 { id: 'orders', icon: ShoppingBag, label: 'הזמנות תכשיטים 💎' },
                                 { id: 'services', icon: Edit2, label: 'שירותים' },
                                 { id: 'gallery', icon: ImageIcon, label: 'גלריה' },
@@ -3305,6 +3477,7 @@ const Admin: React.FC = () => {
                                 onCompleteCheckout={setCheckoutApt}
                             />
                         )}
+                        {activeTab === 'waitlist' && <WaitlistTab entries={waitlist} />}
                         {activeTab === 'orders' && <JewelryOrdersTab />}
                         {activeTab === 'services' && <ServicesTab services={services} onAddService={handleAddService} onUpdateService={handleUpdateService} onDeleteService={handleDeleteService} />}
                         {activeTab === 'gallery' && <GalleryTab gallery={gallery} onUpload={handleGalleryUpload} onDelete={handleDeleteGalleryImage} services={services} settings={settings} onUpdateSettings={handleUpdateSettings} onUpdateTags={handleUpdateGalleryTags} />}

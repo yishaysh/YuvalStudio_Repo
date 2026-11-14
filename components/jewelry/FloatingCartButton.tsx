@@ -13,6 +13,8 @@ export const FloatingCartButton: React.FC = () => {
   // Show if there are items, or if user is browsing the jewelry catalog
   const shouldShow = totalCount > 0 || location.pathname === '/jewelry';
 
+  const isBookingPage = location.pathname === '/booking';
+
   if (!shouldShow) return null;
 
   return (
@@ -22,9 +24,14 @@ export const FloatingCartButton: React.FC = () => {
         animate={{ opacity: 1, transform: 'scale(1) translateY(0px)' }}
         exit={{ opacity: 0, transform: 'scale(0.8) translateY(20px)' }}
         transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-        className="fixed left-6 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6 z-[9985] print:hidden"
+        className={`fixed left-4 sm:left-6 z-[9985] print:hidden transition-[bottom] duration-200 ease-emil-out ${
+          isBookingPage
+            ? 'bottom-[calc(9.5rem+env(safe-area-inset-bottom))] sm:bottom-24'
+            : 'bottom-[calc(5.25rem+env(safe-area-inset-bottom))] sm:bottom-24'
+        }`}
       >
         <button
+          type="button"
           onClick={openCart}
           aria-label={`שקית קניות, ${totalCount} פריטים`}
           className="relative group flex items-center gap-2.5 px-4 py-3 bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/40 text-white rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out hover:border-brand-primary active:scale-[0.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"

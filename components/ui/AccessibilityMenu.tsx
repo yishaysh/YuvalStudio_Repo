@@ -5,6 +5,7 @@ import {
     Accessibility, X, Eye, Type, Link, RefreshCcw, ZoomIn, ZoomOut, Play, Square, Settings2 
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDialogA11y } from '../../hooks/useDialogA11y';
 
 export const AccessibilityMenu = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ export const AccessibilityMenu = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const isBookingPage = location.pathname === '/booking';
+    const panelRef = useDialogA11y({ isOpen, onClose: () => setIsOpen(false) });
 
     const handleZoomIn = () => {
         if (settings.fontSize < 1.4) {
@@ -26,30 +28,36 @@ export const AccessibilityMenu = () => {
     };
 
     return (
-        <div className={`fixed right-6 z-[9999] print:hidden transition-[bottom] duration-200 ease-emil-out ${
-            isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'
+        <div className={`fixed right-4 sm:right-6 z-[9999] print:hidden transition-[bottom] duration-200 ease-emil-out ${
+            isBookingPage ? 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-6' : 'bottom-[calc(1.25rem+env(safe-area-inset-bottom))] sm:bottom-6'
         }`}>
             {/* Main Toggle Button */}
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-primary/50 ${
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-brand-primary/50 ${
                     isOpen ? 'bg-brand-surface border border-white/10 text-white' : 'bg-brand-primary text-brand-dark hover:scale-[1.03]'
                 }`}
                 aria-label="תפריט נגישות"
                 aria-expanded={isOpen}
             >
-                <Accessibility className="w-7 h-7" />
+                <Accessibility className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
 
             {/* Panel */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
+                        ref={panelRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="תפריט התאמות נגישות"
+                        tabIndex={-1}
                         initial={{ opacity: 0, transform: "scale(0.95) translateY(12px)" }}
                         animate={{ opacity: 1, transform: "scale(1) translateY(0px)" }}
                         exit={{ opacity: 0, transform: "scale(0.95) translateY(12px)" }}
                         transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                        className="absolute bottom-16 right-0 w-80 bg-brand-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-bottom-right"
+                        className="absolute bottom-16 right-0 w-[min(20rem,calc(100vw-2rem))] bg-brand-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden origin-bottom-right focus:outline-none"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-brand-dark/50">
@@ -58,8 +66,9 @@ export const AccessibilityMenu = () => {
                                 התאמות נגישות
                             </h2>
                             <button
+                                type="button"
                                 onClick={() => setIsOpen(false)}
-                                className="p-2 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors"
+                                className="p-2 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                                 aria-label="סגור תפריט נגישות"
                             >
                                 <X className="w-5 h-5" />
@@ -174,6 +183,7 @@ export const AccessibilityMenu = () => {
 const ToggleRow = ({ active, onClick, icon, label, description }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, description: string }) => {
     return (
         <button
+            type="button"
             onClick={onClick}
             className={`w-full text-right flex items-center gap-3 p-3 rounded-xl border transition-colors ${
                 active 

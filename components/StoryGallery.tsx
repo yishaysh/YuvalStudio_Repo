@@ -1,9 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, ShoppingBag, ArrowRight, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ShoppingBag, ArrowRight, Check } from 'lucide-react';
 import { Service } from '../types';
 import { Button } from './ui';
+import { Money } from './Money';
+import { useDialogA11y } from '../hooks/useDialogA11y';
+import { pluralizeHebrew } from '../shared/validation';
 
 interface StoryGalleryProps {
     isOpen: boolean;
@@ -28,7 +31,14 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
     const [isPaused, setIsPaused] = useState(false);
     const [showProducts, setShowProducts] = useState(false);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-    const progressControls = useAnimation();
+
+    const dialogRef = useDialogA11y({
+        isOpen,
+        onClose: () => {
+            if (showProducts) setShowProducts(false);
+            else onClose();
+        },
+    });
 
     // Reset index when opening
     useEffect(() => {
@@ -93,12 +103,21 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
         <AnimatePresence>
             {isOpen && (
                 <motion.div
+                    ref={dialogRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="גלריית השראה"
+                    tabIndex={-1}
                     layoutId="story-gallery-opener"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="fixed inset-0 z-[100] bg-black text-white flex flex-col md:flex-row h-[100dvh]"
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                        if (e.key === 'ArrowLeft') handleNext();
+                        if (e.key === 'ArrowRight') handlePrev();
+                    }}
+                    className="fixed inset-0 z-[100] bg-black text-white flex flex-col md:flex-row h-[100dvh] focus:outline-none"
                 >
                     {/* Main Story Area */}
                     <div className="relative flex-1 bg-black h-full flex items-center justify-center">
@@ -153,7 +172,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                                 </div>
                                 <span className="font-medium text-sm">Yuval Studio</span>
                             </div>
-                            <button onClick={onClose} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors">
+                            <button type="button" onClick={onClose} aria-label="סגור גלריית סטוריז" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -187,8 +206,18 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                             </AnimatePresence>
 
                             {/* Tap Areas for Navigation - SWAPPED */}
-                            <div className="absolute inset-y-0 left-0 w-1/4 z-10 cursor-pointer" onClick={(e) => { e.stopPropagation(); handleNext(); }} />
-                            <div className="absolute inset-y-0 right-0 w-1/4 z-10 cursor-pointer" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
+                            <button
+                                type="button"
+                                aria-label="לסטורי הבא"
+                                className="absolute inset-y-0 left-0 w-1/4 z-10 cursor-pointer bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                                onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                            />
+                            <button
+                                type="button"
+                                aria-label="לסטורי הקודם"
+                                className="absolute inset-y-0 right-0 w-1/4 z-10 cursor-pointer bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                                onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                            />
                         </div>
 
                         {/* Bottom Actions - Shop The Look */}
@@ -221,7 +250,7 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                                         <h3 className="text-xl font-serif text-white">Shop The Look</h3>
                                         <p className="text-sm text-slate-400">בחרי את הפריטים שאהבת</p>
                                     </div>
-                                    <button onClick={() => setShowProducts(false)} className="p-2 hover:bg-white/10 rounded-full">
+                                    <button type="button" onClick={() => setShowProducts(false)} aria-label="סגור רשימת פריטים" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -230,10 +259,12 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                                     {taggedProducts.map((product: any) => {
                                         const isSelected = selectedProductIds.includes(product.id);
                                         return (
-                                            <div
+                                            <button
+                                                type="button"
                                                 key={product.id}
                                                 onClick={() => toggleProductSelection(product.id)}
-                                                className={`flex gap-4 p-4 rounded-xl border transition-all cursor-pointer relative group ${isSelected ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
+                                                aria-pressed={isSelected}
+                                                className={`w-full text-right flex gap-4 p-4 rounded-xl border transition-all cursor-pointer relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${isSelected ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
                                             >
                                                 <div className="relative w-20 h-20 bg-white rounded-lg overflow-hidden shrink-0">
                                                     <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
@@ -251,13 +282,13 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                                                         <p className="text-xs text-slate-400 line-clamp-2">{product.description}</p>
                                                     </div>
                                                     <div className="flex justify-between items-end mt-2">
-                                                        <span className="text-brand-primary font-serif">₪{product.price}</span>
+                                                        <Money amount={product.price} className="text-brand-primary font-serif" />
                                                         <div className={`w-6 h-6 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'bg-brand-primary border-brand-primary' : 'border-slate-600 group-hover:border-slate-400'}`}>
                                                             {isSelected && <Check className="w-4 h-4 text-brand-dark" />}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </button>
                                         );
                                     })}
                                 </div>
@@ -269,7 +300,9 @@ export const StoryGallery: React.FC<StoryGalleryProps> = ({
                                         disabled={selectedProductIds.length === 0}
                                         className="w-full py-4 text-lg font-bold shadow-lg flex items-center justify-center gap-2"
                                     >
-                                        הוסיפי {selectedProductIds.length > 0 ? `${selectedProductIds.length} פריטים` : ''} לתור
+                                        {selectedProductIds.length > 0
+                                            ? `הוסיפי ${pluralizeHebrew(selectedProductIds.length, 'פריט אחד', `${selectedProductIds.length} פריטים`)} לתור`
+                                            : 'בחרי פריטים להוספה לתור'}
                                         <ArrowRight className="w-5 h-5 mr-2" />
                                     </Button>
                                 </div>

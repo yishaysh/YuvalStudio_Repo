@@ -14,13 +14,23 @@ const m = motion as any;
 
 const Home: React.FC = () => {
   const [showStyleMatcher, setShowStyleMatcher] = useState(false);
+  const [storyTitle, setStoryTitle] = useState<string>('');
+  const [storyBody, setStoryBody] = useState<string>('');
   const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      setShowStyleMatcher(settings.enable_style_matcher === true);
-    });
+    api.getBootstrap().then(boot => {
+      setShowStyleMatcher(boot.settings.enable_style_matcher === true);
+      const storyTitleFromDetails = boot.settings.studio_details?.studio_story_title;
+      const storyBodyFromDetails = boot.settings.studio_details?.studio_story_body;
+      if (storyTitleFromDetails) {
+        setStoryTitle(storyTitleFromDetails);
+      }
+      if (storyBodyFromDetails) {
+        setStoryBody(storyBodyFromDetails);
+      }
+    }).catch(() => {});
   }, []);
 
   return (
@@ -117,8 +127,8 @@ const Home: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { icon: Shield, title: 'בטיחות מעל הכל', desc: 'סטריליזציה ברמה רפואית ומחטים חד-פעמיות לכל לקוח.' },
-            { icon: Feather, title: 'מגע עדין', desc: 'טכניקות ניקוב מתקדמות המפחיתות כאב ומאיצות החלמה.' },
-            { icon: Sparkles, title: 'תכשיטי יוקרה', desc: 'קולקציית זהב 14K וטיטניום המותאמת אישית לאנטומיה שלך.' }
+            { icon: Feather, title: 'מגע עדין', desc: 'טכניקות ניקוב מדויקות להפחתת אי-נוחות ולתמיכה בהחלמה תקינה.' },
+            { icon: Sparkles, title: 'תכשיטי יוקרה', desc: 'קולקציית זהב 14K וטיטניום ASTM F-136 המותאמת אישית לאנטומיה שלך.' }
           ].map((item, i) => (
             <m.div
               key={i}
@@ -138,6 +148,20 @@ const Home: React.FC = () => {
             </m.div>
           ))}
         </div>
+
+        {/* U1 Studio Story (rendered only when configured by owner) */}
+        {(storyTitle || storyBody) && (
+          <div className="mt-16 max-w-3xl mx-auto">
+            <Card className="p-8 bg-brand-surface/60 border-white/10 text-center space-y-4">
+              {storyTitle && (
+                <h2 className="text-2xl md:text-3xl font-serif text-white">{storyTitle}</h2>
+              )}
+              {storyBody && (
+                <p className="text-slate-300 leading-relaxed whitespace-pre-line">{storyBody}</p>
+              )}
+            </Card>
+          </div>
+        )}
       </section>
     </div>
   );

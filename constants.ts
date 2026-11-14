@@ -1,11 +1,11 @@
 
-import { Service, Appointment, StudioSettings, StudioDetails, MonthlyGoals } from './types';
+import { Service, Appointment, StudioSettings, StudioDetails, MonthlyGoals, JewelryItem } from './types';
 
 export const GOOGLE_CLIENT_ID =
   (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
   '759724009388-ioarr6mlm21tm3gbdnfehquakdc1bg06.apps.googleusercontent.com';
 
-export const JEWELRY_CATALOG = [
+export const JEWELRY_CATALOG: JewelryItem[] = [
   {
     id: 'j_helix_gold',
     name: 'Classic Gold Hoop',

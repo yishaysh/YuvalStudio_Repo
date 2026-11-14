@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { JewelryItem } from '../types';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { agorotToShekels, multiplyAgorot, parsePriceToAgorot, parsePriceToShekels } from '../shared/money';
+import type { JewelryItem } from '../types';
 
 export interface CartEntry {
   item: JewelryItem;
@@ -16,6 +17,7 @@ interface JewelryCartContextType {
   openCart: () => void;
   closeCart: () => void;
   totalCount: number;
+  totalAmountAgorot: number;
   totalAmount: number;
   quickBuyItem: JewelryItem | null;
   openQuickBuy: (item: JewelryItem) => void;
@@ -27,12 +29,25 @@ const JewelryCartContext = createContext<JewelryCartContextType | undefined>(und
 
 const STORAGE_KEY = 'yuval_studio_cart';
 
+function normalizeSavedCart(raw: unknown): CartEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry: any) => entry && entry.item && entry.item.id)
+    .map((entry: any) => ({
+      item: {
+        ...entry.item,
+        price: parsePriceToShekels(entry.item.price, 0),
+      },
+      quantity: Math.max(1, Math.min(99, Math.floor(Number(entry.quantity) || 1))),
+    }));
+}
+
 export const JewelryCartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartEntry[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        return normalizeSavedCart(JSON.parse(saved));
       }
     } catch (e) {
       console.error('Failed to load cart from localStorage', e);
@@ -52,20 +67,24 @@ export const JewelryCartProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [cartItems]);
 
-  const addToCart = (item: JewelryItem, quantity: number = 1) => {
+  const addToCart = (item: JewelryItem, quantity = 1) => {
+    const safePrice = parsePriceToShekels(item.price, 0);
+    const qtyToAdd = Math.max(1, Math.floor(Number(quantity) || 1));
+    const normalizedItem: JewelryItem = { ...item, price: safePrice };
+
     setCartItems(prev => {
-      const existing = prev.find(entry => entry.item.id === item.id);
+      const existing = prev.find(entry => entry.item.id === normalizedItem.id);
       if (existing) {
         return prev.map(entry =>
-          entry.item.id === item.id
-            ? { ...entry, quantity: entry.quantity + quantity }
+          entry.item.id === normalizedItem.id
+            ? { ...entry, item: normalizedItem, quantity: Math.min(99, entry.quantity + qtyToAdd) }
             : entry
         );
       }
-      return [...prev, { item, quantity }];
+      return [...prev, { item: normalizedItem, quantity: Math.min(99, qtyToAdd) }];
     });
 
-    setJustAddedItemId(item.id);
+    setJustAddedItemId(normalizedItem.id);
     setTimeout(() => {
       setJustAddedItemId(null);
     }, 1500);
@@ -76,15 +95,14 @@ export const JewelryCartProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateQuantity = (itemId: string, quantity: number) => {
-    if (quantity <= 0) {
+    const safeQty = Math.floor(Number(quantity) || 0);
+    if (safeQty <= 0) {
       removeFromCart(itemId);
       return;
     }
     setCartItems(prev =>
       prev.map(entry =>
-        entry.item.id === itemId
-          ? { ...entry, quantity }
-          : entry
+        entry.item.id === itemId ? { ...entry, quantity: Math.min(99, safeQty) } : entry
       )
     );
   };
@@ -96,11 +114,26 @@ export const JewelryCartProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
 
-  const openQuickBuy = (item: JewelryItem) => setQuickBuyItem(item);
+  const openQuickBuy = (item: JewelryItem) => {
+    setQuickBuyItem({ ...item, price: parsePriceToShekels(item.price, 0) });
+  };
   const closeQuickBuy = () => setQuickBuyItem(null);
 
-  const totalCount = cartItems.reduce((sum, entry) => sum + entry.quantity, 0);
-  const totalAmount = cartItems.reduce((sum, entry) => sum + entry.item.price * entry.quantity, 0);
+  const totalCount = useMemo(
+    () => cartItems.reduce((sum, entry) => sum + entry.quantity, 0),
+    [cartItems]
+  );
+
+  const totalAmountAgorot = useMemo(
+    () =>
+      cartItems.reduce(
+        (sum, entry) => sum + multiplyAgorot(parsePriceToAgorot(entry.item.price, 0), entry.quantity),
+        0
+      ),
+    [cartItems]
+  );
+
+  const totalAmount = useMemo(() => agorotToShekels(totalAmountAgorot), [totalAmountAgorot]);
 
   return (
     <JewelryCartContext.Provider
@@ -114,11 +147,12 @@ export const JewelryCartProvider: React.FC<{ children: React.ReactNode }> = ({ c
         openCart,
         closeCart,
         totalCount,
+        totalAmountAgorot,
         totalAmount,
         quickBuyItem,
         openQuickBuy,
         closeQuickBuy,
-        justAddedItemId
+        justAddedItemId,
       }}
     >
       {children}
@@ -133,4 +167,3 @@ export const useJewelryCart = () => {
   }
   return context;
 };
-

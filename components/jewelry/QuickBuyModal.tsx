@@ -1,145 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, Plus, Minus, Store, Truck, MessageCircle, 
-  Sparkles, CheckCircle2, Loader2, ShieldCheck 
+import {
+  X,
+  Plus,
+  Minus,
+  Store,
+  Truck,
+  MessageCircle,
+  Sparkles,
+  CheckCircle2,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useJewelryCart } from '../../contexts/JewelryCartContext';
-import { api } from '../../services/mockApi';
-import { notifyJewelryOrder } from '../../services/notifications';
-import { DEFAULT_STUDIO_DETAILS } from '../../constants';
+import { useDialogA11y } from '../../hooks/useDialogA11y';
+import { Money } from '../Money';
+import { useJewelryCheckout } from './useJewelryCheckout';
 
 const m = motion as any;
+const QUICKBUY_DRAFT_KEY = 'yuval_quickbuy_draft_v1';
 
 export const QuickBuyModal: React.FC = () => {
   const { quickBuyItem, closeQuickBuy } = useJewelryCart();
-
   const [quantity, setQuantity] = useState(1);
-  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup');
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
-  const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState<any | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (quickBuyItem) {
       setQuantity(1);
-      setDeliveryMethod('pickup');
-      setErrorMsg('');
-      setOrderSuccess(null);
     }
   }, [quickBuyItem]);
 
+  const lineItems = useMemo(
+    () =>
+      quickBuyItem
+        ? [
+            {
+              id: quickBuyItem.id,
+              name: quickBuyItem.name,
+              price: quickBuyItem.price,
+              quantity,
+              image_url: quickBuyItem.image_url,
+              category: quickBuyItem.category,
+            },
+          ]
+        : [],
+    [quickBuyItem, quantity]
+  );
+
+  const checkout = useJewelryCheckout({
+    items: lineItems,
+    draftStorageKey: QUICKBUY_DRAFT_KEY,
+    isActive: Boolean(quickBuyItem),
+  });
+
+  const handleClose = useCallback(() => {
+    checkout.resetOutcome();
+    closeQuickBuy();
+  }, [checkout, closeQuickBuy]);
+
+  const dialogRef = useDialogA11y({
+    isOpen: Boolean(quickBuyItem),
+    onClose: handleClose,
+    initialFocusRef: closeButtonRef,
+  });
+
   if (!quickBuyItem) return null;
 
-  const itemPrice = quickBuyItem.price || 0;
-  const itemsTotal = itemPrice * quantity;
-  const shippingCost = deliveryMethod === 'delivery' ? 30 : 0;
-  const finalTotal = itemsTotal + shippingCost;
-
-  const validate = () => {
-    if (!clientName.trim()) {
-      setErrorMsg('יש להזין שם מלא');
-      return false;
-    }
-    if (!clientPhone.trim() || clientPhone.trim().length < 9) {
-      setErrorMsg('יש להזין מספר טלפון תקין');
-      return false;
-    }
-    if (deliveryMethod === 'delivery' && !shippingAddress.trim()) {
-      setErrorMsg('יש להזין כתובת מלאה למשלוח');
-      return false;
-    }
-    setErrorMsg('');
-    return true;
-  };
-
-  const createOrder = async () => {
-    const payload = {
-      client_name: clientName.trim(),
-      client_phone: clientPhone.trim(),
-      items: [{
-        id: quickBuyItem.id,
-        name: quickBuyItem.name,
-        price: quickBuyItem.price,
-        quantity,
-        image_url: quickBuyItem.image_url,
-        category: quickBuyItem.category
-      }],
-      total_price: finalTotal,
-      delivery_method: deliveryMethod,
-      shipping_address: deliveryMethod === 'delivery' ? shippingAddress.trim() : undefined,
-      shipping_cost: shippingCost,
-      notes: notes.trim() || undefined
-    };
-
-    const saved = await api.createJewelryOrder(payload);
-
-    try {
-      const settings = await api.getSettings();
-      await notifyJewelryOrder(settings, {
-        orderNumber: saved.order_number,
-        clientName: saved.client_name,
-        clientPhone: saved.client_phone,
-        totalPrice: saved.total_price,
-        deliveryMethod: deliveryMethod === 'delivery' ? 'משלוח עד הבית' : 'איסוף עצמי מהסטודיו',
-        address: saved.shipping_address,
-        items: [{ name: quickBuyItem.name, quantity, price: quickBuyItem.price }],
-        notes: saved.notes
-      });
-    } catch (e) {
-      console.warn('Failed notification:', e);
-    }
-
-    return saved;
-  };
-
-  const handleWhatsAppBuy = async () => {
-    if (!validate()) return;
-    setIsSubmitting(true);
-    try {
-      const order = await createOrder();
-      const phoneClean = DEFAULT_STUDIO_DETAILS.phone.replace(/\D/g, '').replace(/^0/, '972');
-      const deliveryText = deliveryMethod === 'delivery'
-        ? `📦 *משלוח עד הבית* (+₪30)\n📍 *כתובת:* ${shippingAddress.trim()}`
-        : `🛍️ *איסוף עצמי מהסטודיו* (ללא עלות)`;
-
-      const text = `היי יובל! ✨\nאני מעוניינת ברכישה מהירה של תכשיט מהאתר (#${order.order_number}):\n\n💎 *${quickBuyItem.name}*\nכמות: ${quantity} | מחיר יחידה: ₪${itemPrice}\n\n${deliveryText}\n💰 *סה"כ לתשלום: ₪${finalTotal}*\n\n👤 *פרטי לקוחה:*\nשם: ${clientName.trim()}\nטלפון: ${clientPhone.trim()}\n${notes.trim() ? `הערות: ${notes.trim()}\n` : ''}\nאשמח לתאם תשלום ואספקה 💕`;
-
-      window.open(`https://wa.me/${phoneClean}?text=${encodeURIComponent(text)}`, '_blank');
-      setOrderSuccess(order);
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'שגיאה בביצוע ההזמנה');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDirectBuy = async () => {
-    if (!validate()) return;
-    setIsSubmitting(true);
-    try {
-      const order = await createOrder();
-      setOrderSuccess(order);
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'שגיאה בביצוע ההזמנה');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleClose = () => {
-    setErrorMsg('');
-    setOrderSuccess(null);
-    closeQuickBuy();
-  };
+  const { shippingPolicy, pricing, confirmedOrder } = checkout;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[10006] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="quick-buy-title">
+      <div className="fixed inset-0 z-[10006] flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <m.div
           initial={{ opacity: 0 }}
@@ -147,15 +79,21 @@ export const QuickBuyModal: React.FC = () => {
           exit={{ opacity: 0 }}
           onClick={handleClose}
           className="fixed inset-0 bg-brand-dark/85 backdrop-blur-md"
+          aria-hidden="true"
         />
 
         {/* Modal Window */}
         <m.div
+          ref={dialogRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quick-buy-title"
           initial={{ opacity: 0, transform: 'scale(0.95) translateY(16px)' }}
           animate={{ opacity: 1, transform: 'scale(1) translateY(0px)' }}
           exit={{ opacity: 0, transform: 'scale(0.95) translateY(16px)' }}
           transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-          className="relative z-10 w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl p-6 sm:p-8 overflow-hidden max-h-[90vh] flex flex-col"
+          className="relative z-10 w-full max-w-lg bg-brand-surface border border-white/10 rounded-3xl shadow-2xl p-6 sm:p-8 overflow-hidden max-h-[90vh] flex flex-col focus:outline-none"
         >
           {/* Header */}
           <div className="flex justify-between items-start mb-6 shrink-0">
@@ -167,9 +105,11 @@ export const QuickBuyModal: React.FC = () => {
               <h3 id="quick-buy-title" className="text-xl sm:text-2xl font-serif text-white">הזמנת תכשיט</h3>
             </div>
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={handleClose}
               aria-label="סגור חלון"
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors active:scale-[0.95]"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors active:scale-[0.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
             >
               <X className="w-5 h-5" />
             </button>
@@ -177,32 +117,44 @@ export const QuickBuyModal: React.FC = () => {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto custom-scrollbar space-y-5 pr-1">
-            {orderSuccess ? (
-              /* Success View */
-              <div className="text-center py-8 space-y-4">
+            {confirmedOrder ? (
+              <div className="text-center py-6 space-y-4">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h4 className="text-2xl font-serif text-white">ההזמנה התקבלה בהצלחה!</h4>
+                <h4 className="text-2xl font-serif text-white">בקשת ההזמנה נשמרה בהצלחה!</h4>
                 <p className="text-sm text-slate-300">
-                  מספר הזמנה: <span className="font-bold text-brand-primary">#{orderSuccess.order_number}</span>
+                  מספר פניה מאומת: <span className="font-bold text-brand-primary font-mono">#{confirmedOrder.order_number}</span>
+                </p>
+                <p className="text-xs text-slate-300">
+                  סה&quot;כ לתיאום תשלום: <Money amount={confirmedOrder.total_price} className="text-brand-primary font-bold" />
                 </p>
                 <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                  התכשיט משוריין עבורך. יובל תיצור איתך קשר בהקדם להשלמת התשלום והתיאום.
+                  הבקשה נרשמה כממתינה (לא בוצע חיוב אוטומטי). יובל תיצור איתך קשר לתיאום התשלום והאספקה.
                 </p>
 
-                <div className="pt-4 flex flex-col gap-2.5">
+                {(confirmedOrder.notification_status === 'failed' || confirmedOrder.notification_status === 'partial') && (
+                  <div role="status" className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs text-right flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <span>
+                      ההזמנה נשמרה בשרת בהצלחה, אך ההתראה לסטודיו התעכבה ({confirmedOrder.notification_error || 'תקלת רשת'}). מומלץ לשלוח וואטסאפ מהיר מטה.
+                    </span>
+                  </div>
+                )}
+
+                <div className="pt-3 flex flex-col gap-2.5">
                   <a
-                    href={`https://wa.me/${DEFAULT_STUDIO_DETAILS.phone.replace(/\D/g, '').replace(/^0/, '972')}?text=${encodeURIComponent(`היי יובל! ביצעתי עכשיו הזמנה לתכשיט ${quickBuyItem.name} (#${orderSuccess.order_number}) 💕`)}`}
+                    href={checkout.buildWhatsAppUrl(confirmedOrder)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 px-4 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 transition-[background-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97]"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    <span>שליחת הודעת וואטסאפ ליובל</span>
+                    <span>שליחת פרטי הזמנה #{confirmedOrder.order_number} בוואטסאפ</span>
                   </a>
 
                   <button
+                    type="button"
                     onClick={handleClose}
                     className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium text-xs transition-colors"
                   >
@@ -212,6 +164,15 @@ export const QuickBuyModal: React.FC = () => {
               </div>
             ) : (
               <>
+                {checkout.hasUnsentDraft && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-2">
+                    <span>טיוטה שלא נשלחה — פרטים מהניסיון הקודם שוחזרו</span>
+                    <button type="button" onClick={checkout.clearSavedDraft} className="underline hover:text-white shrink-0">
+                      נקה
+                    </button>
+                  </div>
+                )}
+
                 {/* Product Summary Card */}
                 <div className="p-4 bg-brand-dark/50 border border-white/5 rounded-2xl flex gap-4 items-center">
                   <img
@@ -223,21 +184,24 @@ export const QuickBuyModal: React.FC = () => {
                     <span className="text-[10px] text-brand-primary font-medium tracking-wider uppercase block">{quickBuyItem.category}</span>
                     <h4 className="text-base font-medium text-white truncate">{quickBuyItem.name}</h4>
                     <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{quickBuyItem.description}</p>
-                    <p className="text-sm font-serif font-bold text-brand-primary mt-1">₪{quickBuyItem.price}</p>
+                    <Money amount={quickBuyItem.price} className="text-sm font-serif font-bold text-brand-primary mt-1 block" />
                   </div>
 
                   {/* Quantity selector */}
                   <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-xl p-1.5 shrink-0">
                     <button
+                      type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={quantity <= 1}
                       aria-label="הפחת כמות"
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors active:scale-[0.95]"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors active:scale-[0.95] disabled:opacity-40"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-6 text-center text-sm font-bold text-white">{quantity}</span>
+                    <span className="w-6 text-center text-sm font-bold text-white" aria-label={`כמות ${quantity}`}>{quantity}</span>
                     <button
-                      onClick={() => setQuantity(quantity + 1)}
+                      type="button"
+                      onClick={() => setQuantity(Math.min(20, quantity + 1))}
                       aria-label="הוסף כמות"
                       className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors active:scale-[0.95]"
                     >
@@ -246,15 +210,16 @@ export const QuickBuyModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Delivery Option */}
+                {/* Delivery Option (Authoritative P1-C) */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300 block">אופן קבלת התכשיט</label>
+                  <span className="text-xs font-semibold text-slate-300 block">אופן קבלת התכשיט</span>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setDeliveryMethod('pickup')}
+                      aria-pressed={checkout.deliveryMethod === 'pickup'}
+                      onClick={() => checkout.setDeliveryMethod('pickup')}
                       className={`p-3 rounded-xl border text-right transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] flex flex-col gap-1 ${
-                        deliveryMethod === 'pickup'
+                        checkout.deliveryMethod === 'pickup'
                           ? 'bg-brand-primary/10 border-brand-primary text-white'
                           : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
                       }`}
@@ -263,92 +228,143 @@ export const QuickBuyModal: React.FC = () => {
                         <Store className="w-3.5 h-3.5" />
                         <span>איסוף עצמי</span>
                       </div>
-                      <span className="text-[11px] text-slate-400">מהסטודיו (חינם)</span>
+                      <span className="text-[11px] text-slate-300">מהסטודיו (חינם)</span>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setDeliveryMethod('delivery')}
+                      aria-pressed={checkout.deliveryMethod === 'delivery'}
+                      onClick={() => checkout.setDeliveryMethod('delivery')}
                       className={`p-3 rounded-xl border text-right transition-[background-color,border-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] flex flex-col gap-1 ${
-                        deliveryMethod === 'delivery'
+                        checkout.deliveryMethod === 'delivery'
                           ? 'bg-brand-primary/10 border-brand-primary text-white'
                           : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
                       }`}
                     >
                       <div className="flex items-center gap-1.5 text-xs font-bold text-brand-primary">
                         <Truck className="w-3.5 h-3.5" />
-                        <span>משלוח מהיר</span>
+                        <span>משלוח עד הבית</span>
                       </div>
-                      <span className="text-[11px] text-slate-400">עד הבית (+₪30)</span>
+                      <span className="text-[11px] text-slate-300">
+                        {pricing.qualifiesForFreeShipping ? (
+                          <span className="text-emerald-400 font-medium">חינם (מעל <Money amount={shippingPolicy.freeShippingThresholdShekels} />)</span>
+                        ) : (
+                          <>+<Money amount={shippingPolicy.deliveryFeeShekels} /> • חינם מ-<Money amount={shippingPolicy.freeShippingThresholdShekels} /></>
+                        )}
+                      </span>
                     </button>
                   </div>
+                  <p className="text-[11px] text-slate-400">
+                    {checkout.deliveryMethod === 'delivery'
+                      ? `זמן אספקה משוער: ${shippingPolicy.estimatedDeliveryTime}`
+                      : `זמן איסוף: ${shippingPolicy.pickupTime}`}
+                  </p>
                 </div>
 
                 {/* Details Form */}
                 <div className="space-y-3">
-                  <label className="text-xs font-semibold text-slate-300 block">פרטי הלקוחה</label>
+                  <span className="text-xs font-semibold text-slate-300 block">פרטי הלקוחה</span>
 
                   <div>
                     <input
                       type="text"
+                      aria-label="שם מלא"
+                      aria-invalid={Boolean(checkout.fieldErrors.clientName)}
                       placeholder="שם מלא *"
-                      value={clientName}
-                      onChange={e => setClientName(e.target.value)}
-                      className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-600"
+                      value={checkout.clientName}
+                      onChange={e => {
+                        checkout.setClientName(e.target.value);
+                        if (checkout.fieldErrors.clientName) {
+                          checkout.setFieldErrors(prev => ({ ...prev, clientName: undefined }));
+                        }
+                      }}
+                      className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-500"
                     />
+                    {checkout.fieldErrors.clientName && (
+                      <p role="alert" className="text-[11px] text-red-400 mt-1">{checkout.fieldErrors.clientName}</p>
+                    )}
                   </div>
 
                   <div>
                     <input
                       type="tel"
+                      aria-label="מספר טלפון ישראלי"
+                      aria-invalid={Boolean(checkout.fieldErrors.clientPhone)}
                       dir="ltr"
-                      placeholder="מספר טלפון / וואטסאפ *"
-                      value={clientPhone}
-                      onChange={e => setClientPhone(e.target.value)}
-                      className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-600 text-right"
+                      placeholder="מספר טלפון / וואטסאפ (למשל 054-1234567) *"
+                      value={checkout.clientPhone}
+                      onChange={e => {
+                        checkout.setClientPhone(e.target.value);
+                        if (checkout.fieldErrors.clientPhone) {
+                          checkout.setFieldErrors(prev => ({ ...prev, clientPhone: undefined }));
+                        }
+                      }}
+                      className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-500 text-right"
                     />
+                    {checkout.fieldErrors.clientPhone && (
+                      <p role="alert" className="text-[11px] text-red-400 mt-1">{checkout.fieldErrors.clientPhone}</p>
+                    )}
                   </div>
 
-                  {deliveryMethod === 'delivery' && (
+                  {checkout.deliveryMethod === 'delivery' && (
                     <div>
                       <input
                         type="text"
+                        aria-label="כתובת מלאה למשלוח"
+                        aria-invalid={Boolean(checkout.fieldErrors.shippingAddress)}
                         placeholder="כתובת מלאה למשלוח (עיר, רחוב, מספר בית) *"
-                        value={shippingAddress}
-                        onChange={e => setShippingAddress(e.target.value)}
-                        className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-600"
+                        value={checkout.shippingAddress}
+                        onChange={e => {
+                          checkout.setShippingAddress(e.target.value);
+                          if (checkout.fieldErrors.shippingAddress) {
+                            checkout.setFieldErrors(prev => ({ ...prev, shippingAddress: undefined }));
+                          }
+                        }}
+                        className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-500"
                       />
+                      {checkout.fieldErrors.shippingAddress && (
+                        <p role="alert" className="text-[11px] text-red-400 mt-1">{checkout.fieldErrors.shippingAddress}</p>
+                      )}
                     </div>
                   )}
 
                   <div>
                     <input
                       type="text"
+                      aria-label="הערות להזמנה"
                       placeholder="הערות או שאלות ליובל (אופציונלי)"
-                      value={notes}
-                      onChange={e => setNotes(e.target.value)}
-                      className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-600"
+                      value={checkout.notes}
+                      onChange={e => checkout.setNotes(e.target.value)}
+                      className="w-full bg-brand-dark/50 border border-brand-border focus:border-brand-primary/50 text-white px-4 py-2.5 rounded-xl text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-500"
                     />
                   </div>
 
-                  {errorMsg && (
-                    <p className="text-xs text-red-400 font-medium">{errorMsg}</p>
+                  {checkout.errorMsg && (
+                    <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 font-medium">
+                      {checkout.errorMsg}
+                    </div>
                   )}
                 </div>
 
                 {/* Pricing Summary */}
                 <div className="p-3.5 bg-brand-dark/40 rounded-xl border border-white/5 space-y-1.5 text-xs text-slate-300">
                   <div className="flex justify-between">
-                    <span>סה"כ תכשיטים ({quantity} יח'):</span>
-                    <span>₪{itemsTotal}</span>
+                    <span>סה&quot;כ תכשיטים ({quantity} יח&apos;):</span>
+                    <Money amount={pricing.goodsSubtotalShekels} />
                   </div>
                   <div className="flex justify-between">
                     <span>משלוח:</span>
-                    <span>{shippingCost === 0 ? 'חינם (איסוף עצמי)' : `₪${shippingCost}`}</span>
+                    <span>
+                      {pricing.shippingFeeShekels === 0
+                        ? checkout.deliveryMethod === 'pickup'
+                          ? 'חינם (איסוף עצמי)'
+                          : 'חינם (הזמנה מעל המינימום)'
+                        : <Money amount={pricing.shippingFeeShekels} />}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm font-bold text-white pt-1.5 border-t border-white/10">
-                    <span>סה"כ לתשלום:</span>
-                    <span className="text-brand-primary font-serif">₪{finalTotal}</span>
+                    <span>סה&quot;כ לתיאום תשלום:</span>
+                    <Money amount={pricing.totalShekels} className="text-brand-primary font-serif" />
                   </div>
                 </div>
               </>
@@ -356,30 +372,41 @@ export const QuickBuyModal: React.FC = () => {
           </div>
 
           {/* Footer Actions */}
-          {!orderSuccess && (
+          {!confirmedOrder && (
             <div className="pt-4 mt-4 border-t border-white/10 shrink-0 flex flex-col gap-2">
               <button
-                onClick={handleWhatsAppBuy}
-                disabled={isSubmitting}
+                type="button"
+                onClick={checkout.submitWebsiteOrder}
+                disabled={checkout.isSubmitting}
                 className="w-full py-3 px-4 rounded-xl bg-brand-primary hover:bg-brand-primaryHover text-brand-dark font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/20 transition-[background-color,transform] duration-[160ms] ease-emil-out active:scale-[0.97] disabled:opacity-50"
               >
-                {isSubmitting ? (
+                {checkout.isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    <MessageCircle className="w-4 h-4 fill-current" />
-                    <span>הזמנה ישירה בוואטסאפ 💬</span>
+                    <Sparkles className="w-4 h-4" />
+                    <span>שליחת בקשת הזמנה באתר</span>
                   </>
                 )}
               </button>
 
               <button
-                onClick={handleDirectBuy}
-                disabled={isSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
+                type="button"
+                onClick={checkout.submitAndOpenWhatsApp}
+                disabled={checkout.isSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors duration-150 ease-out active:scale-[0.98] disabled:opacity-50"
               >
-                <Sparkles className="w-3.5 h-3.5 text-brand-primary" />
-                <span>שליחת בקשה באתר (ללא וואטסאפ)</span>
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>שמור הזמנה באתר ופתח בוואטסאפ</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={checkout.openWhatsAppDraftOnly}
+                disabled={checkout.isSubmitting}
+                className="w-full py-2 px-3 rounded-lg text-slate-400 hover:text-white text-[11px] underline underline-offset-4 transition-colors"
+              >
+                התייעצות בוואטסאפ ללא שליחת הזמנה באתר
               </button>
             </div>
           )}
@@ -388,4 +415,3 @@ export const QuickBuyModal: React.FC = () => {
     </AnimatePresence>
   );
 };
-

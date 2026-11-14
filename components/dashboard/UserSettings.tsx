@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Save, User, Phone, Mail, Loader2, AlertCircle, CheckCircle2, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { dbClient } from '../../services/dbClient';
 import { api } from '../../services/mockApi';
 import { Button, Input } from '../ui';
 
@@ -39,17 +38,11 @@ export const UserSettings: React.FC = () => {
         setMessage(null);
 
         try {
-            // Upload image (using gallery-images as storage bucket)
-            const publicUrl = await api.uploadImage(file, 'gallery-images');
+            const { url } = await api.uploadMyAvatar(file);
 
-            if (publicUrl) {
-                setAvatarUrl(publicUrl);
-                // Optional: Save immediately or wait for general save? 
-                // Let's save immediately for better UX with images
-                if (user && dbClient) {
-                    await dbClient.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-                    await refreshProfile();
-                }
+            if (url) {
+                setAvatarUrl(url);
+                await refreshProfile();
                 setMessage({ type: 'success', text: 'תמונת פרופיל עודכנה בהצלחה' });
             } else {
                 setMessage({ type: 'error', text: 'שגיאה בהעלאת התמונה' });
@@ -70,23 +63,11 @@ export const UserSettings: React.FC = () => {
         try {
             if (!user) throw new Error("No user logged in");
 
-            const updateData = {
+            await api.updateMyProfile({
                 full_name: fullName,
                 phone: phone,
                 avatar_url: avatarUrl
-            };
-
-            if (!dbClient) {
-                setMessage({ type: 'error', text: 'שגיאת מערכת: לא ניתן להתחבר לשרת' });
-                return;
-            }
-
-            const { error } = await dbClient
-                .from('profiles')
-                .update(updateData)
-                .eq('id', user.id);
-
-            if (error) throw error;
+            });
 
             await refreshProfile(); // Refresh AuthContext to update UI everywhere
             setMessage({ type: 'success', text: 'הפרטים עודכנו בהצלחה' });
@@ -123,28 +104,32 @@ export const UserSettings: React.FC = () => {
                     <form onSubmit={handleSave} className="space-y-6">
                         {/* Avatar / Initials */}
                         <div className="flex flex-col items-center mb-8">
-                            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                aria-label="שינוי תמונת פרופיל"
+                                className="relative group cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                            >
                                 <div className="w-24 h-24 rounded-full bg-brand-primary/10 border-2 border-brand-primary/30 flex items-center justify-center overflow-hidden">
                                     {isUploading ? (
                                         <Loader2 className="w-8 h-8 text-brand-primary animate-spin" />
                                     ) : avatarUrl ? (
-                                        <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                                        <img src={avatarUrl} alt="תמונת פרופיל" className="w-full h-full object-cover" />
                                     ) : (
                                         <span className="text-3xl font-serif text-brand-primary">{fullName ? fullName.charAt(0).toUpperCase() : <User className="w-10 h-10" />}</span>
                                     )}
                                 </div>
-                                {/* Overlay */}
-                                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true">
                                     <Camera className="w-8 h-8 text-white/80" />
                                 </div>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
-                                />
-                            </div>
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                            />
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}

@@ -3,6 +3,9 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { Sparkles, X, Heart, RefreshCw, LogOut, AlertCircle } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { useNavigate } from 'react-router-dom';
+import { Money } from '../components/Money';
+import { getPainDisplay } from '../shared/serviceInfo';
+import { pluralizeHebrew } from '../shared/validation';
 
 const m = motion as any;
 
@@ -53,14 +56,21 @@ const SwipeCard = ({ card, active, onSwipe, zIndex, exitDirection }: any) => {
 
             <div className="absolute bottom-6 left-6 right-6 flex flex-col items-start pointer-events-none" dir="rtl">
                 <h3 className="text-2xl font-serif text-white mb-1 drop-shadow-md text-right w-full">{card.name}</h3>
-                <p className="text-brand-primary font-medium text-lg drop-shadow-md text-right w-full">₪{card.price}</p>
+                <Money amount={card.price} className="text-brand-primary font-medium text-lg drop-shadow-md text-right w-full" />
                 <div className="flex gap-3 mt-3 text-xs text-slate-300 w-full flex-row">
-                    <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                        כאב: {card.pain_level || 1}/10
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                        {card.duration_minutes} דק'
-                    </div>
+                    {(() => {
+                        const pain = getPainDisplay(card.pain_level);
+                        return pain ? (
+                            <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                                כאב {pain.label}
+                            </div>
+                        ) : null;
+                    })()}
+                    {Number(card.duration_minutes) > 0 && (
+                        <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                            {card.duration_minutes} דק&apos;
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -139,6 +149,16 @@ const StyleMatcher: React.FC = () => {
         }, 150);
     };
 
+    useEffect(() => {
+        if (loading || error || isFinished) return;
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight') handleSwipe('right');
+            if (e.key === 'ArrowLeft') handleSwipe('left');
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    });
+
     const resetMatcher = () => {
         setIsFinished(false);
         setCurrentIndex(0);
@@ -206,7 +226,7 @@ const StyleMatcher: React.FC = () => {
                     {likedItems.length > 0 ? (
                         <>
                             <p className="text-slate-400 mb-6">
-                                בחרת {likedItems.length} עיצובים שאהבת. הסטייל שלך משדר אלגנטיות, יוקרה וביטוי אישי חזק.
+                                בחרת {pluralizeHebrew(likedItems.length, 'עיצוב אחד', `${likedItems.length} עיצובים`)} שאהבת. הסטייל שלך משדר אלגנטיות, יוקרה וביטוי אישי חזק.
                             </p>
 
                             <div className="grid grid-cols-3 gap-2 mb-8">
@@ -286,14 +306,18 @@ const StyleMatcher: React.FC = () => {
             {/* Wrap buttons in LTR to maintain visual sync when dragging L/R */}
             <div className="flex flex-row-reverse gap-8 mt-10 w-full max-w-sm justify-center px-6" dir="ltr">
                 <button
+                    type="button"
+                    aria-label="דלג שמאלה - פחות מתאים"
                     onClick={() => handleSwipe('left')}
-                    className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-red-400 hover:bg-red-400/20 hover:text-red-300 transition-[transform,background-color] duration-[160ms] ease-emil-out hover:scale-105 active:scale-[0.95]"
+                    className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-red-400 hover:bg-red-400/20 hover:text-red-300 transition-[transform,background-color] duration-[160ms] ease-emil-out hover:scale-105 active:scale-[0.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                 >
                     <X className="w-8 h-8" />
                 </button>
                 <button
+                    type="button"
+                    aria-label="אהבתי - החלק ימינה והוסף להעדפות"
                     onClick={() => handleSwipe('right')}
-                    className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary hover:bg-brand-primary/30 transition-[transform,background-color] duration-[160ms] ease-emil-out hover:scale-105 active:scale-[0.95]"
+                    className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary hover:bg-brand-primary/30 transition-[transform,background-color] duration-[160ms] ease-emil-out hover:scale-105 active:scale-[0.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                 >
                     <Heart className="w-7 h-7 fill-current" />
                 </button>

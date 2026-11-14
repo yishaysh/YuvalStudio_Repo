@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Search, Plus, Minus, DollarSign, Sparkles } from 'lucide-react';
 import { Modal, Button } from '../ui';
+import { formatILS } from '../../shared/money';
+import { pluralizeHebrew } from '../../shared/validation';
 import { Appointment, JewelryItem, Service } from '../../types';
 
 interface CartItem {
@@ -183,10 +185,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             {filteredInventory.map(item => {
                                 const inCart = cartItems.find(c => c.service_id === item.id);
                                 return (
-                                    <div
+                                    <button
+                                        type="button"
                                         key={item.id}
                                         onClick={() => handleAddItem(item)}
-                                        className={`relative p-2 rounded-xl border cursor-pointer transition-[transform,background-color,border-color] duration-[160ms] ease-emil-out hover:scale-[1.02] active:scale-[0.97] flex flex-col items-center text-center group ${inCart ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-brand-surface border-white/5 hover:border-brand-primary/30'}`}
+                                        className={`relative p-2 rounded-xl border cursor-pointer transition-[transform,background-color,border-color] duration-[160ms] ease-emil-out hover:scale-[1.02] active:scale-[0.97] flex flex-col items-center text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${inCart ? 'bg-brand-primary/10 border-brand-primary/50' : 'bg-brand-surface border-white/5 hover:border-brand-primary/30'}`}
                                     >
                                         {inCart && (
                                             <div className="absolute -top-2 -right-2 w-6 h-6 bg-brand-primary rounded-full text-brand-dark flex items-center justify-center font-bold text-xs shadow-lg z-10">
@@ -206,12 +209,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                                             )}
                                         </div>
                                         <div className="text-xs font-medium text-white mb-1 line-clamp-1 w-full" title={item.name}>{item.name}</div>
-                                        <div className="text-[10px] text-brand-primary font-bold">₪{item.price}</div>
+                                        <div className="text-[10px] text-brand-primary font-bold"><bdi dir="ltr">{formatILS(item.price)}</bdi></div>
                                         {item.is_service && <div className="text-[9px] text-purple-400 mt-0.5 font-medium">שירות/טיפול</div>}
                                         {(!item.is_service && item.stock_quantity !== undefined && item.stock_quantity > 0) && (
                                             <div className="text-[9px] text-slate-500 mt-0.5">מלאי: {item.stock_quantity}</div>
                                         )}
-                                    </div>
+                                    </button>
                                 )
                             })}
                         </div>
@@ -223,7 +226,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <div className="p-4 border-b border-white/5 bg-brand-dark/50 flex justify-between items-center">
                         <h3 className="font-medium text-white">סיכום חיובים</h3>
                         <span className="text-xs px-2 py-1 rounded-full bg-slate-800 text-slate-300">
-                            {cartItems.reduce((acc, item) => acc + item.quantity, 0)} פריטים
+                            {pluralizeHebrew(cartItems.reduce((acc, item) => acc + item.quantity, 0), 'פריט אחד', 'פריטים')}
                         </span>
                     </div>
 

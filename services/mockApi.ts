@@ -1,1232 +1,629 @@
+import { DEFAULT_MONTHLY_GOALS, DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS, JEWELRY_CATALOG } from '../constants';
+import type { DayAvailabilityResult } from '../shared/availability';
+import { parsePriceToShekels } from '../shared/money';
+import { AUTHORITATIVE_SHIPPING_POLICY, type ShippingPolicyConfig } from '../shared/shipping';
 
-import { SERVICES, DEFAULT_WORKING_HOURS, DEFAULT_STUDIO_DETAILS, DEFAULT_MONTHLY_GOALS, MOCK_APPOINTMENTS } from '../constants';
-import { Appointment, Service, StudioSettings, Coupon, Expense, JewelryOrder, JewelryOrderItem } from '../types';
-import { dbClient } from './dbClient';
+export type { DayAvailabilityResult, ShippingPolicyConfig };
+import type {
+  Appointment,
+  Coupon,
+  Expense,
+  GalleryItem,
+  JewelryItem,
+  JewelryOrder,
+  Profile,
+  Service,
+  StudioSettings,
+  WaitlistRequest,
+} from '../types';
 
 export interface TimeSlot {
   time: string;
   available: boolean;
+  reason?: 'booked' | 'past' | 'insufficient_duration';
+  startIso?: string;
 }
 
-// --- In-Memory Cache ---
-let cachedServices: Service[] | null = null;
-let servicesPromise: Promise<Service[]> | null = null;
+export interface BootstrapResponse {
+  version: string;
+  settings: StudioSettings;
+  shippingPolicy: ShippingPolicyConfig;
+  services: Service[];
+  inventoryItems: JewelryItem[];
+  gallery: { items: GalleryItem[]; total: number };
+}
 
-let cachedGallery: any[] | null = null;
-// gallery usually changes more often or has specific filters, but we can cache the full list if needed
-// For wishlist we use specific IDs so we don't cache the partial results here.
+export interface AdminBootstrapResponse {
+  appointments: Appointment[];
+  services: Service[];
+  settings: StudioSettings;
+  stats: { revenue: number; profit: number; appointments: number; pending: number };
+  gallery: { items: GalleryItem[]; total: number };
+  orders: JewelryOrder[];
+  waitlist: WaitlistRequest[];
+}
 
-let cachedSettings: StudioSettings | null = null;
-let settingsPromise: Promise<StudioSettings> | null = null;
-/**
- * Strict Payload Validation & PII Minimization (Phase 2 Compliance)
- * Validates mandatory client information, formats, and consent flags before DB insertion.
- */
-export const validateAndSanitizeAppointmentPayload = (appt: Partial<Appointment>): void => {
-  const isQuickSale = Boolean(
-    appt.is_quick_sale ||
-    (appt.notes && appt.notes.includes('מכירה מהירה')) ||
-    (appt.cart_items && appt.cart_items.length > 0 && appt.status === 'completed')
-  );
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  fieldErrors?: Record<string, string>;
 
-  // 1. Full name validation
-  const name = (appt.client_name || '').trim();
-  if (isQuickSale) {
-    if (name && (name.length > 100 || /[<>]/.test(name))) {
-      throw new Error('שם לקוח מכיל תווים לא מורשים.');
-    }
-  } else {
-    if (!name || name.length < 2) {
-      throw new Error('שם לקוח לא תקין. יש להזין שם מלא בן 2 תווים לפחות.');
-    }
-    if (name.length > 100 || /[<>]/.test(name)) {
-      throw new Error('שם לקוח מכיל תווים לא מורשים.');
+  constructor(message: string, status = 500, code?: string, fieldErrors?: Record<string, string>) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+export function normalizeService(raw: any): Service {
+  return {
+    id: String(raw?.id || ''),
+    name: String(raw?.name || '').trim(),
+    description: typeof raw?.description === 'string' ? raw.description : '',
+    healing_time: typeof raw?.healing_time === 'string' ? raw.healing_time : undefined,
+    price: parsePriceToShekels(raw?.price, 0),
+    duration_minutes: Number(raw?.duration_minutes) > 0 ? Math.round(Number(raw.duration_minutes)) : 30,
+    category: raw?.category || 'Ear',
+    image_url: typeof raw?.image_url === 'string' ? raw.image_url : '',
+    pain_level: Number(raw?.pain_level) > 0 ? Math.min(10, Math.round(Number(raw.pain_level))) : 0,
+    cost_price: raw?.cost_price !== undefined && raw?.cost_price !== null ? parsePriceToShekels(raw.cost_price, 0) : undefined,
+    stock_quantity: raw?.stock_quantity !== undefined && raw?.stock_quantity !== null ? Number(raw.stock_quantity) : undefined,
+    is_active: raw?.is_active !== false,
+  };
+}
+
+export function normalizeInventory(raw: any): JewelryItem {
+  const base = normalizeService(raw);
+  return {
+    ...base,
+    category: raw?.category || 'Jewelry',
+    in_stock: raw?.in_stock !== false && (base.stock_quantity === undefined || base.stock_quantity > 0),
+    material: typeof raw?.material === 'string' ? raw.material : undefined,
+    gauge: typeof raw?.gauge === 'string' ? raw.gauge : undefined,
+    diameter: typeof raw?.diameter === 'string' ? raw.diameter : undefined,
+    allowed_locations: Array.isArray(raw?.allowed_locations) ? raw.allowed_locations : undefined,
+  };
+}
+
+export function normalizeOrder(raw: any): JewelryOrder {
+  return {
+    ...raw,
+    total_price: parsePriceToShekels(raw?.total_price, 0),
+    shipping_cost: parsePriceToShekels(raw?.shipping_cost, 0),
+    items: Array.isArray(raw?.items)
+      ? raw.items.map((item: any) => ({
+          ...item,
+          price: parsePriceToShekels(item?.price, 0),
+          quantity: Math.max(1, Math.floor(Number(item?.quantity) || 1)),
+        }))
+      : [],
+  };
+}
+
+export function normalizeAppointment(raw: any): Appointment {
+  return {
+    ...raw,
+    price: raw?.price !== undefined && raw?.price !== null ? parsePriceToShekels(raw.price, 0) : undefined,
+    final_price:
+      raw?.final_price !== undefined && raw?.final_price !== null
+        ? parsePriceToShekels(raw.final_price, 0)
+        : undefined,
+    service_price:
+      raw?.service_price !== undefined && raw?.service_price !== null
+        ? parsePriceToShekels(raw.service_price, 0)
+        : undefined,
+  };
+}
+
+function normalizePublicSettings(raw: any): StudioSettings {
+  const base: StudioSettings = {
+    working_hours: raw?.working_hours || DEFAULT_WORKING_HOURS,
+    studio_details: {
+      ...DEFAULT_STUDIO_DETAILS,
+      ...(raw?.studio_details || {}),
+    },
+    monthly_goals: raw?.monthly_goals || DEFAULT_MONTHLY_GOALS,
+    gallery_tags: raw?.gallery_tags || {},
+    coupons: Array.isArray(raw?.coupons) ? raw.coupons : [],
+    enable_ai: raw?.enable_ai !== false,
+    enable_gallery: raw?.enable_gallery !== false,
+    enable_style_matcher: raw?.enable_style_matcher !== false,
+    show_pain_level: raw?.show_pain_level !== false,
+    enable_ar: raw?.enable_ar !== false,
+    booking_horizon_days: raw?.booking_horizon_days ?? raw?.studio_details?.booking_horizon_days,
+    shipping_fee: raw?.shipping_fee ?? raw?.studio_details?.shipping_fee,
+    free_shipping_threshold: raw?.free_shipping_threshold ?? raw?.studio_details?.free_shipping_threshold,
+    shipping_eta: raw?.shipping_eta ?? raw?.studio_details?.shipping_eta,
+    whatsapp_templates: raw?.whatsapp_templates,
+    inventory_items: Array.isArray(raw?.inventory_items) ? raw.inventory_items.map(normalizeInventory) : undefined,
+    enable_telegram_notifications: raw?.enable_telegram_notifications,
+    telegram_bot_token: raw?.telegram_bot_token,
+    telegram_chat_id: raw?.telegram_chat_id,
+    enable_email_notifications: raw?.enable_email_notifications,
+    emailjs_service_id: raw?.emailjs_service_id,
+    emailjs_template_id: raw?.emailjs_template_id,
+    emailjs_public_key: raw?.emailjs_public_key,
+    notification_email: raw?.notification_email,
+    enable_calendar_sync: raw?.enable_calendar_sync,
+  };
+  return base;
+}
+
+async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers || {});
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const res = await fetch(url, {
+    ...init,
+    credentials: 'include',
+    headers,
+  });
+
+  const text = await res.text();
+  let json: any = {};
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { error: text };
     }
   }
 
-  // 2. Email format validation (RFC 5322 standard)
-  const email = (appt.client_email || '').trim();
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (isQuickSale) {
-    // In Quick Sales, email is optional, but if provided, must be valid
-    if (email && !emailRegex.test(email)) {
-      throw new Error('כתובת דואר אלקטרוני לא תקינה. יש להזין כתובת דוא"ל חוקית.');
-    }
-  } else {
-    if (!email || !emailRegex.test(email)) {
-      throw new Error('כתובת דואר אלקטרוני לא תקינה. יש להזין כתובת דוא"ל חוקית.');
-    }
+  if (!res.ok) {
+    throw new ApiError(
+      json?.error || `שגיאת שרת (${res.status})`,
+      res.status,
+      json?.code,
+      json?.fieldErrors
+    );
   }
 
-  // 3. Israeli phone format validation
-  const cleanPhone = (appt.client_phone || '').replace(/[\s-]/g, '');
-  const phoneRegex = /^(?:(?:\+?972)|0)(?:[23489]|5[0-9]|7[0-9])\d{7}$/;
-  if (isQuickSale) {
-    // In Quick Sales, phone is optional, but if provided, must be valid
-    if (cleanPhone && !phoneRegex.test(cleanPhone)) {
-      throw new Error('מספר טלפון לא תקין. יש להזין מספר טלפון ישראלי תקין (9 או 10 ספרות).');
-    }
-  } else {
-    if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
-      throw new Error('מספר טלפון לא תקין. יש להזין מספר טלפון ישראלי תקין (9 או 10 ספרות).');
-    }
-  }
+  return json as T;
+}
 
-  // Quick Sales (POS register transactions) do not require online consent forms, signatures, or parent approval
-  if (isQuickSale) {
-    return;
-  }
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('שגיאה בקריאת קובץ התמונה'));
+    reader.readAsDataURL(file);
+  });
+}
 
-  // 4. Mandatory legal consent validation
-  if (appt.terms_accepted !== true || appt.privacy_accepted !== true) {
-    throw new Error('חובה לאשר את תקנון האתר ומדיניות הפרטיות להשלמת הזמנת התור.');
-  }
+let cachedBootstrap: BootstrapResponse | null = null;
+let bootstrapPromise: Promise<BootstrapResponse> | null = null;
 
-  // 5. Digital signature validation
-  if (!appt.signature || appt.signature.trim().length === 0) {
-    throw new Error('חובה לחתום דיגיטלית על טופס ההסכמה והצהרת הבריאות.');
-  }
-
-  // 6. Minor protection & PII minimization
-  if (appt.is_under_16) {
-    const parentName = (appt.parent_name || '').trim();
-    const parentId = (appt.parent_id || '').trim();
-    const cleanParentPhone = (appt.parent_phone || '').replace(/[\s-]/g, '');
-
-    if (!parentName || parentName.length < 2) {
-      throw new Error('עבור לקוח מתחת לגיל 16, חובה להזין שם הורה או אפוטרופוס מלא.');
-    }
-    if (!parentId || !/^\d{9}$/.test(parentId)) {
-      throw new Error('תעודת זהות של ההורה חייבת להכיל 9 ספרות בדיוק.');
-    }
-    if (!cleanParentPhone || !phoneRegex.test(cleanParentPhone)) {
-      throw new Error('מספר טלפון של ההורה אינו תקין.');
-    }
-  }
+export const invalidatePublicCache = () => {
+  cachedBootstrap = null;
+  bootstrapPromise = null;
 };
 
 export const api = {
-  // --- Settings ---
-  getSettings: async (): Promise<StudioSettings> => {
-    if (cachedSettings) return cachedSettings;
-    if (settingsPromise) return settingsPromise;
+  // --- Public Bootstrap & Settings ---
+  async getBootstrap(forceRefresh = false): Promise<BootstrapResponse> {
+    if (!forceRefresh && cachedBootstrap) return cachedBootstrap;
+    if (!forceRefresh && bootstrapPromise) return bootstrapPromise;
 
-    const defaultSettings: StudioSettings = {
-      working_hours: DEFAULT_WORKING_HOURS,
-      studio_details: DEFAULT_STUDIO_DETAILS,
-      monthly_goals: DEFAULT_MONTHLY_GOALS,
-      gallery_tags: {},
-      coupons: [],
-      enable_ai: true,
-      enable_gallery: true,
-      enable_style_matcher: true,
-      show_pain_level: true,
-      whatsapp_templates: undefined,
-      inventory_items: undefined
-    };
-
-    if (!dbClient) {
-      cachedSettings = defaultSettings;
-      return defaultSettings;
-    }
-
-    settingsPromise = (async () => {
+    bootstrapPromise = (async () => {
       try {
-        // Fetch settings keys
-        const { data, error } = await dbClient
-          .from('settings')
-          .select('*')
-          .in('key', ['working_hours', 'studio_details', 'monthly_goals', 'gallery_tags', 'coupons', 'enable_ai', 'enable_gallery', 'enable_style_matcher', 'show_pain_level', 'whatsapp_templates', 'inventory_items']);
-
-        if (error || !data) {
-          cachedSettings = defaultSettings;
-          return defaultSettings;
-        }
-
-        const newSettings = { ...defaultSettings };
-
-        data.forEach(row => {
-          if (row.key === 'working_hours') {
-            // Legacy check
-            if (row.value['0'] && row.value['0'].start !== undefined) {
-              // Ignore legacy format
-            } else {
-              newSettings.working_hours = row.value;
-            }
-          } else if (row.key === 'studio_details') {
-            newSettings.studio_details = { ...defaultSettings.studio_details, ...row.value };
-          } else if (row.key === 'monthly_goals') {
-            newSettings.monthly_goals = { ...defaultSettings.monthly_goals, ...row.value };
-          } else if (row.key === 'gallery_tags') {
-            newSettings.gallery_tags = row.value;
-          } else if (row.key === 'coupons') {
-            newSettings.coupons = row.value;
-          } else if (row.key === 'enable_ai') {
-            newSettings.enable_ai = row.value;
-          } else if (row.key === 'enable_gallery') {
-            newSettings.enable_gallery = row.value;
-          } else if (row.key === 'enable_style_matcher') {
-            newSettings.enable_style_matcher = row.value;
-          } else if (row.key === 'show_pain_level') {
-            newSettings.show_pain_level = row.value;
-          } else if (row.key === 'whatsapp_templates') {
-            newSettings.whatsapp_templates = row.value;
-          } else if (row.key === 'inventory_items') {
-            newSettings.inventory_items = row.value;
-          }
-        });
-
-        cachedSettings = newSettings;
-        return newSettings;
-      } catch (e) {
-        console.error(e);
-        return defaultSettings;
+        const data = await apiFetch<any>('/api/bootstrap');
+        const normalized: BootstrapResponse = {
+          version: data.version || '',
+          settings: normalizePublicSettings({
+            ...data.settings,
+            inventory_items: data.inventoryItems,
+          }),
+          shippingPolicy: data.shippingPolicy || AUTHORITATIVE_SHIPPING_POLICY,
+          services: Array.isArray(data.services) ? data.services.map(normalizeService) : [],
+          inventoryItems: Array.isArray(data.inventoryItems)
+            ? data.inventoryItems.map(normalizeInventory)
+            : JEWELRY_CATALOG.map(normalizeInventory),
+          gallery: data.gallery || { items: [], total: 0 },
+        };
+        cachedBootstrap = normalized;
+        return normalized;
       } finally {
-        settingsPromise = null;
+        bootstrapPromise = null;
       }
     })();
 
-    return settingsPromise;
+    return bootstrapPromise;
   },
 
-  updateSettings: async (settings: StudioSettings): Promise<boolean> => {
-    if (!dbClient) return false;
-
-    const updates = [
-      { key: 'working_hours', value: settings.working_hours },
-      { key: 'studio_details', value: settings.studio_details },
-      { key: 'monthly_goals', value: settings.monthly_goals },
-      { key: 'gallery_tags', value: settings.gallery_tags },
-      { key: 'coupons', value: settings.coupons },
-      { key: 'enable_ai', value: settings.enable_ai },
-      { key: 'enable_gallery', value: settings.enable_gallery },
-      { key: 'enable_style_matcher', value: settings.enable_style_matcher ?? false },
-      { key: 'show_pain_level', value: settings.show_pain_level ?? true },
-      { key: 'whatsapp_templates', value: settings.whatsapp_templates || {} },
-      { key: 'inventory_items', value: settings.inventory_items || [] }
-    ];
-
-    const { error } = await dbClient
-      .from('settings')
-      .upsert(updates, { onConflict: 'key' });
-
-    if (!error) {
-      // Update local cache immediately to prevent desync
-      cachedSettings = { ...settings };
-    }
-    return !error;
+  async getSettings(): Promise<StudioSettings> {
+    const boot = await api.getBootstrap();
+    return boot.settings;
   },
 
-  validateCoupon: async (code: string, cartTotal: number): Promise<{ isValid: boolean, error?: string, coupon?: Coupon }> => {
-    const settings = await api.getSettings();
-    // Case insensitive check
-    const coupon = settings.coupons?.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-
-    if (!coupon) return { isValid: false, error: 'קופון לא נמצא' };
-    if (!coupon.isActive) return { isValid: false, error: 'קופון זה אינו פעיל' };
-    if (cartTotal < coupon.minOrderAmount) return { isValid: false, error: `מותנה בהזמנה מעל ₪${coupon.minOrderAmount}` };
-
-    // Check usage limits
-    if (coupon.maxUses && (coupon.usedCount || 0) >= coupon.maxUses) {
-      return { isValid: false, error: 'קופון זה הגיע למכסת השימוש המקסימלית' };
-    }
-
-    return { isValid: true, coupon };
+  async getServices(): Promise<Service[]> {
+    const boot = await api.getBootstrap();
+    return boot.services;
   },
 
-  // --- Helper to ensure profile exists ---
-  ensureProfileExists: async (userId: string): Promise<boolean> => {
-    if (!dbClient) return false;
-    // 1. Check if exists
-    const { data } = await dbClient.from('profiles').select('id').eq('id', userId).maybeSingle();
-    if (data) return true;
-
-    console.log("Profile missing for user", userId, " - Attempting to create...");
-
-    // 2. Fetch User Email from Auth
-    const { data: { user } } = await dbClient.auth.getUser();
-
-    // Safety check: ensure the logged in user matches the target ID
-    if (!user || user.id !== userId) {
-      console.error("Cannot create profile: Auth user mismatch or not logged in.");
-      return false;
-    }
-
-    // 3. Insert new profile
-    const { error } = await dbClient.from('profiles').insert([
-      {
-        id: userId,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || 'User',
-        role: 'client'
-      }
-    ]);
-
-    if (error) {
-      console.error("Failed to create profile:", error);
-      return false;
-    }
-
-    console.log("Profile created successfully.");
-    return true;
-  },
-
-  // --- Services ---
-  getServices: async (): Promise<Service[]> => {
-    if (cachedServices) return cachedServices;
-    if (servicesPromise) return servicesPromise;
-
-    if (!dbClient) return SERVICES;
-
-    servicesPromise = (async () => {
-      try {
-        const { data, error } = await dbClient
-          .from('services')
-          .select('*')
-          .eq('is_active', true)
-          .order('price', { ascending: true });
-        if (error) throw error;
-
-        cachedServices = data || SERVICES;
-        return cachedServices;
-      } catch (err) {
-        console.error('Error fetching services:', err);
-        return SERVICES;
-      } finally {
-        servicesPromise = null;
-      }
-    })();
-
-    return servicesPromise;
-  },
-
-  addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
-    if (!dbClient) return null;
-    const { data, error } = await dbClient.from('services').insert([service]).select().single();
-    if (error) { console.error(error); return null; }
-
-    cachedServices = null; // Invalidate cache
-    return data;
-  },
-
-  updateService: async (id: string, updates: Partial<Service>): Promise<Service | null> => {
-    if (!dbClient) return null;
-    const { data, error } = await dbClient.from('services').update(updates).eq('id', id).select().single();
-    if (error) { console.error(error); return null; }
-
-    cachedServices = null; // Invalidate cache
-    return data;
-  },
-
-  deleteService: async (id: string): Promise<boolean> => {
-    if (!dbClient) return false;
-    const { error } = await dbClient.from('services').update({ is_active: false }).eq('id', id);
-
-    if (!error) cachedServices = null; // Invalidate cache
-    return !error;
-  },
-
-  // --- Appointments ---
-  getAvailability: async (date: Date): Promise<TimeSlot[]> => {
-    // 1. Fetch Settings (Use cache if available)
-    let workingHours = DEFAULT_WORKING_HOURS;
-    if (dbClient) {
-      if (cachedSettings) {
-        workingHours = cachedSettings.working_hours;
-      } else {
-        const { data } = await dbClient.from('settings').select('*').eq('key', 'working_hours').single();
-        if (data?.value && data.value['0'] && data.value['0'].ranges) {
-          workingHours = data.value;
-        }
-      }
-    }
-
-    // 2. Identify Day Config
-    const dayIndex = date.getDay().toString(); // 0 = Sunday
-    const dayConfig = workingHours[dayIndex];
-
-    // If day is closed or config missing
-    if (!dayConfig || !dayConfig.isOpen || !dayConfig.ranges || dayConfig.ranges.length === 0) {
-      return [];
-    }
-
-    // 3. Generate All Slots for that specific day (Iterate through all ranges)
-    let allSlots: string[] = [];
-
-    dayConfig.ranges.forEach(range => {
-      // Normalize range.start and range.end to string "HH:mm" in case they are numbers
-      let startTimeStr = typeof range.start === 'number' ? `${range.start.toString().padStart(2, '0')}:00` : range.start;
-      let endTimeStr = typeof range.end === 'number' ? `${range.end.toString().padStart(2, '0')}:00` : range.end;
-
-      // Handle raw number strings (e.g. "9")
-      if (typeof startTimeStr === 'string' && !startTimeStr.includes(':')) startTimeStr = `${startTimeStr.padStart(2, '0')}:00`;
-      if (typeof endTimeStr === 'string' && !endTimeStr.includes(':')) endTimeStr = `${endTimeStr.padStart(2, '0')}:00`;
-
-      const current = new Date(`2000-01-01T${startTimeStr}:00`);
-      const end = new Date(`2000-01-01T${endTimeStr}:00`);
-
-      while (current < end) {
-        allSlots.push(current.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false }));
-        current.setMinutes(current.getMinutes() + 30);
-      }
-    });
-
-    // Sort slots just in case ranges were out of order
-    allSlots.sort();
-
-    // Map to object structure
-    const slotsWithStatus = allSlots.map(time => ({ time, available: true }));
-
-    if (!dbClient) return slotsWithStatus;
-
-    // 4. Check against existing appointments (Range Check)
-    try {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // Fetch Start AND End time
-      const { data: existingAppointments, error } = await dbClient
-        .from('appointments')
-        .select('start_time, end_time')
-        .gte('start_time', startOfDay.toISOString())
-        .lte('start_time', endOfDay.toISOString())
-        .neq('status', 'cancelled'); // Includes 'pending' and 'confirmed'
-
-      if (error) throw error;
-
-      // Convert existing appointments to timestamp ranges
-      const busyRanges = existingAppointments?.map(app => ({
-        start: new Date(app.start_time).getTime(),
-        end: new Date(app.end_time).getTime()
-      })) || [];
-
-      // Update availability status
-      return slotsWithStatus.map(slot => {
-        const [h, m] = slot.time.split(':').map(Number);
-        const slotDate = new Date(date);
-        slotDate.setHours(h, m, 0, 0);
-        const slotTime = slotDate.getTime();
-
-        // A slot is unavailable if its start time is >= existing start time AND < existing end time
-        const isBusy = busyRanges.some(range => slotTime >= range.start && slotTime < range.end);
-
-        return { ...slot, available: !isBusy };
-      });
-
-    } catch (err) {
-      console.error('Error fetching availability:', err);
-      return slotsWithStatus;
-    }
-  },
-
-  createAppointment: async (appt: Partial<Appointment>): Promise<Appointment> => {
-    const isQuickSale = Boolean(
-      appt.is_quick_sale ||
-      (appt.notes && appt.notes.includes('מכירה מהירה')) ||
-      (appt.cart_items && appt.cart_items.length > 0 && appt.status === 'completed')
+  async getGallery(page = 1, limit = 12): Promise<{ items: GalleryItem[]; total: number }> {
+    const data = await apiFetch<{ items: GalleryItem[]; total: number }>(
+      `/api/gallery?page=${encodeURIComponent(String(page))}&limit=${encodeURIComponent(String(limit))}`
     );
-
-    // Validate payload and enforce consent & PII minimization
-    validateAndSanitizeAppointmentPayload(appt);
-
-    const startTime = new Date(appt.start_time!);
-    const duration = 30;
-
-    // @ts-ignore
-    let endTime = appt.end_time;
-    if (!endTime) {
-      endTime = new Date(startTime.getTime() + duration * 60000).toISOString();
-    }
-
-    // Append coupon and legal compliance audit trail into notes
-    let finalNotes = (appt.notes || '').replace(/[<>]/g, '').trim();
-    if (appt.coupon_code) {
-      finalNotes += `\n\n=== פרטי קופון ===\nקוד: ${appt.coupon_code}\nמחיר סופי לחיוב: ₪${appt.final_price}`;
-    }
-
-    if (!isQuickSale) {
-      const consentTimestamp = appt.consent_timestamp || new Date().toISOString();
-      const marketingText = appt.marketing_opt_in ? 'אושר' : 'לא אושר';
-      finalNotes += `\n\n=== תיעוד הסכמות וציות חוקי (Phase 2) ===\n• תקנון ומדיניות פרטיות: אושרו ב-${new Date(consentTimestamp).toLocaleString('he-IL')}\n• הצהרת בריאות: אושרה ונחתמה דיגיטלית\n• אישור דיוור שיווקי: ${marketingText}`;
-    }
-
-    // --- Transaction-like Logic for Coupon ---
-    // In a real DB we'd use a transaction. Here we optimistically update settings.
-    if (appt.coupon_code) {
-      const settings = await api.getSettings();
-      const updatedCoupons = settings.coupons.map(c => {
-        if (c.code === appt.coupon_code) {
-          return { ...c, usedCount: (c.usedCount || 0) + 1 };
-        }
-        return c;
-      });
-      await api.updateSettings({ ...settings, coupons: updatedCoupons });
-    }
-
-    // --- Process Referral Bonus ---
-    if (appt.referred_by && dbClient) {
-      try {
-        const { data: referrer } = await dbClient
-          .from('profiles')
-          .select('id, credit_balance')
-          .eq('referral_code', appt.referred_by)
-          .maybeSingle();
-
-        if (referrer) {
-          const newBalance = (Number(referrer.credit_balance) || 0) + 30; // Provide 30 NIS credit
-          await dbClient
-            .from('profiles')
-            .update({ credit_balance: newBalance })
-            .eq('id', referrer.id);
-        }
-      } catch (err) {
-        console.error("Failed to process referral bonus:", err);
-      }
-    }
-
-    if (!dbClient) {
-      // Mock fallback
-      const mockAppt: Appointment = {
-        id: 'mock-' + Date.now(),
-        client_id: appt.client_id,
-        client_name: (appt.client_name || (isQuickSale ? 'לקוח מזדמן' : '')).trim(),
-        client_email: appt.client_email || '',
-        client_phone: appt.client_phone || '',
-        service_id: appt.service_id || 'quick-sale',
-        service_name: appt.service_name,
-        start_time: appt.start_time || new Date().toISOString(),
-        end_time: endTime,
-        status: appt.status || 'pending',
-        notes: finalNotes,
-        signature: appt.signature,
-        created_at: new Date().toISOString(),
-        coupon_code: appt.coupon_code,
-        final_price: appt.final_price,
-        total_cost: appt.total_cost,
-        total_profit: appt.total_profit,
-        cart_items: appt.cart_items,
-        is_under_16: appt.is_under_16,
-        is_quick_sale: isQuickSale
-      };
-      MOCK_APPOINTMENTS.unshift(mockAppt);
-      return mockAppt;
-    }
-
-    // Strictly minimize PII: if not minor under 16, sanitize parent data to null
-    const parentName = appt.is_under_16 ? (appt.parent_name || '').trim() : null;
-    const parentId = appt.is_under_16 ? (appt.parent_id || '').trim() : null;
-    const parentPhone = appt.is_under_16 ? (appt.parent_phone || '').trim() : null;
-
-    const guestEmail = (appt.client_email || '').trim().toLowerCase();
-    const guestPhone = (appt.client_phone || '').trim();
-
-    const payload = {
-      client_id: appt.client_id,
-      service_id: appt.service_id,
-      start_time: appt.start_time,
-      end_time: endTime,
-      guest_name: (appt.client_name || (isQuickSale ? 'לקוח מזדמן' : '')).trim(),
-      guest_email: guestEmail || null,
-      guest_phone: guestPhone || null,
-      notes: finalNotes,
-      signature: appt.signature,
-      status: appt.status || 'pending',
-      price: appt.final_price ?? appt.price ?? null,
-      final_price: appt.final_price ?? appt.price ?? null,
-      total_cost: appt.total_cost || 0,
-      total_profit: appt.total_profit || 0,
-      cart_items: appt.cart_items || null,
-      ai_recommendation_text: appt.ai_recommendation_text,
-      visual_plan: appt.visual_plan,
-      anatomy_image_url: appt.anatomy_image_url,
-      anatomy_status: appt.anatomy_status,
-      anatomy_review_comment: appt.anatomy_review_comment,
-      is_under_16: Boolean(appt.is_under_16),
-      parent_name: parentName,
-      parent_id: parentId,
-      parent_phone: parentPhone,
-      coupon_code: appt.coupon_code
-    };
-
-    const { data, error } = await dbClient.from('appointments').insert([payload]).select().single();
-
-    if (error) {
-      if (error.code === 'PGRST204') {
-        console.error("Schema Mismatch: Missing columns in 'appointments' table. Please run migration SQL.");
-        throw new Error("שגיאת מערכת: מבנה הנתונים אינו מעודכן. אנא פנה למנהל המערכת.");
-      }
-      throw error;
-    }
-
     return {
-      id: data.id,
-      client_id: data.client_id,
-      client_name: data.guest_name,
-      client_email: data.guest_email || '',
-      client_phone: data.guest_phone || '',
-      service_id: data.service_id,
-      service_name: appt.service_name,
-      start_time: data.start_time,
-      end_time: data.end_time,
-      status: data.status as Appointment['status'],
-      notes: data.notes,
-      signature: data.signature,
-      created_at: data.created_at,
-      coupon_code: appt.coupon_code,
-      final_price: data.final_price !== null && data.final_price !== undefined ? Number(data.final_price) : appt.final_price,
-      total_cost: data.total_cost !== null && data.total_cost !== undefined ? Number(data.total_cost) : appt.total_cost,
-      total_profit: data.total_profit !== null && data.total_profit !== undefined ? Number(data.total_profit) : appt.total_profit,
-      cart_items: data.cart_items || appt.cart_items,
-      is_under_16: data.is_under_16,
-      parent_name: data.parent_name,
-      parent_id: data.parent_id,
-      parent_phone: data.parent_phone
+      items: Array.isArray(data.items) ? data.items : [],
+      total: Number(data.total) || 0,
     };
   },
 
-  getAppointments: async (): Promise<Appointment[]> => {
-    if (!dbClient) return MOCK_APPOINTMENTS as Appointment[];
-    try {
-      const { data, error } = await dbClient
-        .from('appointments')
-        .select(`
-            *,
-            services (name, price),
-            profiles (avatar_url)
-        `)
-        .order('start_time', { ascending: false });
+  // --- Availability (P1-D) ---
+  async getAvailabilityDetail(
+    dateStr: string,
+    durationMinutes = 30,
+    signal?: AbortSignal
+  ): Promise<DayAvailabilityResult> {
+    return apiFetch<DayAvailabilityResult>(
+      `/api/availability?date=${encodeURIComponent(dateStr)}&duration=${encodeURIComponent(String(durationMinutes))}`,
+      { signal }
+    );
+  },
 
-      if (error) throw error;
-
-      return data.map((item: any) => ({
-        id: item.id,
-        client_name: item.guest_name || 'לקוח רשום',
-        client_email: item.guest_email,
-        client_phone: item.guest_phone,
-        client_avatar_url: item.profiles?.avatar_url, // Map avatar
-        service_id: item.service_id,
-        service_name: item.services?.name,
-        service_price: item.services?.price !== null && item.services?.price !== undefined ? Number(item.services?.price) : undefined,
-        start_time: item.start_time,
-        end_time: item.end_time,
-        status: item.status,
-        notes: item.notes,
-        signature: item.signature,
-        created_at: item.created_at,
-        final_price: item.final_price !== null && item.final_price !== undefined ? Number(item.final_price) : undefined,
-        total_profit: item.total_profit !== null && item.total_profit !== undefined ? Number(item.total_profit) : undefined,
-        total_cost: item.total_cost !== null && item.total_cost !== undefined ? Number(item.total_cost) : undefined,
-        cart_items: item.cart_items,
-        visual_plan: item.visual_plan,
-        ai_recommendation_text: item.ai_recommendation_text,
-        anatomy_image_url: item.anatomy_image_url,
-        anatomy_status: item.anatomy_status,
-        anatomy_review_comment: item.anatomy_review_comment,
-        is_under_16: item.is_under_16,
-        parent_name: item.parent_name,
-        parent_id: item.parent_id,
-        parent_phone: item.parent_phone
-      }));
-    } catch (err) {
-      console.error(err);
-      return MOCK_APPOINTMENTS as Appointment[];
+  async getAvailability(
+    dateStr: string,
+    durationMinutes = 30,
+    signal?: AbortSignal
+  ): Promise<TimeSlot[]> {
+    const detail = await api.getAvailabilityDetail(dateStr, durationMinutes, signal);
+    if (detail.status === 'error') {
+      throw new ApiError(detail.reasonMessage || 'שגיאה בטעינת הזמינות', 503);
     }
-  },
-
-  getAppointmentsForUser: async (userId: string): Promise<Appointment[]> => {
-    if (!dbClient) return [];
-    try {
-      const { data, error } = await dbClient
-        .from('appointments')
-        .select(`
-            *,
-            services (name, price)
-        `)
-        .eq('client_id', userId)
-        .order('start_time', { ascending: false });
-
-      if (error) throw error;
-
-      return data.map((item: any) => ({
-        id: item.id,
-        client_id: item.client_id,
-        client_name: item.guest_name || 'לקוח רשום',
-        client_email: item.guest_email,
-        client_phone: item.guest_phone,
-        service_id: item.service_id,
-        service_name: item.services?.name,
-        service_price: item.services?.price !== null && item.services?.price !== undefined ? Number(item.services?.price) : undefined,
-        start_time: item.start_time,
-        status: item.status,
-        notes: item.notes,
-        signature: item.signature,
-        created_at: item.created_at,
-        final_price: item.final_price !== null && item.final_price !== undefined ? Number(item.final_price) : undefined,
-        total_profit: item.total_profit !== null && item.total_profit !== undefined ? Number(item.total_profit) : undefined,
-        total_cost: item.total_cost !== null && item.total_cost !== undefined ? Number(item.total_cost) : undefined,
-        cart_items: item.cart_items,
-        visual_plan: item.visual_plan,
-        ai_recommendation_text: item.ai_recommendation_text,
-        anatomy_image_url: item.anatomy_image_url,
-        anatomy_status: item.anatomy_status,
-        anatomy_review_comment: item.anatomy_review_comment,
-        is_under_16: item.is_under_16,
-        parent_name: item.parent_name,
-        parent_id: item.parent_id,
-        parent_phone: item.parent_phone
-      }));
-    } catch (err) {
-      console.error(err);
-      return [];
-    }
-  },
-
-  updateAppointmentStatus: async (id: string, status: Appointment['status'], notes?: string): Promise<boolean> => {
-    if (!dbClient) return false;
-    const updates: any = { status };
-    if (notes) updates.notes = notes;
-
-    const { error } = await dbClient.from('appointments').update(updates).eq('id', id);
-    if (error) { console.error(error); return false; }
-    return true;
-  },
-
-  updateAppointmentTime: async (id: string, start_time: Date, durationMinutes: number): Promise<boolean> => {
-    if (!dbClient) return false;
-
-    // Calculate new end time based on the selected duration
-    const endTime = new Date(start_time.getTime() + durationMinutes * 60000);
-
-    const updates = {
-      start_time: start_time.toISOString(),
-      end_time: endTime.toISOString()
-    };
-
-    const { error } = await dbClient.from('appointments').update(updates).eq('id', id);
-    if (error) {
-      console.error("Error updating appointment time:", error);
-      return false;
-    }
-    return true;
-  },
-
-  updateAppointment: async (id: string, updates: Partial<Appointment>): Promise<boolean> => {
-    if (!dbClient) return true;
-
-    // Filter and map fields to known database columns
-    const payload: Record<string, any> = {};
-
-    // Map client-side field aliases to actual DB column names
-    if ('client_name' in updates && updates.client_name !== undefined) payload.guest_name = updates.client_name;
-    if ('client_phone' in updates && updates.client_phone !== undefined) payload.guest_phone = updates.client_phone;
-    if ('client_email' in updates && updates.client_email !== undefined) payload.guest_email = updates.client_email;
-
-    const validDbColumns = [
-      'client_id',
-      'service_id',
-      'guest_name',
-      'guest_email',
-      'guest_phone',
-      'start_time',
-      'end_time',
-      'price',
-      'final_price',
-      'coupon_code',
-      'status',
-      'notes',
-      'signature',
-      'total_cost',
-      'total_profit',
-      'cart_items',
-      'visual_plan',
-      'ai_recommendation_text',
-      'anatomy_image_url',
-      'anatomy_status',
-      'anatomy_review_comment',
-      'is_under_16',
-      'parent_name',
-      'parent_id',
-      'parent_phone'
-    ];
-
-    for (const col of validDbColumns) {
-      if (col in updates && (updates as any)[col] !== undefined) {
-        payload[col] = (updates as any)[col];
-      }
-    }
-
-    if (Object.keys(payload).length === 0) return true;
-
-    const { error } = await dbClient.from('appointments').update(payload).eq('id', id);
-    if (error) {
-      console.error('Error updating appointment:', error);
-      return false;
-    }
-    return true;
-  },
-
-  deleteAppointment: async (id: string): Promise<boolean> => {
-    if (!dbClient) return false;
-    const { error } = await dbClient.from('appointments').delete().eq('id', id);
-    if (error) {
-      console.error("Error deleting appointment:", error);
-      return false;
-    }
-    return true;
-  },
-
-  // --- DELETE ALL FUNCTION ---
-  clearAppointments: async (): Promise<boolean> => {
-    if (!dbClient) return false;
-    // We use a filter that matches all rows to satisfy safe delete policies if strict, 
-    // or just straight delete.
-    // NOTE: RLS Policies must allow DELETE for this to work.
-    const { error } = await dbClient.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    return !error;
-  },
-
-  // --- Stats ---
-  getMonthlyStats: async () => {
-    if (!dbClient) return { revenue: 0, profit: 0, appointments: 0, pending: 0 };
-
-    try {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
-
-      const { data, error } = await dbClient
-        .from('appointments')
-        .select(`status, services(price), final_price, total_profit`)
-        .gte('start_time', startOfMonth)
-        .lte('start_time', endOfMonth)
-        .neq('status', 'cancelled');
-
-      if (error) throw error;
-
-      let revenue = 0;
-      let profit = 0;
-      let pending = 0;
-
-      data?.forEach((app: any) => {
-        // Only tally revenue and profit for completed appointments
-        if (app.status === 'completed') {
-          // Prefer final_price if exists, else service price
-          const appPrice = (app.final_price !== undefined && app.final_price !== null)
-            ? Number(app.final_price)
-            : Number(app.services?.price || 0);
-          revenue += (isNaN(appPrice) ? 0 : appPrice);
-          const appProfit = Number(app.total_profit || 0);
-          profit += (isNaN(appProfit) ? 0 : appProfit);
-        }
-        if (app.status === 'pending') pending++;
-      });
-
-      return {
-        revenue,
-        profit,
-        appointments: data?.length || 0,
-        pending
-      };
-    } catch (err) {
-      console.error('Error fetching monthly stats:', err);
-      return { revenue: 0, profit: 0, appointments: 0, pending: 0 };
-    }
-  },
-
-  // --- Expenses ---
-  getExpenses: async (month?: number, year?: number): Promise<Expense[]> => {
-    if (!dbClient) return [];
-    try {
-      let query = dbClient.from('expenses').select('*').order('expense_date', { ascending: false });
-      
-      if (month !== undefined && year !== undefined) {
-         // month is 0-indexed (0=Jan, 11=Dec)
-         const startDate = new Date(year, month, 1).toISOString();
-         const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
-         query = query.gte('expense_date', startDate).lte('expense_date', endDate);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []).map((exp: any) => ({
-        ...exp,
-        amount: Number(exp.amount)
-      }));
-    } catch (e) {
-      console.error(e);
-      return [];
-    }
-  },
-
-  addExpense: async (expense: Omit<Expense, 'id' | 'created_at'>): Promise<Expense | null> => {
-    if (!dbClient) return null;
-    const { data, error } = await dbClient.from('expenses').insert([expense]).select().single();
-    if (error) { console.error(error); return null; }
-    return data;
-  },
-
-  deleteExpense: async (id: string): Promise<boolean> => {
-    if (!dbClient) return false;
-    const { error } = await dbClient.from('expenses').delete().eq('id', id);
-    return !error;
-  },
-
-  // --- Gallery ---
-  // --- Gallery ---
-  getGallery: async (page = 1, limit = 12) => {
-    // If no pagination args provided (legacy calls), we might return all or default first page.
-    // However, to be safe during refactor, let's just support pagination.
-
-    if (!dbClient) return { items: [], total: 0 };
-
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    // Fetch gallery images range + total count
-    const { data: galleryData, count, error } = await dbClient
-      .from('gallery')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    if (error || !galleryData) return { items: [], total: 0 };
-
-    // Fetch tags and services (cached)
-    const settings = await api.getSettings();
-    const tags = settings.gallery_tags || {};
-    const services = await api.getServices();
-
-    // Enrichment
-    const enrichedGallery = galleryData.map((item: any) => {
-      const itemTags = tags[item.id] || [];
-      const taggedServices = itemTags.map((tagId: string) => services.find(s => s.id === tagId)).filter(Boolean);
-      return {
-        ...item,
-        taggedServices
-      };
-    });
-
-    return { items: enrichedGallery, total: count || 0 };
-  },
-  // --- Storage ---
-  addToGallery: async (imageUrl: string) => {
-    if (!dbClient) return;
-    await dbClient.from('gallery').insert([{ image_url: imageUrl }]);
-    cachedGallery = null; // Invalidate cache
-  },
-
-  deleteFromGallery: async (id: string) => {
-    if (!dbClient) return false;
-    const { error } = await dbClient.from('gallery').delete().eq('id', id);
-
-    if (!error) cachedGallery = null; // Invalidate cache
-    return !error;
-  },
-
-  uploadImage: async (file: File, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
-    if (!dbClient) return null;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${fileName}`;
-
-    const { error: uploadError } = await dbClient.storage.from(bucket).upload(filePath, file);
-    if (uploadError) {
-      console.error(uploadError);
-      return null;
-    }
-
-    const { data } = dbClient.storage.from(bucket).getPublicUrl(filePath);
-    return data.publicUrl;
-  },
-
-  // Convert Base64 Data URL to File/Blob and upload
-  uploadBase64Image: async (base64Data: string, bucket: 'service-images' | 'gallery-images'): Promise<string | null> => {
-    if (!dbClient) return null;
-
-    try {
-      // 1. Convert Base64 to Blob
-      // Assume base64Data is without the "data:image/jpeg;base64," prefix or clean it
-      const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-
-      const byteCharacters = atob(cleanBase64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'image/jpeg' });
-
-      // 2. Generate Path
-      const fileName = `ai_upload_${Math.random().toString(36).substring(2)}.jpg`;
-
-      // 3. Upload
-      const { error: uploadError } = await dbClient.storage.from(bucket).upload(fileName, blob, {
-        contentType: 'image/jpeg',
-        upsert: false
-      });
-
-      if (uploadError) {
-        console.error("Database Upload Error:", uploadError);
-        return null;
-      }
-
-      // 4. Get URL
-      const { data } = dbClient.storage.from(bucket).getPublicUrl(fileName);
-      return data.publicUrl;
-
-    } catch (e) {
-      console.error("Error converting/uploading base64 image:", e);
-      return null;
-    }
-  },
-  // --- Wishlist ---
-  toggleWishlist: async (userId: string, serviceId: string): Promise<string[]> => {
-    if (!dbClient) return [];
-
-    // Ensure profile exists before trying to read/write
-    await api.ensureProfileExists(userId);
-
-    // 1. Get current profile
-    const { data: profile } = await dbClient.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
-    let currentWishlist: string[] = profile?.wishlist || [];
-
-    // 2. Toggle
-    if (currentWishlist.includes(serviceId)) {
-      currentWishlist = currentWishlist.filter(id => id !== serviceId);
-    } else {
-      currentWishlist = [...currentWishlist, serviceId];
-    }
-
-    // 3. Update
-    const { error } = await dbClient.from('profiles').update({ wishlist: currentWishlist }).eq('id', userId);
-
-    if (error) {
-      console.error("Failed to update wishlist:", error);
-      return [];
-    }
-
-    return currentWishlist;
-  },
-
-  getWishlist: async (userId: string): Promise<any[]> => {
-    if (!dbClient) return [];
-
-    console.log("Fetching wishlist for user:", userId);
-
-    // 1. Get IDs from profile
-    const { data: profile, error: profileError } = await dbClient.from('profiles').select('wishlist').eq('id', userId).maybeSingle();
-
-    if (profileError) {
-      console.error("Error fetching profile wishlist:", profileError);
-      return [];
-    }
-
-    const ids: string[] = profile?.wishlist || [];
-    console.log("Wishlist IDs found:", ids);
-
-    if (ids.length === 0) return [];
-
-    // 2. Fetch Services (from cache, filtering by ID)
-    const allServices = await api.getServices();
-    const serviceMatches = allServices.filter(s => ids.includes(s.id));
-
-    // 3. Fetch Gallery Items (Only fetch relevant IDs from DB)
-    let galleryMatches: any[] = [];
-    try {
-      // Determine which IDs are NOT services (potential gallery items)
-      // This is a heuristic: if it's not in serviceMatches, check gallery
-      const serviceIds = new Set(serviceMatches.map(s => s.id));
-      const potentialGalleryIds = ids.filter(id => !serviceIds.has(id));
-
-      if (potentialGalleryIds.length > 0) {
-        const { data: galleryData, error: galleryError } = await dbClient
-          .from('gallery')
-          .select('*')
-          .in('id', potentialGalleryIds);
-
-        if (galleryError) {
-          console.error("Error fetching gallery items for wishlist:", galleryError);
-        } else if (galleryData) {
-          // Enrich with tags using cached settings
-          const settings = await api.getSettings();
-          const tags = settings.gallery_tags || {};
-
-          galleryMatches = galleryData.map((item: any) => {
-            const itemTags = tags[item.id] || [];
-            const taggedServices = itemTags.map((tagId: string) => allServices.find(s => s.id === tagId)).filter(Boolean);
-            return {
-              ...item,
-              taggedServices
-            };
-          });
-        }
-      }
-    } catch (e) {
-      console.error("Error optimizing gallery fetch:", e);
-    }
-
-    console.log("Gallery matches found:", galleryMatches.length);
-
-    // Map gallery items to match Service interface for display
-    const mappedGalleryItems = galleryMatches.map((item: any) => ({
-      id: item.id,
-      name: 'פריט גלריה',
-      price: item.taggedServices?.[0]?.price || 0, // Try to inherit price from first tag
-      image_url: item.image_url,
-      category: 'Jewelry',
-      description: 'פריט שנשמר מהגלריה',
-      taggedServices: item.taggedServices // Keep tags for future use
+    return detail.slots.map(s => ({
+      time: s.time,
+      available: s.available,
+      reason: s.reason,
+      startIso: s.startIso,
     }));
-
-    // Combine results
-    const combined = [...serviceMatches, ...mappedGalleryItems];
-
-    // Deduplicate (just in case)
-    const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-
-    console.log("Total unique wishlist items:", unique.length);
-    return unique;
   },
 
-  // --- Aftercare Persistence ---
-  checkInAftercare: async (userId: string): Promise<boolean> => {
-    if (!dbClient) return false;
-
-    await api.ensureProfileExists(userId);
-
-    const now = new Date().toISOString();
-
-    // Use select() to confirm the update happened
-    const { data, error } = await dbClient
-      .from('profiles')
-      .update({ last_aftercare_checkin: now })
-      .eq('id', userId)
-      .select();
-
-    if (error) {
-      console.error("Failed to check in aftercare:", error);
-      return false;
-    }
-
-    // Check if any row was actually returned (implies update success)
-    return data && data.length > 0;
+  // --- Coupons & Waitlist ---
+  async validateCoupon(
+    code: string,
+    cartTotal: number
+  ): Promise<{ isValid: boolean; error?: string; coupon?: Coupon }> {
+    return apiFetch<{ isValid: boolean; error?: string; coupon?: Coupon }>('/api/coupons/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code, cartTotal }),
+    });
   },
 
-  getLastAftercareCheckin: async (userId: string): Promise<string | null> => {
-    if (!dbClient) return null;
-    const { data, error } = await dbClient.from('profiles').select('last_aftercare_checkin').eq('id', userId).maybeSingle();
-    if (error) {
-      console.error("Failed to fetch last checkin:", error);
-      return null;
-    }
-    if (!data) return null;
-
-    console.log("Fetched Last Checkin:", data.last_aftercare_checkin);
-    return data.last_aftercare_checkin;
+  async submitWaitlist(payload: {
+    client_name: string;
+    client_phone: string;
+    preferred_date?: string;
+    service_names?: string;
+    notes?: string;
+  }): Promise<{ entry: WaitlistRequest }> {
+    return apiFetch<{ entry: WaitlistRequest }>('/api/waitlist', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
-  // --- Jewelry Orders ---
-  getJewelryOrders: async (): Promise<JewelryOrder[]> => {
-    try {
-      if (dbClient) {
-        const { data, error } = await dbClient.from('jewelry_orders').select('*').order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) {
-          const parsed = data.map((order: any) => ({
-            ...order,
-            total_price: Number(order.total_price) || 0,
-            shipping_cost: Number(order.shipping_cost) || 0,
-            items: typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])
-          }));
-          if (parsed.length > 0) return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('DB jewelry_orders read failed, falling back to localStorage', e);
+  // --- Appointments & Orders ---
+  async createAppointment(
+    appt: Partial<Appointment> & {
+      service_ids?: string[];
+      jewelry_ids?: string[];
+      idempotency_key?: string;
+      anatomy_image_data_url?: string;
+      ai_image_data_url?: string;
     }
-
-    try {
-      const stored = localStorage.getItem('yuval_jewelry_orders');
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.error('Failed to read orders from localStorage', e);
+  ): Promise<Appointment> {
+    const res = await apiFetch<{
+      appointment: Appointment;
+      created: boolean;
+      notification?: { telegram?: string; email?: string; error?: string };
+    }>('/api/appointments', {
+      method: 'POST',
+      body: JSON.stringify(appt),
+    });
+    const normalized = normalizeAppointment(res.appointment);
+    if (res.notification && (res.notification.telegram === 'failed' || res.notification.email === 'failed')) {
+      normalized.notification_status = 'failed';
+      normalized.notification_error = res.notification.error;
     }
-    return [];
+    return normalized;
   },
 
-  createJewelryOrder: async (orderData: Omit<JewelryOrder, 'id' | 'created_at' | 'order_number' | 'status'>): Promise<JewelryOrder> => {
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = `YV-${randomSuffix}`;
-    const newOrder: JewelryOrder = {
-      ...orderData,
-      id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-        ? crypto.randomUUID()
-        : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0'),
-      order_number: orderNumber,
-      status: 'pending',
-      created_at: new Date().toISOString()
+  async createJewelryOrder(
+    order: Partial<JewelryOrder> & {
+      items: Array<{ id?: string; product_id?: string; name?: string; quantity: number; price?: number }>;
+      idempotency_key?: string;
+    }
+  ): Promise<JewelryOrder> {
+    const payload = {
+      idempotency_key: order.idempotency_key,
+      client_name: order.client_name,
+      client_phone: order.client_phone,
+      client_email: order.client_email,
+      delivery_method: order.delivery_method === 'pickup' ? 'pickup' : 'delivery',
+      shipping_address: order.shipping_address,
+      notes: order.notes,
+      items: (order.items || []).map(item => ({
+        product_id: item.product_id || item.id || '',
+        name: item.name,
+        quantity: item.quantity,
+      })),
     };
-
-    try {
-      if (dbClient) {
-        await dbClient.from('jewelry_orders').insert([newOrder]);
-      }
-    } catch (e) {
-      console.warn('Could not insert order into DB table, saving to localStorage', e);
+    const res = await apiFetch<{
+      order: JewelryOrder;
+      created: boolean;
+      pricing: { goodsSubtotal: number; shippingFee: number; total: number; qualifiesForFreeShipping: boolean };
+      notification?: { telegram?: string; email?: string; error?: string };
+    }>('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const normalized = normalizeOrder(res.order);
+    if (res.notification?.telegram === 'failed' || res.notification?.email === 'failed') {
+      normalized.notification_status = 'failed';
+      normalized.notification_error = res.notification.error;
     }
-
-    try {
-      const current = await api.getJewelryOrders();
-      const updated = [newOrder, ...current.filter(o => o.id !== newOrder.id)];
-      localStorage.setItem('yuval_jewelry_orders', JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to save order to localStorage', e);
-    }
-
-    return newOrder;
+    return normalized;
   },
 
-  updateJewelryOrderStatus: async (orderId: string, status: JewelryOrder['status']): Promise<boolean> => {
-    try {
-      if (dbClient) {
-        await dbClient.from('jewelry_orders').update({ status }).eq('id', orderId);
-      }
-    } catch (e) {
-      console.warn('DB update failed, updating locally', e);
-    }
+  // --- Auth & Client Personal Area ---
+  async getSession(): Promise<{ user: Profile | null }> {
+    return apiFetch<{ user: Profile | null }>('/api/auth/session');
+  },
 
+  async signInWithGoogleToken(accessToken: string, requireAdmin = false): Promise<Profile> {
+    const res = await apiFetch<{ user: Profile }>('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ accessToken, requireAdmin }),
+    });
+    return res.user;
+  },
+
+  async logout(): Promise<void> {
+    await apiFetch('/api/auth/logout', { method: 'POST' });
+  },
+
+  async getAppointmentsForUser(_userId?: string): Promise<Appointment[]> {
+    const res = await apiFetch<{ appointments: Appointment[] }>('/api/me/appointments');
+    return (res.appointments || []).map(normalizeAppointment);
+  },
+
+  async updateMyProfile(updates: {
+    full_name?: string;
+    phone?: string;
+    avatar_url?: string;
+  }): Promise<Profile> {
+    const res = await apiFetch<{ user: Profile }>('/api/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+    return res.user;
+  },
+
+  async uploadMyAvatar(file: File): Promise<{ url: string; user: Profile }> {
+    const dataUrl = await fileToDataUrl(file);
+    return apiFetch<{ url: string; user: Profile }>('/api/me/upload', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl }),
+    });
+  },
+
+  async getWishlist(_userId?: string): Promise<any[]> {
+    const res = await apiFetch<{ items: any[]; ids: string[] }>('/api/me/wishlist');
+    return res.items || [];
+  },
+
+  async toggleWishlist(userIdOrItemId: string, maybeItemId?: string): Promise<string[]> {
+    const itemId = maybeItemId ?? userIdOrItemId;
+    const res = await apiFetch<{ wishlist: string[] }>('/api/me/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({ itemId }),
+    });
+    return res.wishlist || [];
+  },
+
+  async getLastAftercareCheckin(_userId?: string): Promise<string | null> {
+    const res = await apiFetch<{ lastCheckin: string | null }>('/api/me/aftercare');
+    return res.lastCheckin || null;
+  },
+
+  async checkInAftercare(_userId?: string): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>('/api/me/aftercare', {
+      method: 'POST',
+    });
+    return Boolean(res.ok);
+  },
+
+  // --- Admin Operations (Server-enforced admin cookie required) ---
+  async getAdminBootstrap(): Promise<AdminBootstrapResponse> {
+    const data = await apiFetch<AdminBootstrapResponse>('/api/admin/bootstrap');
+    return {
+      ...data,
+      appointments: (data.appointments || []).map(normalizeAppointment),
+      services: (data.services || []).map(normalizeService),
+      settings: normalizePublicSettings(data.settings),
+      orders: (data.orders || []).map(normalizeOrder),
+      waitlist: data.waitlist || [],
+    };
+  },
+
+  async getAdminProfile(id: string): Promise<Profile | null> {
     try {
-      const current = await api.getJewelryOrders();
-      const updated = current.map(o => o.id === orderId ? { ...o, status } : o);
-      localStorage.setItem('yuval_jewelry_orders', JSON.stringify(updated));
-      return true;
-    } catch (e) {
-      console.error('Failed to update order status in localStorage', e);
-      return false;
+      const res = await apiFetch<{ profile: Profile }>(`/api/admin/profiles/${encodeURIComponent(id)}`);
+      return res.profile;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
     }
   },
 
-  deleteJewelryOrder: async (orderId: string): Promise<boolean> => {
-    try {
-      if (dbClient) {
-        await dbClient.from('jewelry_orders').delete().eq('id', orderId);
-      }
-    } catch (e) {
-      console.warn('DB delete failed, deleting locally', e);
-    }
+  async updateSettings(settings: StudioSettings): Promise<boolean> {
+    await apiFetch('/api/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+    invalidatePublicCache();
+    return true;
+  },
 
-    try {
-      const current = await api.getJewelryOrders();
-      const updated = current.filter(o => o.id !== orderId);
-      localStorage.setItem('yuval_jewelry_orders', JSON.stringify(updated));
-      return true;
-    } catch (e) {
-      console.error('Failed to delete order from localStorage', e);
-      return false;
-    }
-  }
+  async addService(service: Omit<Service, 'id'>): Promise<Service | null> {
+    const res = await apiFetch<{ service: Service }>('/api/admin/services', {
+      method: 'POST',
+      body: JSON.stringify(service),
+    });
+    invalidatePublicCache();
+    return normalizeService(res.service);
+  },
+
+  async updateService(id: string, updates: Partial<Service>): Promise<Service | null> {
+    const res = await apiFetch<{ service: Service }>(`/api/admin/services/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+    invalidatePublicCache();
+    return normalizeService(res.service);
+  },
+
+  async deleteService(id: string): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>(`/api/admin/services/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    invalidatePublicCache();
+    return Boolean(res.ok);
+  },
+
+  async getAppointments(): Promise<Appointment[]> {
+    const res = await apiFetch<{ appointments: Appointment[] }>('/api/admin/appointments');
+    return (res.appointments || []).map(normalizeAppointment);
+  },
+
+  async updateAppointmentStatus(id: string, status: Appointment['status']): Promise<boolean> {
+    await apiFetch(`/api/admin/appointments/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    return true;
+  },
+
+  async updateAppointmentTime(id: string, newStartIso: string, durationMinutes = 30): Promise<boolean> {
+    const startMs = new Date(newStartIso).getTime();
+    const endIso = new Date(startMs + Math.max(15, durationMinutes) * 60000).toISOString();
+    await apiFetch(`/api/admin/appointments/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ start_time: new Date(startMs).toISOString(), end_time: endIso }),
+    });
+    return true;
+  },
+
+  async updateAppointment(id: string, updates: Partial<Appointment>): Promise<boolean> {
+    await apiFetch(`/api/admin/appointments/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+    return true;
+  },
+
+  async deleteAppointment(id: string): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>(`/api/admin/appointments/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return Boolean(res.ok);
+  },
+
+  async clearAppointments(): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>('/api/admin/appointments/clear', {
+      method: 'POST',
+    });
+    return Boolean(res.ok);
+  },
+
+  async getMonthlyStats(): Promise<{ revenue: number; profit: number; appointments: number; pending: number }> {
+    return apiFetch('/api/admin/stats');
+  },
+
+  async getExpenses(month?: number, year?: number): Promise<Expense[]> {
+    const qs = new URLSearchParams();
+    if (month !== undefined) qs.set('month', String(month));
+    if (year !== undefined) qs.set('year', String(year));
+    const q = qs.toString();
+    const res = await apiFetch<{ expenses: Expense[] }>(`/api/admin/expenses${q ? `?${q}` : ''}`);
+    return res.expenses || [];
+  },
+
+  async addExpense(expense: Omit<Expense, 'id' | 'created_at'>): Promise<Expense | null> {
+    const res = await apiFetch<{ expense: Expense }>('/api/admin/expenses', {
+      method: 'POST',
+      body: JSON.stringify(expense),
+    });
+    return res.expense;
+  },
+
+  async deleteExpense(id: string): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>(`/api/admin/expenses/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return Boolean(res.ok);
+  },
+
+  async addToGallery(imageUrl: string): Promise<GalleryItem> {
+    const res = await apiFetch<{ item: GalleryItem }>('/api/admin/gallery', {
+      method: 'POST',
+      body: JSON.stringify({ image_url: imageUrl }),
+    });
+    invalidatePublicCache();
+    return res.item;
+  },
+
+  async deleteFromGallery(id: string): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>(`/api/admin/gallery/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    invalidatePublicCache();
+    return Boolean(res.ok);
+  },
+
+  async uploadImage(file: File, folder: 'gallery-images' | 'service-images' = 'gallery-images'): Promise<string | null> {
+    const dataUrl = await fileToDataUrl(file);
+    return api.uploadBase64Image(dataUrl, folder);
+  },
+
+  async uploadBase64Image(
+    dataUrl: string,
+    folder: 'gallery-images' | 'service-images' = 'gallery-images'
+  ): Promise<string | null> {
+    const res = await apiFetch<{ url: string }>('/api/admin/upload', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl, folder }),
+    });
+    return res.url;
+  },
+
+  async getJewelryOrders(): Promise<JewelryOrder[]> {
+    const res = await apiFetch<{ orders: JewelryOrder[] }>('/api/admin/orders');
+    return (res.orders || []).map(normalizeOrder);
+  },
+
+  async updateJewelryOrderStatus(orderId: string, status: JewelryOrder['status']): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    return Boolean(res.ok);
+  },
+
+  async deleteJewelryOrder(orderId: string): Promise<boolean> {
+    const res = await apiFetch<{ ok: boolean }>(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+      method: 'DELETE',
+    });
+    return Boolean(res.ok);
+  },
+
+  async getWaitlist(): Promise<WaitlistRequest[]> {
+    const res = await apiFetch<{ waitlist: WaitlistRequest[] }>('/api/admin/waitlist');
+    return res.waitlist || [];
+  },
 };

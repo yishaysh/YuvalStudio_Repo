@@ -1,4 +1,8 @@
-import { StudioSettings } from '../types';
+import { DEFAULT_STUDIO_DETAILS } from '../constants';
+import { formatILS } from '../shared/money';
+import { resolveShippingPolicy, type ShippingPolicyConfig } from '../shared/shipping';
+import { toWhatsAppPhone972 } from '../shared/validation';
+import type { JewelryOrderItem, StudioDetails, StudioSettings } from '../types';
 
 export interface NotificationPayload {
   clientName: string;
@@ -7,135 +11,6 @@ export interface NotificationPayload {
   startTime: string;
   notes?: string;
 }
-
-const formatMessage = (payload: NotificationPayload): string => {
-  const date = new Date(payload.startTime);
-  const dateStr = date.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
-  const timeStr = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-
-  return (
-    `📌 *תור חדש נקבע!*\n` +
-    `👤 *לקוחה:* ${payload.clientName}\n` +
-    `📞 *טלפון:* ${payload.clientPhone}\n` +
-    `💎 *שירות:* ${payload.serviceName || 'לא צוין'}\n` +
-    `📅 *תאריך:* ${dateStr}\n` +
-    `⏰ *שעה:* ${timeStr}` +
-    (payload.notes ? `\n📝 *הערות:* ${payload.notes}` : '')
-  );
-};
-
-/**
- * Send a notification to a Telegram bot.
- */
-const sendTelegram = async (botToken: string, chatId: string, text: string): Promise<boolean> => {
-  try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
-    });
-    const json = await res.json();
-    if (!json.ok) {
-      console.error('Telegram error:', json);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error('Error sending Telegram notification:', err);
-    return false;
-  }
-};
-
-/**
- * Send a notification via EmailJS.
- */
-const sendEmail = async (
-  serviceId: string,
-  templateId: string,
-  publicKey: string,
-  toEmail: string,
-  payload: NotificationPayload
-): Promise<boolean> => {
-  try {
-    const date = new Date(payload.startTime);
-    const dateStr = date.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
-    const timeStr = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-
-    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service_id: serviceId,
-        template_id: templateId,
-        user_id: publicKey,
-        template_params: {
-          to_email: toEmail,
-          client_name: payload.clientName,
-          client_phone: payload.clientPhone,
-          service_name: payload.serviceName || 'לא צוין',
-          appointment_date: `${dateStr} בשעה ${timeStr}`,
-          notes: payload.notes || ''
-        }
-      })
-    });
-    return res.ok;
-  } catch (err) {
-    console.error('Error sending Email notification:', err);
-    return false;
-  }
-};
-
-/**
- * Main notification dispatcher — called after a new appointment is created.
- */
-export const notifyAdmin = async (
-  settings: StudioSettings,
-  payload: NotificationPayload
-): Promise<void> => {
-  const promises: Promise<boolean>[] = [];
-
-  // Telegram
-  if (
-    settings.enable_telegram_notifications &&
-    settings.telegram_bot_token &&
-    settings.telegram_chat_id
-  ) {
-    const message = formatMessage(payload);
-    promises.push(sendTelegram(settings.telegram_bot_token, settings.telegram_chat_id, message));
-  }
-
-  // EmailJS
-  if (
-    settings.enable_email_notifications &&
-    settings.emailjs_service_id &&
-    settings.emailjs_template_id &&
-    settings.emailjs_public_key &&
-    settings.notification_email
-  ) {
-    promises.push(
-      sendEmail(
-        settings.emailjs_service_id,
-        settings.emailjs_template_id,
-        settings.emailjs_public_key,
-        settings.notification_email,
-        payload
-      )
-    );
-  }
-
-  // Google Calendar — sync is handled per-appointment via calendarService.
-  // enable_calendar_sync is a flag used by the booking confirmation to trigger auto-sync.
-  // In Booking.tsx we check this flag and call calendarService.syncAppointment.
-
-  if (promises.length > 0) {
-    const results = await Promise.all(promises);
-    results.forEach((ok, i) => {
-      if (!ok) console.warn(`Notification #${i} failed.`);
-    });
-  }
-};
-
 
 export interface JewelryOrderNotificationPayload {
   orderNumber: string;
@@ -148,30 +23,98 @@ export interface JewelryOrderNotificationPayload {
   notes?: string;
 }
 
-const formatJewelryOrderMessage = (payload: JewelryOrderNotificationPayload): string => {
-  const itemsList = payload.items.map(i => `• ${i.name} (כמות: ${i.quantity}) - ₪${i.price * i.quantity}`).join('\n');
-  return (
-    `💎 *הזמנת תכשיט חדשה מהאתר!* (#${payload.orderNumber})\n\n` +
-    `👤 *לקוחה:* ${payload.clientName}\n` +
-    `📞 *טלפון:* ${payload.clientPhone}\n` +
-    `📦 *אספקה:* ${payload.deliveryMethod}\n` +
-    (payload.address ? `📍 *כתובת:* ${payload.address}\n` : '') +
-    `💰 *סה"כ לתשלום:* ₪${payload.totalPrice}\n\n` +
-    `🛍️ *פירוט הפריטים:*\n${itemsList}` +
-    (payload.notes ? `\n\n📝 *הערות:* ${payload.notes}` : '')
-  );
-};
+/**
+ * Notifications are dispatched server-side during /api/appointments and /api/orders creation.
+ * Client-side no-ops remain solely so legacy callers cannot trigger duplicate browser secrets calls.
+ */
+export const notifyAdmin = async (
+  _settings: StudioSettings,
+  _payload: NotificationPayload
+): Promise<void> => Promise.resolve();
 
 export const notifyJewelryOrder = async (
-  settings: StudioSettings,
-  payload: JewelryOrderNotificationPayload
-): Promise<void> => {
-  if (
-    settings.enable_telegram_notifications &&
-    settings.telegram_bot_token &&
-    settings.telegram_chat_id
-  ) {
-    const text = formatJewelryOrderMessage(payload);
-    await sendTelegram(settings.telegram_bot_token, settings.telegram_chat_id, text);
-  }
-};
+  _settings: StudioSettings,
+  _payload: JewelryOrderNotificationPayload
+): Promise<void> => Promise.resolve();
+
+export function buildWhatsAppContactUrl(rawPhone?: string, text?: string): string {
+  const normalized = toWhatsAppPhone972(rawPhone || DEFAULT_STUDIO_DETAILS.phone);
+  const target = normalized || toWhatsAppPhone972(DEFAULT_STUDIO_DETAILS.phone);
+  return text
+    ? `https://wa.me/${target}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/${target}`;
+}
+
+export function buildOrderWhatsAppMessage(params: {
+  orderNumber?: string;
+  isDraftOnly?: boolean;
+  clientName: string;
+  clientPhone: string;
+  deliveryMethod: 'pickup' | 'delivery';
+  shippingAddress?: string;
+  items: Pick<JewelryOrderItem, 'name' | 'quantity' | 'price'>[];
+  goodsSubtotal: number;
+  shippingFee: number;
+  total: number;
+  notes?: string;
+  shippingPolicy?: ShippingPolicyConfig;
+}): string {
+  const policy = params.shippingPolicy || resolveShippingPolicy();
+  const header = params.orderNumber
+    ? `היי יובל! שלחתי באתר בקשת הזמנה לתכשיטים (מספר פניה: #${params.orderNumber}) 💎`
+    : 'היי יובל! אשמח לתאם הזמנת תכשיטים מהאתר 💎';
+
+  const itemsText = params.items
+    .map(i => `• ${i.name} ×${i.quantity} (${formatILS(i.price * i.quantity)})`)
+    .join('\n');
+
+  const deliveryLine =
+    params.deliveryMethod === 'pickup'
+      ? `איסוף עצמי מהסטודיו (${policy.pickupTime})`
+      : `משלוח עד הבית: ${params.shippingAddress || ''} (${params.shippingFee === 0 ? 'משלוח חינם!' : formatILS(params.shippingFee)} • ${policy.estimatedDeliveryTime})`;
+
+  return [
+    header,
+    '',
+    'פירוט פריטים:',
+    itemsText,
+    '',
+    `סיכום ביניים: ${formatILS(params.goodsSubtotal)}`,
+    `אספקה: ${deliveryLine}`,
+    `סה"כ לתיאום תשלום: ${formatILS(params.total)}`,
+    '',
+    `שם: ${params.clientName}`,
+    `טלפון: ${params.clientPhone}`,
+    params.notes ? `הערות: ${params.notes}` : '',
+    params.isDraftOnly ? '(טיוטת פנייה בוואטסאפ — טרם נרשמה כהזמנה באתר)' : 'אשמח לתאם את סגירת ההזמנה והתשלום!',
+  ]
+    .filter(line => line !== '')
+    .join('\n');
+}
+
+export function buildWaitlistWhatsAppMessage(params: {
+  serviceNames?: string;
+  preferredDate?: string;
+  clientName?: string;
+  clientPhone?: string;
+}): string {
+  return [
+    'היי יובל! ראיתי שאין כרגע זמינות פנויה אונליין ורציתי לבדוק תור / להיכנס לרשימת המתנה 🙏',
+    params.serviceNames ? `שירות מבוקש: ${params.serviceNames}` : '',
+    params.preferredDate ? `תאריך מועדף: ${params.preferredDate}` : '',
+    params.clientName ? `שם: ${params.clientName}` : '',
+    params.clientPhone ? `טלפון: ${params.clientPhone}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function getStudioWhatsAppPhone(
+  studioOrPhone?: Partial<StudioDetails> | string | null
+): string {
+  const raw =
+    typeof studioOrPhone === 'string'
+      ? studioOrPhone
+      : studioOrPhone?.phone || DEFAULT_STUDIO_DETAILS.phone;
+  return toWhatsAppPhone972(raw || DEFAULT_STUDIO_DETAILS.phone);
+}

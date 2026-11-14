@@ -2,26 +2,41 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Truck, Clock, MapPin, PackageCheck, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Card } from '../components/ui';
+import { Money } from '../components/Money';
 import { DEFAULT_STUDIO_DETAILS } from '../constants';
 import { api } from '../services/mockApi';
+import { getStudioWhatsAppPhone } from '../services/notifications';
+import { LEGAL_DRAFT_NOTICE, LEGAL_REVISION_DATE_HE } from '../shared/release';
+import { agorotToShekels } from '../shared/money';
+import { AUTHORITATIVE_SHIPPING_POLICY, ShippingPolicyConfig } from '../shared/shipping';
 
 export const ShippingPolicy: React.FC = () => {
   const navigate = useNavigate();
   const [studio, setStudio] = useState(DEFAULT_STUDIO_DETAILS);
+  const [shippingPolicy, setShippingPolicy] = useState<ShippingPolicyConfig>(AUTHORITATIVE_SHIPPING_POLICY);
 
   useEffect(() => {
-    api.getSettings().then(settings => {
-      if (settings?.studio_details) {
-        setStudio(prev => ({ ...prev, ...settings.studio_details }));
-      }
-    });
+    api
+      .getBootstrap()
+      .then((boot) => {
+        if (boot?.settings?.studio_details) {
+          setStudio((prev) => ({ ...prev, ...boot.settings.studio_details }));
+        }
+        if (boot?.shippingPolicy) {
+          setShippingPolicy(boot.shippingPolicy);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const waPhone = getStudioWhatsAppPhone(studio.phone);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-brand-dark">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Back navigation */}
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
           aria-label="חזרה לעמוד הקודם"
@@ -44,8 +59,9 @@ export const ShippingPolicy: React.FC = () => {
                 כל המידע על אפשרויות השילוח, זמני ההספקה, עלויות ואיסוף עצמי מסטודיו {studio.name}.
               </p>
               <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">
-                עדכון אחרון: {new Date().toLocaleDateString('he-IL')}
+                עדכון אחרון: {LEGAL_REVISION_DATE_HE}
               </div>
+              <p className="text-[11px] text-amber-300/80 max-w-xl mx-auto">{LEGAL_DRAFT_NOTICE}</p>
             </header>
 
             <div className="space-y-8 text-slate-300 leading-relaxed text-right text-base">
@@ -77,12 +93,15 @@ export const ShippingPolicy: React.FC = () => {
                       <span>שליח מהיר עד הבית / עבודה</span>
                     </div>
                     <p className="text-sm text-slate-400">
-                      שילוח באמצעות חברת שליחויות מובילה ישירות לכתובת המבוקשת.
+                      שילוח באמצעות חברת שליחויות ישירות לכתובת המבוקשת ברחבי הארץ.
                     </p>
                     <ul className="text-sm text-slate-300 space-y-1">
-                      <li><strong>זמן אספקה:</strong> 3-5 ימי עסקים.</li>
-                      <li><strong>עלות משלוח:</strong> 35 ₪.</li>
-                      <li><strong>הטבה:</strong> משלוח חינם בהזמנה מעל 250 ₪!</li>
+                      <li><strong>זמן אספקה:</strong> {shippingPolicy.estimatedDeliveryTime}.</li>
+                      <li><strong>עלות משלוח:</strong> <Money amount={shippingPolicy.deliveryFeeShekels} />.</li>
+                      <li>
+                        <strong>הטבת משלוח חינם:</strong> בהזמנת תכשיטים בסכום מוצרים של{' '}
+                        <Money amount={shippingPolicy.freeShippingThresholdShekels} /> ומעלה (כולל, לפני דמי משלוח).
+                      </li>
                     </ul>
                   </div>
 
@@ -95,8 +114,8 @@ export const ShippingPolicy: React.FC = () => {
                       איסוף ישיר מהסטודיו ללא עלות, בתיאום מראש.
                     </p>
                     <ul className="text-sm text-slate-300 space-y-1">
-                      <li><strong>זמן מוכנות:</strong> תוך 1-2 ימי עסקים.</li>
-                      <li><strong>עלות:</strong> חינם (0 ₪).</li>
+                      <li><strong>זמן מוכנות:</strong> {shippingPolicy.pickupTime}.</li>
+                      <li><strong>עלות:</strong> חינם (<Money amount={agorotToShekels(shippingPolicy.pickupFeeAgorot)} />).</li>
                       <li><strong>כתובת איסוף:</strong> {studio.address}.</li>
                     </ul>
                   </div>
@@ -162,9 +181,27 @@ export const ShippingPolicy: React.FC = () => {
                 <h2 className="text-xl font-bold text-brand-primary">7. בירורים ומעקב הזמנות</h2>
                 <p>לשאלות בנוגע למשלוחים, תיאום איסוף עצמי או בדיקת סטטוס הזמנה:</p>
                 <ul className="space-y-2 text-slate-300">
-                  <li><strong>וואטסאפ / טלפון:</strong> <a href={`tel:${studio.phone}`} className="text-brand-primary hover:underline">{studio.phone}</a></li>
+                  <li>
+                    <strong>טלפון:</strong>{' '}
+                    <a href={`tel:${studio.phone}`} className="text-brand-primary hover:underline">
+                      <bdi dir="ltr">{studio.phone}</bdi>
+                    </a>
+                    {waPhone && (
+                      <>
+                        {' '}•{' '}
+                        <a
+                          href={`https://wa.me/${waPhone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-400 hover:underline"
+                        >
+                          WhatsApp
+                        </a>
+                      </>
+                    )}
+                  </li>
                   <li><strong>דואר אלקטרוני:</strong> <a href={`mailto:${studio.email}`} className="text-brand-primary hover:underline">{studio.email}</a></li>
-                  <li><strong>כתובת לאיסוף עצמי:</strong> {studio.address} (בתיאום טלפוני מראש בלבד)</li>
+                  <li><strong>כתובת לאיסוף עצמי:</strong> {studio.address} (בתיאום מראש)</li>
                   <li><strong>שם העסק:</strong> {studio.business_name || studio.name} ({studio.registration_number || 'ע.מ 318854291'})</li>
                 </ul>
               </section>

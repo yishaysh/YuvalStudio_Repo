@@ -1,18 +1,117 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, (process as any).cwd(), '');
-
+function createDevApiPlugin() {
   return {
-    plugins: [react()],
-    server: {
-      port: 3000,
+    name: 'yuval-studio-dev-api',
+    configureServer(server: any) {
+      let memoryStorePromise: Promise<any> | null = null;
+
+      server.middlewares.use(async (req: any, res: any, next: () => void) => {
+        const rawUrl = req.url || '/';
+        const urlObj = new URL(rawUrl, 'http://localhost');
+        if (!urlObj.pathname.startsWith('/api/')) {
+          return next();
+        }
+
+        try {
+          const [handlerMod, authMod, memMod, neonMod] = await Promise.all([
+            server.ssrLoadModule('/api/_lib/handler.ts'),
+            server.ssrLoadModule('/api/_lib/auth.ts'),
+            server.ssrLoadModule('/api/_lib/memoryStore.ts'),
+            server.ssrLoadModule('/api/_lib/neonStore.ts'),
+          ]);
+
+          const useMemory =
+            process.env.USE_MEMORY_STORE === '1' || !(process.env.DATABASE_URL || '').trim();
+
+          let store;
+          if (useMemory) {
+            if (!memoryStorePromise) {
+              memoryStorePromise = Promise.resolve(new memMod.MemoryStore());
+            }
+            store = await memoryStorePromise;
+          } else {
+            store = new neonMod.NeonStore(process.env.DATABASE_URL!.trim());
+          }
+
+          const query: Record<string, string | undefined> = {};
+          urlObj.searchParams.forEach((v, k) => {
+            query[k] = v;
+          });
+
+          const headers: Record<string, string | undefined> = {};
+          for (const [k, v] of Object.entries(req.headers || {})) {
+            headers[k.toLowerCase()] = Array.isArray(v) ? v[0] : (v as string | undefined);
+          }
+
+          let body: any = {};
+          if (req.method !== 'GET' && req.method !== 'HEAD') {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) {
+              chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+            }
+            if (chunks.length > 0) {
+              try {
+                body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+              } catch {
+                body = {};
+              }
+            }
+          }
+
+          const cookies = authMod.parseCookieHeader(headers.cookie);
+          const result = await handlerMod.handleApiRequest(
+            {
+              method: req.method || 'GET',
+              path: urlObj.pathname,
+              query,
+              headers,
+              cookies,
+              body,
+              isHttps: headers['x-forwarded-proto'] === 'https',
+            },
+            { store }
+          );
+
+          res.statusCode = result.status;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          if (result.headers) {
+            for (const [k, v] of Object.entries(result.headers)) {
+              res.setHeader(k, v as string);
+            }
+          }
+          if (result.setCookies && result.setCookies.length > 0) {
+            res.setHeader('Set-Cookie', result.setCookies);
+          }
+          res.end(JSON.stringify(result.body));
+        } catch (err: any) {
+          console.error('[Vite Dev API Middleware Error]:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ error: err?.message || 'Dev API error' }));
+        }
+      });
     },
-    build: {
-      outDir: 'dist',
-    }
   };
+}
+
+export default defineConfig({
+  plugins: [react(), createDevApiPlugin()],
+  server: {
+    port: 3000,
+  },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          motion: ['framer-motion'],
+          lottie: ['lottie-react'],
+          'pdf-export': ['jspdf', 'html2canvas'],
+        },
+      },
+    },
+  },
 });
