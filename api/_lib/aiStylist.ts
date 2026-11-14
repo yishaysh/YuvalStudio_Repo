@@ -68,7 +68,7 @@ export const defaultServerAiAnalyzer: ServerAiAnalyzer = async (
 
   const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
   const response = await ai.models.generateContent({
-    model: 'gemini-3.8-flash',
+    model: 'gemini-3.5-flash-lite',
     contents: [
       {
         role: 'user',
