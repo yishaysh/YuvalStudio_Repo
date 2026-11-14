@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
-import { DEFAULT_MONTHLY_GOALS, DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS } from '../../constants';
-import { parsePriceToShekels } from '../../shared/money';
+import { DEFAULT_MONTHLY_GOALS, DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS } from '../../constants.js';
+import { parsePriceToShekels } from '../../shared/money.js';
 import type {
   Appointment,
   Coupon,
@@ -11,7 +11,7 @@ import type {
   Profile,
   Service,
   StudioSettings,
-} from '../../types';
+} from '../../types.js';
 import {
   buildDefaultRawSettings,
   deterministicUuidFromKey,
@@ -23,8 +23,8 @@ import {
   normalizeWorkingHoursMap,
   sanitizeProfile,
   toPublicSettingsDto,
-} from './sanitize';
-import type { PublicStudioSettingsDto, ServerGoogleUserInfo, StoreAdapter, WaitlistEntry } from './types';
+} from './sanitize.js';
+import type { PublicStudioSettingsDto, ServerGoogleUserInfo, StoreAdapter, WaitlistEntry } from './types.js';
 
 type NeonSql = ReturnType<typeof neon>;
 
@@ -100,12 +100,102 @@ export class NeonStore implements StoreAdapter {
   private hasWaitlistTableCache: boolean | null = null;
   private hasOrderNotifColsCache: boolean | null = null;
   private hasHealingTimeColCache: boolean | null = null;
+  private schemaEnsured: Promise<void> | null = null;
 
   constructor(databaseUrl: string) {
     if (!databaseUrl) {
       throw new Error('DATABASE_URL is missing');
     }
     this.sql = neon(databaseUrl);
+  }
+
+  private async runSafeDdl(label: string, exec: () => Promise<unknown>): Promise<void> {
+    try {
+      await exec();
+    } catch (err) {
+      console.warn(`[NeonStore.ensureSchema] Non-fatal DDL skip (${label}):`, (err as any)?.message || err);
+    }
+  }
+
+  private async runSchemaEnsure(): Promise<void> {
+    await Promise.all([
+      this.runSafeDdl('appointments_columns', () =>
+        this.sql`
+          ALTER TABLE public.appointments
+            ADD COLUMN IF NOT EXISTS end_time timestamptz,
+            ADD COLUMN IF NOT EXISTS total_duration_minutes integer,
+            ADD COLUMN IF NOT EXISTS final_price numeric(10, 2),
+            ADD COLUMN IF NOT EXISTS original_price numeric(10, 2),
+            ADD COLUMN IF NOT EXISTS discount_amount numeric(10, 2),
+            ADD COLUMN IF NOT EXISTS coupon_code text,
+            ADD COLUMN IF NOT EXISTS is_under_16 boolean NOT NULL DEFAULT false,
+            ADD COLUMN IF NOT EXISTS parent_name text,
+            ADD COLUMN IF NOT EXISTS parent_id text,
+            ADD COLUMN IF NOT EXISTS parent_phone text,
+            ADD COLUMN IF NOT EXISTS total_cost numeric(10, 2),
+            ADD COLUMN IF NOT EXISTS total_profit numeric(10, 2),
+            ADD COLUMN IF NOT EXISTS cart_items jsonb,
+            ADD COLUMN IF NOT EXISTS visual_plan text,
+            ADD COLUMN IF NOT EXISTS ai_recommendation_text text,
+            ADD COLUMN IF NOT EXISTS anatomy_image_url text,
+            ADD COLUMN IF NOT EXISTS anatomy_status text,
+            ADD COLUMN IF NOT EXISTS signature text
+        `
+      ),
+      (async () => {
+        await this.runSafeDdl('jewelry_orders_table', () =>
+          this.sql`
+            CREATE TABLE IF NOT EXISTS public.jewelry_orders (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              order_number text UNIQUE NOT NULL,
+              client_name text NOT NULL,
+              client_phone text NOT NULL,
+              client_email text,
+              items jsonb NOT NULL DEFAULT '[]'::jsonb,
+              total_price numeric(10, 2) NOT NULL CHECK (total_price >= 0),
+              delivery_method text NOT NULL DEFAULT 'pickup' CHECK (delivery_method IN ('pickup', 'delivery')),
+              shipping_address text,
+              shipping_cost numeric(10, 2) NOT NULL DEFAULT 0 CHECK (shipping_cost >= 0),
+              status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'delivered', 'cancelled')),
+              notes text,
+              notification_status text NOT NULL DEFAULT 'pending',
+              notification_error text,
+              created_at timestamptz NOT NULL DEFAULT timezone('utc', now())
+            )
+          `
+        );
+        await this.runSafeDdl('jewelry_orders_columns', () =>
+          this.sql`
+            ALTER TABLE public.jewelry_orders
+              ADD COLUMN IF NOT EXISTS items_total numeric(10, 2),
+              ADD COLUMN IF NOT EXISTS shipping_cost numeric(10, 2) NOT NULL DEFAULT 0,
+              ADD COLUMN IF NOT EXISTS idempotency_key text,
+              ADD COLUMN IF NOT EXISTS notification_status text NOT NULL DEFAULT 'pending',
+              ADD COLUMN IF NOT EXISTS notification_error text
+          `
+        );
+      })(),
+      this.runSafeDdl('waitlist_requests_table', () =>
+        this.sql`
+          CREATE TABLE IF NOT EXISTS public.waitlist_requests (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            client_name text NOT NULL,
+            client_phone text NOT NULL,
+            preferred_date text,
+            service_names text,
+            notes text,
+            created_at timestamptz NOT NULL DEFAULT timezone('utc', now())
+          )
+        `
+      ),
+    ]);
+  }
+
+  private ensureSchema(): Promise<void> {
+    if (!this.schemaEnsured) {
+      this.schemaEnsured = this.runSchemaEnsure();
+    }
+    return this.schemaEnsured;
   }
 
   private async hasTable(tableName: string): Promise<boolean> {
@@ -141,6 +231,7 @@ export class NeonStore implements StoreAdapter {
   }
 
   async getRawSettings(): Promise<StudioSettings> {
+    await this.ensureSchema();
     const base = buildDefaultRawSettings();
     const rows = (await this.sql`
       SELECT key, value FROM settings
@@ -308,6 +399,7 @@ export class NeonStore implements StoreAdapter {
   }
 
   async getServices(includeInactive = false): Promise<Service[]> {
+    await this.ensureSchema();
     const rows = includeInactive
       ? ((await this.sql`SELECT * FROM services ORDER BY price ASC, name ASC`) as any[])
       : ((await this.sql`SELECT * FROM services WHERE is_active IS NOT FALSE ORDER BY price ASC, name ASC`) as any[]);
@@ -416,6 +508,7 @@ export class NeonStore implements StoreAdapter {
   }
 
   async createAppointmentAtomic(payload: Parameters<StoreAdapter['createAppointmentAtomic']>[0]) {
+    await this.ensureSchema();
     const rowId = payload.idempotencyKey
       ? deterministicUuidFromKey('appt', payload.idempotencyKey)
       : crypto.randomUUID();
@@ -853,6 +946,7 @@ export class NeonStore implements StoreAdapter {
   }
 
   async createJewelryOrderIdempotent(payload: Parameters<StoreAdapter['createJewelryOrderIdempotent']>[0]) {
+    await this.ensureSchema();
     const rowId = payload.idempotencyKey
       ? deterministicUuidFromKey('order', payload.idempotencyKey)
       : crypto.randomUUID();
@@ -938,6 +1032,7 @@ export class NeonStore implements StoreAdapter {
   }
 
   async addWaitlistEntry(entry: Omit<WaitlistEntry, 'id' | 'created_at'>): Promise<WaitlistEntry> {
+    await this.ensureSchema();
     if (this.hasWaitlistTableCache === null) {
       this.hasWaitlistTableCache = await this.hasTable('waitlist_requests');
     }
@@ -975,6 +1070,7 @@ export class NeonStore implements StoreAdapter {
   }
 
   async getWaitlistEntries(): Promise<WaitlistEntry[]> {
+    await this.ensureSchema();
     if (this.hasWaitlistTableCache === null) {
       this.hasWaitlistTableCache = await this.hasTable('waitlist_requests');
     }

@@ -1,6 +1,6 @@
 import { GoogleGenAI, Schema, Type } from '@google/genai';
-import { JEWELRY_CATALOG } from '../../constants';
-import type { JewelryItem } from '../../types';
+import { JEWELRY_CATALOG } from '../../constants.js';
+import type { JewelryItem } from '../../types.js';
 
 export interface ServerAIRecommendation {
   location: string;
@@ -24,7 +24,12 @@ export const defaultServerAiAnalyzer: ServerAiAnalyzer = async (
   base64Image: string,
   catalog: JewelryItem[] = JEWELRY_CATALOG
 ) => {
-  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const apiKey = (
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    ''
+  ).trim();
   if (!apiKey) {
     throw new Error('מפתח AI (GEMINI_API_KEY) אינו מוגדר בצד השרת.');
   }

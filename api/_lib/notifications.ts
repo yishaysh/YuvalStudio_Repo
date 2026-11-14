@@ -1,7 +1,7 @@
-import { escapeHtml } from '../../shared/validation';
-import { formatILS } from '../../shared/money';
-import type { Appointment, JewelryOrder, StudioSettings } from '../../types';
-import type { NotificationDeliveryResult } from './types';
+import { escapeHtml } from '../../shared/validation.js';
+import { formatILS } from '../../shared/money.js';
+import type { Appointment, JewelryOrder, StudioSettings } from '../../types.js';
+import type { NotificationDeliveryResult } from './types.js';
 
 export interface NotificationDispatcher {
   sendAppointmentNotifications(appt: Appointment, settings: StudioSettings): Promise<NotificationDeliveryResult>;

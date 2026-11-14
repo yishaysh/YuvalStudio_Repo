@@ -10,8 +10,8 @@ import type {
   Service,
   StudioDetails,
   StudioSettings,
-} from '../../types';
-import type { WorkingHoursMap } from '../../shared/availability';
+} from '../../types.js';
+import type { WorkingHoursMap } from '../../shared/availability.js';
 
 export interface SessionPayload {
   profileId: string;

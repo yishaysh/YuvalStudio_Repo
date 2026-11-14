@@ -1,4 +1,4 @@
-import type { Service } from '../types';
+import type { Service } from '../types.js';
 
 /**
  * Extracts an explicit healing duration from the service record without inventing

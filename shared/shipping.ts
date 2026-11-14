@@ -1,4 +1,4 @@
-import { agorotToShekels, parsePriceToAgorot } from './money';
+import { agorotToShekels, parsePriceToAgorot } from './money.js';
 
 export interface ShippingPolicyConfig {
   deliveryFeeAgorot: number;

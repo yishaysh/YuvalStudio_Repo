@@ -27,9 +27,21 @@ export function validateImageDataUrl(dataUrl: string): { mimeSubType: string; by
 }
 
 export function createCloudinaryConfigFromEnv() {
-  const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
-  const apiKey = (process.env.CLOUDINARY_API_KEY || '').trim();
-  const apiSecret = (process.env.CLOUDINARY_API_SECRET || '').trim();
+  const cloudName = (
+    process.env.CLOUDINARY_CLOUD_NAME ||
+    process.env.VITE_CLOUDINARY_CLOUD_NAME ||
+    ''
+  ).trim();
+  const apiKey = (
+    process.env.CLOUDINARY_API_KEY ||
+    process.env.VITE_CLOUDINARY_API_KEY ||
+    ''
+  ).trim();
+  const apiSecret = (
+    process.env.CLOUDINARY_API_SECRET ||
+    process.env.VITE_CLOUDINARY_API_SECRET ||
+    ''
+  ).trim();
   if (!cloudName || !apiKey || !apiSecret) {
     return null;
   }

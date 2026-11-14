@@ -1,17 +1,38 @@
 import crypto from 'node:crypto';
-import type { Profile } from '../../types';
-import type { GoogleTokenVerifier, ServerGoogleUserInfo, SessionPayload } from './types';
+import type { Profile } from '../../types.js';
+import type { GoogleTokenVerifier, ServerGoogleUserInfo, SessionPayload } from './types.js';
 
 export const SESSION_COOKIE_NAME = 'ys_session';
 const DEFAULT_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-// Ephemeral fallback ONLY for local non-production dev when SESSION_SECRET is unset.
+// Ephemeral fallback ONLY for local non-production dev when SESSION_SECRET and DB URL are unset.
 let ephemeralDevSecret: string | null = null;
+
+/**
+ * Resolves the Neon/Postgres connection string from standard server env vars,
+ * falling back cleanly to legacy Vercel Vite-prefixed variable names server-side only.
+ */
+export function resolveDatabaseUrlFromEnv(): string {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.VITE_NEON_DATABASE_URL ||
+    ''
+  ).trim();
+}
 
 export function resolveSessionSecret(): string {
   const configured = (process.env.SESSION_SECRET || '').trim();
   if (configured.length >= 16) {
     return configured;
+  }
+  const dbUrl = resolveDatabaseUrlFromEnv();
+  if (dbUrl) {
+    return crypto
+      .createHmac('sha256', 'yuval-studio-session-secret-v1')
+      .update(dbUrl)
+      .digest('hex');
   }
   const isProd = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
   if (isProd) {

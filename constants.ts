@@ -1,8 +1,8 @@
 
-import { Service, Appointment, StudioSettings, StudioDetails, MonthlyGoals, JewelryItem } from './types';
+import { Service, Appointment, StudioSettings, StudioDetails, MonthlyGoals, JewelryItem } from './types.js';
 
 export const GOOGLE_CLIENT_ID =
-  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
+  (typeof process !== 'undefined' && process?.env?.VITE_GOOGLE_CLIENT_ID) ||
   '759724009388-ioarr6mlm21tm3gbdnfehquakdc1bg06.apps.googleusercontent.com';
 
 export const JEWELRY_CATALOG: JewelryItem[] = [

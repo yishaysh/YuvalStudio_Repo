@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 
 import { handleApiRequest, type HandlerDependencies } from '../api/_lib/handler';
 import { MemoryStore } from '../api/_lib/memoryStore';
-import { SESSION_COOKIE_NAME } from '../api/_lib/auth';
+import {
+  resolveDatabaseUrlFromEnv,
+  resolveSessionSecret,
+  SESSION_COOKIE_NAME,
+} from '../api/_lib/auth';
 import type { NotificationDeliveryResult, ServerGoogleUserInfo } from '../api/_lib/types';
 import {
   agorotToShekels,
@@ -688,4 +692,57 @@ test('P1-E / P2: Healing time, pain display, URL sanitization, phone validation,
 
   assert.equal(pluralizeHebrew(1, 'עיצוב אחד', '2 עיצובים'), 'עיצוב אחד');
   assert.equal(pluralizeHebrew(2, 'עיצוב אחד', '2 עיצובים'), '2 עיצובים');
+});
+
+// =========================================================================
+// Deployment Env Fallback & Session Secret Stability
+// =========================================================================
+test('Server env fallback resolves legacy VITE_NEON_DATABASE_URL and derives stable session secret when SESSION_SECRET is unset', () => {
+  const prevEnv = {
+    DATABASE_URL: process.env.DATABASE_URL,
+    POSTGRES_URL: process.env.POSTGRES_URL,
+    NEON_DATABASE_URL: process.env.NEON_DATABASE_URL,
+    VITE_NEON_DATABASE_URL: process.env.VITE_NEON_DATABASE_URL,
+    SESSION_SECRET: process.env.SESSION_SECRET,
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: process.env.VERCEL,
+  };
+
+  try {
+    delete process.env.DATABASE_URL;
+    delete process.env.POSTGRES_URL;
+    delete process.env.NEON_DATABASE_URL;
+    delete process.env.SESSION_SECRET;
+    process.env.NODE_ENV = 'production';
+    process.env.VITE_NEON_DATABASE_URL = 'postgresql://user:pass@example-host/neondb?sslmode=require';
+
+    assert.equal(
+      resolveDatabaseUrlFromEnv(),
+      'postgresql://user:pass@example-host/neondb?sslmode=require'
+    );
+
+    const derived1 = resolveSessionSecret();
+    const derived2 = resolveSessionSecret();
+    assert.equal(derived1.length, 64);
+    assert.equal(derived1, derived2);
+
+    // Canonical DATABASE_URL takes precedence over legacy VITE_NEON_DATABASE_URL
+    process.env.DATABASE_URL = 'postgresql://canonical/db';
+    assert.equal(resolveDatabaseUrlFromEnv(), 'postgresql://canonical/db');
+
+    // Explicit SESSION_SECRET overrides derived secret
+    process.env.SESSION_SECRET = 'explicit-super-secret-value-at-least-16';
+    assert.equal(resolveSessionSecret(), 'explicit-super-secret-value-at-least-16');
+
+    // Production still fails closed when neither SESSION_SECRET nor any DB URL exists
+    delete process.env.DATABASE_URL;
+    delete process.env.VITE_NEON_DATABASE_URL;
+    delete process.env.SESSION_SECRET;
+    assert.throws(() => resolveSessionSecret(), /SESSION_SECRET is not configured/);
+  } finally {
+    for (const [k, v] of Object.entries(prevEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
 });

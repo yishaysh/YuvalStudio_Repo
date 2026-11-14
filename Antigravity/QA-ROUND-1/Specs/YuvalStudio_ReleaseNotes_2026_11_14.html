@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>הסטודיו של יובל | מה חדש באתר ובמערכת הניהול ✨</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230F172A'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='34' fill='%23D4B585'%3EY%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --brand-primary: #d4b585;
+      --brand-primary-hover: #c19f6e;
+      --brand-dark: #0f172a;
+      --brand-darker: #0a101f;
+      --brand-surface: #1e293b;
+      --brand-border: rgba(212, 181, 133, 0.24);
+      --brand-success: #10b981;
+      --text-main: #ffffff;
+      --text-body: #cbd5e1;
+      --text-muted: #94a3b8;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Heebo', system-ui, -apple-system, sans-serif;
+      background-color: var(--brand-dark);
+      color: var(--text-main);
+      line-height: 1.75;
+      padding: 36px 16px 64px;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle at 12% 10%, rgba(212, 181, 133, 0.13) 0%, transparent 45%),
+        radial-gradient(circle at 88% 88%, rgba(16, 185, 129, 0.06) 0%, transparent 45%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(30, 41, 59, 0.82);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 30px;
+      overflow: hidden;
+      box-shadow: 0 32px 68px -15px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, rgba(212, 181, 133, 0.2) 0%, rgba(15, 23, 42, 0.55) 100%);
+      padding: 48px 36px 38px;
+      text-align: center;
+      border-bottom: 1px solid var(--brand-border);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--brand-primary);
+      color: var(--brand-dark);
+      padding: 7px 18px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      margin-bottom: 18px;
+      box-shadow: 0 6px 20px rgba(212, 181, 133, 0.32);
+    }
+
+    .header h1 {
+      font-family: 'Playfair Display', 'Heebo', Georgia, serif;
+      font-size: clamp(2rem, 4vw, 2.7rem);
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+
+    .header h1 span {
+      color: var(--brand-primary);
+    }
+
+    .header p {
+      color: var(--text-body);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      font-weight: 300;
+    }
+
+    /* Personal Greeting Banner */
+    .greeting-banner {
+      margin: 28px 34px 0;
+      padding: 22px 26px;
+      background: rgba(212, 181, 133, 0.09);
+      border: 1px solid var(--brand-border);
+      border-radius: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      font-size: 1.02rem;
+      color: #f1f5f9;
+    }
+
+    .greeting-banner .icon {
+      font-size: 1.75rem;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    /* Filter Navigation */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 18px 34px;
+      margin-top: 24px;
+      background: rgba(15, 23, 42, 0.55);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+    }
+
+    .filter-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-pill {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(30, 41, 59, 0.75);
+      color: var(--text-body);
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .filter-pill:hover {
+      border-color: rgba(212, 181, 133, 0.5);
+      color: #ffffff;
+    }
+
+    .filter-pill.active {
+      background: var(--brand-primary);
+      color: var(--brand-dark);
+      border-color: var(--brand-primary);
+      box-shadow: 0 4px 14px rgba(212, 181, 133, 0.28);
+    }
+
+    .print-btn {
+      appearance: none;
+      border: 1px solid rgba(212, 181, 133, 0.35);
+      background: rgba(212, 181, 133, 0.08);
+      color: var(--brand-primary);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s var(--ease-out);
+    }
+
+    .print-btn:hover {
+      background: rgba(212, 181, 133, 0.18);
+    }
+
+    /* Content */
+    .content {
+      padding: 34px;
+      display: flex;
+      flex-direction: column;
+      gap: 38px;
+    }
+
+    .section.is-hidden {
+      display: none;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .section-num {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(212, 181, 133, 0.16);
+      color: var(--brand-primary);
+      border: 1px solid rgba(212, 181, 133, 0.32);
+      font-weight: 800;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .section-heading h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .story-card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 20px;
+      padding: 22px 24px;
+      transition: transform 0.22s var(--ease-out), border-color 0.22s var(--ease-out);
+    }
+
+    .story-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(212, 181, 133, 0.35);
+    }
+
+    .story-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .story-emoji {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: rgba(212, 181, 133, 0.12);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .story-title h3 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .new-pill {
+      margin-right: auto;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.14);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      white-space: nowrap;
+    }
+
+    .story-card p {
+      color: var(--text-body);
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+
+    .story-card p:last-child {
+      margin-bottom: 0;
+    }
+
+    .nice-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .nice-list li {
+      position: relative;
+      padding-right: 18px;
+      font-size: 0.93rem;
+      color: var(--text-body);
+    }
+
+    .nice-list li::before {
+      content: '✓';
+      position: absolute;
+      right: 0;
+      top: 0;
+      color: var(--brand-primary);
+      font-weight: 800;
+    }
+
+    .nice-list li strong {
+      color: #ffffff;
+    }
+
+    /* Simple Example Pill */
+    .example-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .ex-box {
+      border-radius: 12px;
+      padding: 10px 13px;
+      font-size: 0.86rem;
+    }
+
+    .ex-box.old {
+      background: rgba(244, 63, 94, 0.08);
+      border: 1px solid rgba(244, 63, 94, 0.22);
+      color: #fecdd3;
+    }
+
+    .ex-box.fixed {
+      background: rgba(16, 185, 129, 0.09);
+      border: 1px solid rgba(16, 185, 129, 0.24);
+      color: #d1fae5;
+    }
+
+    .ex-label {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 800;
+      margin-bottom: 2px;
+      opacity: 0.9;
+    }
+
+    /* Tips Card */
+    .tips-box {
+      background: linear-gradient(135deg, rgba(212, 181, 133, 0.1) 0%, rgba(15, 23, 42, 0.6) 100%);
+      border: 1px solid var(--brand-border);
+      border-radius: 22px;
+      padding: 26px;
+    }
+
+    .tips-box h3 {
+      font-size: 1.18rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 26px 34px 34px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: rgba(10, 16, 31, 0.5);
+    }
+
+    .footer-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--brand-primary);
+      color: var(--brand-dark);
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 12px 26px;
+      border-radius: 999px;
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(212, 181, 133, 0.3);
+      transition: transform 0.2s var(--ease-out), background 0.2s var(--ease-out);
+    }
+
+    .cta-btn:hover {
+      background: var(--brand-primary-hover);
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 720px) {
+      .grid-2,
+      .example-row {
+        grid-template-columns: 1fr;
+      }
+
+      .header,
+      .filter-bar,
+      .content,
+      .footer {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .greeting-banner {
+        margin-left: 20px;
+        margin-right: 20px;
+        padding: 18px 20px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        color: #0f172a;
+        padding: 0;
+      }
+
+      .container {
+        box-shadow: none;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+      }
+
+      .filter-bar,
+      .cta-btn {
+        display: none !important;
+      }
+
+      .header,
+      .greeting-banner,
+      .story-card,
+      .tips-box,
+      .footer {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border-color: #cbd5e1 !important;
+      }
+
+      .header h1,
+      .section-heading h2,
+      .story-title h3,
+      .tips-box h3,
+      .nice-list li strong {
+        color: #0f172a !important;
+      }
+
+      .header p,
+      .story-card p,
+      .nice-list li,
+      .footer-text {
+        color: #334155 !important;
+      }
+
+      .section.is-hidden {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="badge">✨ סיכום עדכונים ושיפורים • נובמבר <bdi dir="ltr">2026</bdi></div>
+      <h1>הסטודיו של יובל — <span>מה חדש באתר?</span></h1>
+      <p>ריכוז מסודר ונעים לקריאה של כל הפיצ׳רים החדשים, התיקונים והשדרוגים שנכנסו לאתר ולמערכת הניהול שלך</p>
+    </header>
+
+    <!-- Warm Intro -->
+    <div class="greeting-banner">
+      <span class="icon" aria-hidden="true">💎</span>
+      <div>
+        <strong>היי יובל!</strong> עשינו לאתר שלך סבב ליטוש, חיזוק ושדרוג מקיף כדי שהלקוחות ייהנו מחוויית הזמנה חלקה ונעימה,
+        וכדי שאת תיהני מניהול שקט, מדויק ובטוח יותר של התורים, התכשיטים והסטודיו. הנה כל מה שחדש ומתוקן בגרסה הזו:
+      </div>
+    </div>
+
+    <!-- Simple Filter Pills -->
+    <nav class="filter-bar" aria-label="סינון נושאים">
+      <div class="filter-pills">
+        <button type="button" class="filter-pill active" data-filter="all">הכל</button>
+        <button type="button" class="filter-pill" data-filter="new">חדש ללקוחות שלך</button>
+        <button type="button" class="filter-pill" data-filter="booking">תורים, מחירים והזמנות</button>
+        <button type="button" class="filter-pill" data-filter="admin">פרטיות וניהול הסטודיו</button>
+      </div>
+      <button type="button" class="print-btn" onclick="window.print()">🖨️ הדפסה / שמירה</button>
+    </nav>
+
+    <div class="content">
+
+      <!-- Section 1: New Customer Features -->
+      <section class="section" data-cat="new">
+        <div class="section-heading">
+          <div class="section-num">1</div>
+          <h2>4 דברים חדשים שהלקוחות שלך הולכות לאהוב</h2>
+        </div>
+
+        <div class="grid-2">
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">❤️</span>
+              <h3>שמירת מועדפים מיד — גם לפני התחברות</h3>
+              <span class="new-pill">חדש</span>
+            </div>
+            <p>
+              עד עכשיו, מי שלא התחברה לחשבון לא יכלה לשמור פריטים שאהבה.
+              מעכשיו כל גולשת יכולה ללחוץ על הלב ולסמן עגילים, פירסינגים או תמונות השראה כמועדפים מיד.
+            </p>
+            <p>
+              <strong>וברגע שהיא מתחברת עם גוגל:</strong> כל מה שהיא סימנה נשמר אוטומטית באזור האישי שלה בלי שום צורך לסמן מחדש.
+            </p>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">🔎</span>
+              <h3>חיפוש וסינון נוח בקטלוג התכשיטים</h3>
+              <span class="new-pill">חדש</span>
+            </div>
+            <p>
+              נוספה שורת חיפוש חכמה וכפתורי סינון מהירים בתוך עמוד התכשיטים כדי שלקוחות ימצאו בדיוק את מה שהן מחפשות תוך שניות:
+            </p>
+            <ul class="nice-list">
+              <li>חיפוש חופשי לפי שם התכשיט או תיאור.</li>
+              <li>סינון לפי חומר הגלם (למשל טיטניום או זהב <bdi dir="ltr">14K</bdi>) או קטגוריה.</li>
+              <li>מתג נוח להצגת פריטים ש<strong>במלאי בלבד</strong>.</li>
+            </ul>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">📋</span>
+              <h3>כרטיס סיכום ברור רגע לפני החתימה על התור</h3>
+              <span class="new-pill">חדש</span>
+            </div>
+            <p>
+              בשלב האחרון של קביעת התור (לפני הצהרת הבריאות והחתימה), הלקוחה רואה עכשיו כרטיס סיכום מסודר עם כל הפרטים במקום אחד:
+              השירותים שבחרה, התאריך והשעה, משך הזמן המשוער, והמחיר הסופי כולל הנחת קופון אם הוזנה.
+            </p>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">🧾</span>
+              <h3>אישור תור / קבלה מעוצבת להדפסה ולשמירה</h3>
+              <span class="new-pill">חדש</span>
+            </div>
+            <p>
+              באזור האישי של הלקוחה וגם בלוח הבקרה שלך נוסף כפתור לצפייה בקבלה מסודרת ומעוצבת של התור — עם אפשרות להדפיס או לשמור במכשיר בקליק אחד.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Section 2: Booking, Pricing & Orders Fixes -->
+      <section class="section" data-cat="booking">
+        <div class="section-heading">
+          <div class="section-num">2</div>
+          <h2>תיקונים חשובים במחירים, בהזמנות וביומן התורים</h2>
+        </div>
+
+        <div class="stack">
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">💰</span>
+              <h3>הסכום לתשלום תמיד מחושב ומדויק — גם כשבוחרים כמה שירותים יחד</h3>
+            </div>
+            <p>
+              פתרנו תקלה שגרמה לחיבור מחירים שגוי בתצוגה כשלקוחה בחרה יותר מפירסינג אחד או בדקה הצעת מחיר מהגלריה.
+              בנוסף, הקופונים נבדקים ומחושבים בצורה מדויקת ומאובטחת כך שסכום ההזמנה תמיד נכון.
+            </p>
+            <div class="example-row">
+              <div class="ex-box old">
+                <span class="ex-label">לפני התיקון:</span>
+                כשבחרו לוב (<bdi dir="ltr">₪90</bdi>) + הליקס (<bdi dir="ltr">₪120</bdi>), הסכום הופיע משובש על המסך.
+              </div>
+              <div class="ex-box fixed">
+                <span class="ex-label">מעכשיו:</span>
+                הסכום מוצג נקי ומדויק בכל המסכים: <bdi dir="ltr">₪210</bdi>.
+              </div>
+            </div>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">🚚</span>
+              <h3>מדיניות משלוחים אחידה וברורה בכל מקום באתר</h3>
+            </div>
+            <p>
+              עדכנו את כל המסכים באתר כך שידברו באותה שפה לפי הכללים שאישרת:
+            </p>
+            <ul class="nice-list">
+              <li><strong>משלוח עד הבית:</strong> <bdi dir="ltr">₪35</bdi> להזמנות מתחת לסף.</li>
+              <li><strong>משלוח חינם:</strong> אוטומטית בהזמנת תכשיטים בסכום של <bdi dir="ltr">₪250</bdi> ומעלה (זמן אספקה <bdi dir="ltr">3–7</bdi> ימי עסקים).</li>
+              <li><strong>איסוף עצמי מהסטודיו:</strong> תמיד חינם (<bdi dir="ltr">₪0</bdi>) בתיאום מראש.</li>
+            </ul>
+            <div class="example-row">
+              <div class="ex-box old">
+                <span class="ex-label">לפני התיקון:</span>
+                הסל חייב בטעות דמי משלוח (<bdi dir="ltr">₪30</bdi>) גם כשסכום הקנייה עבר את <bdi dir="ltr">₪250</bdi>.
+              </div>
+              <div class="ex-box fixed">
+                <span class="ex-label">מעכשיו:</span>
+                כל המסכים, הקנייה המהירה, דף המשלוחים והוואטסאפ מעניקים משלוח חינם מ־<bdi dir="ltr">₪250</bdi>.
+              </div>
+            </div>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">🛍️</span>
+              <h3>הזמנות תכשיטים מסודרות — בלי הזמנות כפולות ובלי "אישור" כשהמערכת לא קיבלה</h3>
+            </div>
+            <ul class="nice-list">
+              <li><strong>שמירה אמיתית במערכת:</strong> הלקוחה מקבלת מספר הזמנה אישי ומאושר רק אחרי שההזמנה נשמרה בפועל במערכת הסטודיו.</li>
+              <li><strong>בלי כפילויות:</strong> אם לקוחה לחצה פעמיים בטעות או חזרה מהוואטסאפ, ההזמנה אינה משוכפלת.</li>
+              <li><strong>הגנת מלאי ושקיפות:</strong> אי אפשר להזמין פריט שאזל, וכפתור הוואטסאפ מסביר מראש שהוא שומר את הבקשה באתר ופותח הודעה אלייך.</li>
+            </ul>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">📅</span>
+              <h3>יומן זמינות חכם, מניעת כפילות תורים ורשימת המתנה</h3>
+            </div>
+            <ul class="nice-list">
+              <li><strong>חישוב שעות מדויק:</strong> היומן קורא נכון את כל שעות הפעילות שהגדרת (כולל שעון חורף וקיץ) ומונע משתי לקוחות לקבוע בדיוק את אותה שעה.</li>
+              <li><strong>כשאין תורים פנויים — לא מאבדים לקוחה:</strong> במקום להשאיר מסך ריק, מופיע הסבר ברור (למשל יום סגור או יומן מלא), טופס קצר ל<strong>רשימת המתנה</strong>, וכפתור לשליחת הודעה ישירה אלייך בוואטסאפ.</li>
+            </ul>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">✍️</span>
+              <h3>חתימה חלקה מהטלפון ונגישות מלאה במקלדת</h3>
+            </div>
+            <p>
+              שדרגנו את משטח החתימה על הצהרת הבריאות כך שגם חתימה מהירה עם האצבע בטלפון נשמרת מיד בלי להיעלם.
+              בנוסף, כל חלונות הפופ־אפ באתר (כולל הגדרות העוגיות) נסגרים כעת בצורה חלקה גם בלחיצה על מקש <bdi dir="ltr">Escape</bdi>.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Section 3: Privacy, Security & Content Polish -->
+      <section class="section" data-cat="admin">
+        <div class="section-heading">
+          <div class="section-num">3</div>
+          <h2>פרטיות, אבטחה וניהול שקט של הסטודיו</h2>
+        </div>
+
+        <div class="grid-2">
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">🔐</span>
+              <h3>כניסת מנהלת מאובטחת דרך חשבון ה־Google שלך</h3>
+            </div>
+            <p>
+              הסרנו את חלון הסיסמה הישן כדי שאף גורם חיצוני לא יוכל לנחש או לחשוף גישה לניהול.
+              מעכשיו הכניסה ללוח הבקרה של הסטודיו מתבצעת אך ורק עם חשבון ה־<strong>Google</strong> המורשה שלך,
+              ופרטי התורים, הלקוחות, הקופונים, ההתראות והיעדים החודשיים מוגנים במלואם.
+            </p>
+          </article>
+
+          <article class="story-card">
+            <div class="story-title">
+              <span class="story-emoji" aria-hidden="true">🌿</span>
+              <h3>דיוק בפרטי השירותים, ניווט ואינסטגרם</h3>
+            </div>
+            <ul class="nice-list">
+              <li><strong>זמני החלמה ודרגת כאב:</strong> מוצגים רק נתונים אמיתיים שהוגדרו לשירות, בלי ניחושים אוטומטיים ובאחידות מול הוראות הטיפול הביתי.</li>
+              <li><strong>קישור אינסטגרם וניווט:</strong> הקישור הרשמי ל־<bdi dir="ltr">@yuval_studio</bdi> וכפתורי ההגעה ב־Google Maps מעודכנים ומדויקים.</li>
+              <li><strong>עברית נקייה ומסמכים משפטיים:</strong> תוקנו ניסוחי יחיד/רבים, עמודי התחברות ברורים, ותאריך עדכון אחיד בדפי המדיניות והתקנון.</li>
+            </ul>
+          </article>
+        </div>
+
+        <!-- Daily Tips for Yuval -->
+        <div class="tips-box" style="margin-top: 20px;">
+          <h3>💡 3 דברים קטנים שכדאי להכיר בניהול השוטף</h3>
+          <ul class="nice-list">
+            <li><strong>פתיחת שעות ביומן:</strong> כשהלו״ז שלך יהיה מוכן לקבלת תורים אונליין, פשוט מפעילים את ימי העבודה בלשונית השעות בלוח הבקרה — והתורים ייפתחו אוטומטית לפי טווח הימים שבחרת (ברירת המחדל היא <bdi dir="ltr">30</bdi> ימים קדימה).</li>
+            <li><strong>פניות מרשימת ההמתנה:</strong> כל לקוחה שנרשמה לרשימת המתנה בימים סגורים או מלאים נשמרת אצלך בסטודיו עם שם, טלפון ותאריך מבוקש.</li>
+            <li><strong>רענון מפתחות ופרטי התראות:</strong> עם העלייה לאוויר בגרסה החדשה, מומלץ להיכנס לטאב ההתראות בלוח הבקרה ולוודא שפרטי הטלגרם/מייל מעודכנים ושקיבלת התראת ניסיון תקינה.</li>
+          </ul>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-text">
+        הסטודיו לפירסינג של יובל • Yuval Studio • נובמבר <bdi dir="ltr">2026</bdi>
+      </div>
+      <a href="https://yuval-studio-repo.vercel.app/" target="_blank" rel="noopener noreferrer" class="cta-btn">
+        מעבר לאתר הסטודיו ←
+      </a>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      var pills = Array.prototype.slice.call(document.querySelectorAll('.filter-pill'));
+      var sections = Array.prototype.slice.call(document.querySelectorAll('.section'));
+
+      pills.forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          var target = pill.getAttribute('data-filter') || 'all';
+          pills.forEach(function (btn) {
+            btn.classList.toggle('active', btn === pill);
+          });
+          sections.forEach(function (sec) {
+            var cat = sec.getAttribute('data-cat');
+            var visible = target === 'all' || cat === target;
+            sec.classList.toggle('is-hidden', !visible);
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

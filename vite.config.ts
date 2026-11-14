@@ -22,8 +22,8 @@ function createDevApiPlugin() {
             server.ssrLoadModule('/api/_lib/neonStore.ts'),
           ]);
 
-          const useMemory =
-            process.env.USE_MEMORY_STORE === '1' || !(process.env.DATABASE_URL || '').trim();
+          const dbUrl = authMod.resolveDatabaseUrlFromEnv();
+          const useMemory = process.env.USE_MEMORY_STORE === '1' || !dbUrl;
 
           let store;
           if (useMemory) {
@@ -32,7 +32,7 @@ function createDevApiPlugin() {
             }
             store = await memoryStorePromise;
           } else {
-            store = new neonMod.NeonStore(process.env.DATABASE_URL!.trim());
+            store = new neonMod.NeonStore(dbUrl);
           }
 
           const query: Record<string, string | undefined> = {};
@@ -98,6 +98,13 @@ function createDevApiPlugin() {
 
 export default defineConfig({
   plugins: [react(), createDevApiPlugin()],
+  define: {
+    // Defense-in-depth: scrub legacy sensitive VITE_* variables so Vite never inlines them into client bundles.
+    'import.meta.env.VITE_NEON_DATABASE_URL': JSON.stringify(''),
+    'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(''),
+    'import.meta.env.VITE_CLOUDINARY_API_SECRET': JSON.stringify(''),
+    'import.meta.env.VITE_ADMIN_PASSWORD': JSON.stringify(''),
+  },
   server: {
     port: 3000,
   },

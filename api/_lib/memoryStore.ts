@@ -8,7 +8,7 @@ import type {
   Profile,
   Service,
   StudioSettings,
-} from '../../types';
+} from '../../types.js';
 import {
   buildDefaultRawSettings,
   deterministicUuidFromKey,
@@ -19,8 +19,8 @@ import {
   normalizeServiceRow,
   sanitizeProfile,
   toPublicSettingsDto,
-} from './sanitize';
-import type { PublicStudioSettingsDto, ServerGoogleUserInfo, StoreAdapter, WaitlistEntry } from './types';
+} from './sanitize.js';
+import type { PublicStudioSettingsDto, ServerGoogleUserInfo, StoreAdapter, WaitlistEntry } from './types.js';
 
 export interface MemoryStoreFailureSimulation {
   failOrderInsert?: boolean;

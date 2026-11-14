@@ -1,21 +1,21 @@
-import { JEWELRY_CATALOG } from '../../constants';
+import { JEWELRY_CATALOG } from '../../constants.js';
 import {
   computeDayAvailability,
   jerusalemLocalToUtcDate,
   isStudioCompletelyClosed,
   normalizeHorizonDays,
-} from '../../shared/availability';
+} from '../../shared/availability.js';
 import {
   agorotToShekels,
   calculateAppointmentPricing,
   multiplyAgorot,
   parsePriceToAgorot,
-} from '../../shared/money';
-import { APP_RELEASE_VERSION } from '../../shared/release';
-import { calculateJewelryOrderPricing, resolveShippingPolicy } from '../../shared/shipping';
-import { validateBookingCustomerInput, validateJewelryOrderInput } from '../../shared/validation';
-import type { Profile, Service, StudioSettings } from '../../types';
-import { defaultServerAiAnalyzer, type ServerAiAnalyzer } from './aiStylist';
+} from '../../shared/money.js';
+import { APP_RELEASE_VERSION } from '../../shared/release.js';
+import { calculateJewelryOrderPricing, resolveShippingPolicy } from '../../shared/shipping.js';
+import { validateBookingCustomerInput, validateJewelryOrderInput } from '../../shared/validation.js';
+import type { Profile, Service, StudioSettings } from '../../types.js';
+import { defaultServerAiAnalyzer, type ServerAiAnalyzer } from './aiStylist.js';
 import {
   buildClearSessionCookie,
   buildSessionCookie,
@@ -25,9 +25,9 @@ import {
   SESSION_COOKIE_NAME,
   verifyGoogleAccessTokenLive,
   verifySessionToken,
-} from './auth';
-import { defaultServerImageUploader, type ServerImageUploader } from './cloudinary';
-import { defaultNotificationDispatcher, type NotificationDispatcher } from './notifications';
+} from './auth.js';
+import { defaultServerImageUploader, type ServerImageUploader } from './cloudinary.js';
+import { defaultNotificationDispatcher, type NotificationDispatcher } from './notifications.js';
 import {
   normalizeInventoryItem,
   normalizeServiceRow,
@@ -35,14 +35,14 @@ import {
   sanitizeProfile,
   toPublicInventoryItem,
   toPublicService,
-} from './sanitize';
+} from './sanitize.js';
 import type {
   ApiRequestContext,
   ApiResponseResult,
   GoogleTokenVerifier,
   SessionPayload,
   StoreAdapter,
-} from './types';
+} from './types.js';
 
 export interface HandlerDependencies {
   store: StoreAdapter;

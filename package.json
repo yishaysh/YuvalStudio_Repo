@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
     "test": "node scripts/run-unit-tests.mjs",
     "test:e2e": "node tests/e2e.puppeteer.mjs",
     "audit:bundle": "node scripts/audit-bundle.mjs",

@@ -1,13 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { parseCookieHeader } from './_lib/auth';
-import { handleApiRequest } from './_lib/handler';
-import { NeonStore } from './_lib/neonStore';
+import { parseCookieHeader, resolveDatabaseUrlFromEnv } from './_lib/auth.js';
+import { handleApiRequest } from './_lib/handler.js';
+import { NeonStore } from './_lib/neonStore.js';
+import type { ApiResponseResult } from './_lib/types.js';
 
 let cachedStore: NeonStore | null = null;
 
 function getProductionStore(): NeonStore {
   if (!cachedStore) {
-    const dbUrl = (process.env.DATABASE_URL || '').trim();
+    const dbUrl = resolveDatabaseUrlFromEnv();
     if (!dbUrl) {
       throw new Error('DATABASE_URL environment variable is not configured on the server');
     }
@@ -72,7 +73,7 @@ export default async function handler(
       ? `/api/${String(query.path).replace(/^\/+/, '')}`
       : urlObj.pathname;
 
-  let result;
+  let result: ApiResponseResult;
   try {
     const store = getProductionStore();
     result = await handleApiRequest(

@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
-import { DEFAULT_MONTHLY_GOALS, DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS } from '../../constants';
-import { DEFAULT_BOOKING_HORIZON_DAYS, normalizeHorizonDays, normalizeWorkingHoursRangeEndpoint, WorkingHoursMap } from '../../shared/availability';
-import { parsePriceToShekels } from '../../shared/money';
-import type { Coupon, JewelryItem, Profile, Service, StudioDetails, StudioSettings } from '../../types';
-import type { PublicStudioSettingsDto } from './types';
+import { DEFAULT_MONTHLY_GOALS, DEFAULT_STUDIO_DETAILS, DEFAULT_WORKING_HOURS } from '../../constants.js';
+import { DEFAULT_BOOKING_HORIZON_DAYS, normalizeHorizonDays, normalizeWorkingHoursRangeEndpoint, WorkingHoursMap } from '../../shared/availability.js';
+import { parsePriceToShekels } from '../../shared/money.js';
+import type { Coupon, JewelryItem, Profile, Service, StudioDetails, StudioSettings } from '../../types.js';
+import type { PublicStudioSettingsDto } from './types.js';
 
 export function normalizeCouponRow(raw: any): Coupon {
   const isActive = raw?.isActive !== undefined ? Boolean(raw.isActive) : raw?.is_active !== false;
